@@ -66,8 +66,10 @@
 | **Phase 1** | README/docsに設計を入れる | しない |
 | **Phase 2** | 監査フェーズ（設計確認・微修正） | しない |
 | **Phase 3** | MVPまで一気に作る | MVP完成後のみ |
+| **Phase 4** | デバッグ・UI/UX微調整・build確認・Cloudflare対応 | 接続済みなら可 |
 
-詳細は [docs/development-phases.md](docs/development-phases.md) を参照。
+詳細は [docs/development-phases.md](docs/development-phases.md) を参照。  
+Phase 4 の最終調整レポートは [docs/final-polish-and-deploy-phase-4.md](docs/final-polish-and-deploy-phase-4.md) を参照。
 
 ---
 
@@ -123,7 +125,8 @@ npm run preview
 
 ## Cloudflare Pages デプロイ方針
 
-Phase 3 のMVP完成後、必要に応じて Cloudflare Pages へデプロイする想定です。  
+Phase 3 のMVP完成後、Phase 4 で最終調整を行いました。  
+Cloudflare Pages 接続済みであれば、現状の `main` ブランチからそのままデプロイ可能です。  
 **Phase 3 の途中ではデプロイしません。**
 
 推奨設定：
@@ -134,9 +137,20 @@ Phase 3 のMVP完成後、必要に応じて Cloudflare Pages へデプロイす
 | Build command | `npm run build` |
 | Build output directory | `dist` |
 | Node.js version | 18 以上 |
+| 環境変数 | 不要 |
 
 ビルド成果物は静的ファイルのみで、サーバーサイドや外部APIには依存しません。  
 データはユーザーの端末の `localStorage`（キー: `zanshin.notes.v1`）に保存されます。
+
+### Cloudflare Pages の手動接続手順（未接続の場合）
+
+1. Cloudflare ダッシュボード → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git**
+2. このリポジトリを選択し、ブランチを `main` に設定
+3. ビルド設定で上表の値を入力
+4. **Save and Deploy** を押下
+5. 発行された `*.pages.dev` ドメインで動作確認
+
+> SPA ルーティング（react-router 等）を使っていないため、`_redirects` 等の追加設定は不要です。
 
 ---
 
@@ -148,4 +162,5 @@ Phase 3 のMVP完成後、必要に応じて Cloudflare Pages へデプロイす
 | [docs/design-system.md](docs/design-system.md) | UI/UXとデザインシステム |
 | [docs/mvp-spec.md](docs/mvp-spec.md) | MVP仕様 |
 | [docs/development-phases.md](docs/development-phases.md) | 開発フェーズ |
+| [docs/final-polish-and-deploy-phase-4.md](docs/final-polish-and-deploy-phase-4.md) | Phase 4 最終調整・デプロイ報告 |
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Cloud Agent / Copilot向け作業ルール |

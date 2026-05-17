@@ -42,7 +42,13 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
   // 新規作成時は本文にフォーカス。
   // 別のノートを開いたとき（id が変わったとき）にだけ走らせたいので、
   // title / body は依存に含めない（編集中の毎入力で再フォーカスさせないため）。
+  // 同時に、前のノートで出ていた「保存中／保存しました」表示を引き継がないように
+  // ステータスとタイマーをリセットする。
   useEffect(() => {
+    if (savingTimer.current) window.clearTimeout(savingTimer.current);
+    if (savedTimer.current) window.clearTimeout(savedTimer.current);
+    setSaveState("idle");
+    setConfirmingDelete(false);
     if (!note.title && !note.body) {
       bodyRef.current?.focus();
     }
