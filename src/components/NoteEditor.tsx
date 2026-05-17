@@ -39,12 +39,15 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
     };
   }, []);
 
-  // 新規作成時は本文にフォーカス
+  // 新規作成時は本文にフォーカス。
+  // 別のノートを開いたとき（id が変わったとき）にだけ走らせたいので、
+  // title / body は依存に含めない（編集中の毎入力で再フォーカスさせないため）。
   useEffect(() => {
     if (!note.title && !note.body) {
       bodyRef.current?.focus();
     }
-  }, [note.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.id]);
 
   function handleTitle(e: React.ChangeEvent<HTMLInputElement>) {
     onChange({ title: e.target.value });
