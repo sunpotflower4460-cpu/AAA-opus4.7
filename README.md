@@ -79,6 +79,67 @@
 
 ---
 
+## セットアップと起動
+
+Phase 3 でMVPを実装しました。以下のコマンドで動かせます。
+
+```bash
+# 依存関係のインストール
+npm install
+
+# 開発サーバー起動（http://localhost:5173）
+npm run dev
+
+# 本番ビルド（dist/ に出力）
+npm run build
+
+# ビルド成果物のプレビュー
+npm run preview
+```
+
+要件：
+
+- Node.js 18 以上
+- npm 9 以上
+
+---
+
+## MVP 実装機能
+
+| 機能 | 状態 |
+|------|------|
+| メモ一覧（お気に入り優先・更新日時降順） | ✅ |
+| メモ作成 | ✅ |
+| メモ編集（タイトル / 本文） | ✅ |
+| メモ削除（確認ダイアログ付き） | ✅ |
+| 自動保存（debounce） | ✅ |
+| 検索（タイトル + 本文） | ✅ |
+| お気に入り切り替え | ✅ |
+| localStorage 永続化 | ✅ |
+| iPhone 向けレスポンシブ UI（safe-area 対応） | ✅ |
+| 日本語/英語を意識した文言設計 | ✅ |
+
+---
+
+## Cloudflare Pages デプロイ方針
+
+Phase 3 のMVP完成後、必要に応じて Cloudflare Pages へデプロイする想定です。  
+**Phase 3 の途中ではデプロイしません。**
+
+推奨設定：
+
+| 項目 | 値 |
+|------|----|
+| Framework preset | None / Vite |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Node.js version | 18 以上 |
+
+ビルド成果物は静的ファイルのみで、サーバーサイドや外部APIには依存しません。  
+データはユーザーの端末の `localStorage`（キー: `zanshin.notes.v1`）に保存されます。
+
+---
+
 ## ドキュメント
 
 | ファイル | 内容 |

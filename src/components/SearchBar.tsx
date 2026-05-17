@@ -1,0 +1,56 @@
+import { copy } from "../lib/i18n";
+
+type Props = {
+  value: string;
+  onChange: (value: string) => void;
+};
+
+export function SearchBar({ value, onChange }: Props) {
+  return (
+    <label
+      className="
+        flex items-center gap-gr-3 rounded-full bg-paper/80
+        px-gr-4 py-gr-3 shadow-paper
+        border border-[color:var(--color-line)]
+        transition-soft
+        focus-within:bg-paper
+      "
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+        className="shrink-0 text-ink-muted"
+      >
+        <circle
+          cx="11"
+          cy="11"
+          r="7"
+          stroke="currentColor"
+          strokeWidth="1.6"
+        />
+        <path
+          d="M20 20l-3.5-3.5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </svg>
+      <input
+        type="search"
+        inputMode="search"
+        autoComplete="off"
+        spellCheck={false}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={copy.searchPlaceholder}
+        aria-label={copy.searchPlaceholder}
+        className="text-[15px] text-sumi placeholder:text-ink-muted/70"
+      />
+    </label>
+  );
+}
+
+export default SearchBar;
