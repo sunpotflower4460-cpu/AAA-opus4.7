@@ -110,6 +110,25 @@ If a feature makes the app:
 
 ---
 
+## Hard Prohibitions (Do NOT add without explicit user request)
+
+The following must **never** be added by an AI agent on its own initiative, in any phase. They are out of scope for the MVP and changing that scope is a human decision.
+
+- ❌ **AI features** (summarization, autocompletion, suggestions, chat, embeddings, etc.)
+- ❌ **Login / authentication / accounts**
+- ❌ **Cloud sync / backend / database services**
+- ❌ **Paid plans / billing / subscriptions / in-app purchases**
+- ❌ **Analytics / telemetry / tracking / external scripts**
+- ❌ **Push notifications / reminders**
+- ❌ **Social features** (sharing, comments, following, collaboration)
+- ❌ **Full Markdown rendering / WYSIWYG editors**
+- ❌ **Complex tag systems** (search covers this in MVP)
+- ❌ **Cloudflare Pages deployment before the MVP is complete**
+
+If you believe one of these is needed, **stop and ask the user first.** Do not introduce it silently.
+
+---
+
 ## Key Documents
 
 | File | Purpose |
