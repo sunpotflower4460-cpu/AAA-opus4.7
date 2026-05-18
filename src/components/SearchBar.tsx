@@ -9,32 +9,34 @@ export function SearchBar({ value, onChange }: Props) {
   return (
     <label
       className="
-        flex items-center gap-gr-3 rounded-full bg-paper/80
-        px-gr-4 py-gr-3 shadow-paper
+        flex items-center gap-gr-3 rounded-full bg-paper/75
+        px-gr-4 py-gr-3 shadow-paper-soft
         border border-[color:var(--color-line)]
         transition-soft
         focus-within:bg-paper
+        focus-within:border-indigo/30
+        focus-within:shadow-paper
       "
     >
       <svg
-        width="18"
-        height="18"
+        width="17"
+        height="17"
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
-        className="shrink-0 text-ink-muted"
+        className="shrink-0 text-ink-muted/80"
       >
         <circle
           cx="11"
           cy="11"
           r="7"
           stroke="currentColor"
-          strokeWidth="1.6"
+          strokeWidth="1.5"
         />
         <path
           d="M20 20l-3.5-3.5"
           stroke="currentColor"
-          strokeWidth="1.6"
+          strokeWidth="1.5"
           strokeLinecap="round"
         />
       </svg>
