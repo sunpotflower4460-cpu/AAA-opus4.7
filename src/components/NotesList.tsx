@@ -53,10 +53,9 @@ export function NotesList({
 
   const isEmpty = visible.length === 0;
   const isSearching = query.trim().length > 0;
-  const hasWrittenAtLeastOnce = notes.length > 0;
   const showAdSlot = !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
-    !isSearching && hasWrittenAtLeastOnce && (notes.length > 1 || monetization.isPremium);
+    !isSearching && (notes.length > 1 || monetization.isPremium);
 
   return (
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
