@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "./types/note";
+import type { MonetizationState } from "./types/monetization";
 import { loadNotes, saveNotes } from "./lib/storage";
+import {
+  REMOVE_ADS_PRODUCT,
+  clearPremiumMock,
+  loadMonetizationState,
+  purchasePremiumMock,
+  restorePurchasesMock,
+} from "./lib/monetization";
 import { nowIso } from "./lib/date";
 import { createId } from "./lib/id";
 import { AppShell } from "./components/AppShell";
 import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
+import { PremiumSheet } from "./components/PremiumSheet";
 
 type View = { kind: "list" } | { kind: "editor"; id: string };
 
@@ -14,8 +23,11 @@ const AUTOSAVE_DEBOUNCE_MS = 500;
 export default function App() {
   const [notes, setNotes] = useState<Note[]>(() => loadNotes());
   const [view, setView] = useState<View>({ kind: "list" });
+  const [monetization, setMonetization] = useState<MonetizationState>(() =>
+    loadMonetizationState(),
+  );
+  const [isPremiumSheetOpen, setIsPremiumSheetOpen] = useState(false);
 
-  // localStorage への自動保存（変更をデバウンスして書く）
   const persistTimer = useRef<number | null>(null);
   useEffect(() => {
     if (persistTimer.current) window.clearTimeout(persistTimer.current);
@@ -27,7 +39,6 @@ export default function App() {
     };
   }, [notes]);
 
-  // 離脱時にはフラッシュ
   useEffect(() => {
     const flush = () => saveNotes(notes);
     window.addEventListener("beforeunload", flush);
@@ -37,6 +48,14 @@ export default function App() {
       window.removeEventListener("pagehide", flush);
     };
   }, [notes]);
+
+  useEffect(() => {
+    const syncMonetization = () => setMonetization(loadMonetizationState());
+    window.addEventListener("storage", syncMonetization);
+    return () => {
+      window.removeEventListener("storage", syncMonetization);
+    };
+  }, []);
 
   const createNote = useCallback(() => {
     const iso = nowIso();
@@ -56,8 +75,8 @@ export default function App() {
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
       setNotes((prev) =>
-        prev.map((n) =>
-          n.id === id ? { ...n, ...patch, updatedAt: nowIso() } : n,
+        prev.map((note) =>
+          note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
         ),
       );
     },
@@ -65,7 +84,7 @@ export default function App() {
   );
 
   const deleteNote = useCallback((id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setNotes((prev) => prev.filter((note) => note.id !== id));
     setView({ kind: "list" });
   }, []);
 
@@ -73,12 +92,38 @@ export default function App() {
     setView({ kind: "editor", id });
   }, []);
 
+  const openPremiumSheet = useCallback(() => {
+    setIsPremiumSheetOpen(true);
+  }, []);
+
+  const closePremiumSheet = useCallback(() => {
+    setIsPremiumSheetOpen(false);
+  }, []);
+
+  const handlePurchase = useCallback(async () => {
+    setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
+    const next = await purchasePremiumMock(REMOVE_ADS_PRODUCT.id);
+    setMonetization(next);
+    if (next.isPremium) setIsPremiumSheetOpen(false);
+  }, []);
+
+  const handleRestore = useCallback(async () => {
+    setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
+    const next = await restorePurchasesMock();
+    setMonetization(next);
+  }, []);
+
+  const handleDisablePremium = useCallback(async () => {
+    setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
+    const next = await clearPremiumMock();
+    setMonetization(next);
+  }, []);
+
   const currentNote = useMemo<Note | undefined>(() => {
     if (view.kind !== "editor") return undefined;
-    return notes.find((n) => n.id === view.id);
+    return notes.find((note) => note.id === view.id);
   }, [view, notes]);
 
-  // エディタを開いているのに対象が消えた場合（外部からの削除など）は一覧に戻る
   useEffect(() => {
     if (view.kind === "editor" && !currentNote) {
       setView({ kind: "list" });
@@ -88,7 +133,25 @@ export default function App() {
   return (
     <AppShell>
       {view.kind === "list" || !currentNote ? (
-        <NotesList notes={notes} onOpen={openNote} onCreate={createNote} />
+        <>
+          <NotesList
+            notes={notes}
+            monetization={monetization}
+            onOpen={openNote}
+            onCreate={createNote}
+            onOpenPremium={openPremiumSheet}
+            onRestorePurchase={handleRestore}
+          />
+          <PremiumSheet
+            open={isPremiumSheetOpen}
+            monetization={monetization}
+            product={REMOVE_ADS_PRODUCT}
+            onClose={closePremiumSheet}
+            onPurchase={handlePurchase}
+            onRestore={handleRestore}
+            onDisableMock={handleDisablePremium}
+          />
+        </>
       ) : (
         <NoteEditor
           note={currentNote}
