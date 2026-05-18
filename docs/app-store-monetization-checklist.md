@@ -1,6 +1,7 @@
 # App Store Monetization Checklist
 
 ## IAP
+- [ ] Phase 7/8 はモック実装であることを最終確認
 - [ ] Paid Apps Agreement 確認
 - [ ] App Store Connect で IAP 作成
 - [ ] Product ID 確認
@@ -26,5 +27,6 @@
 - [ ] 起動直後に課金ポップアップを出していない
 - [ ] 執筆中に広告を出していない
 - [ ] 保存直後に広告を出していない
+- [ ] 空状態の中心を広告/課金導線で壊していない
 - [ ] 広告がメモカードと誤認されない
 - [ ] プレミアム導線が煽りすぎていない

@@ -10,7 +10,9 @@
 | Phase 4 | UI/UXおまかせアレンジ | しない |
 | Phase 5 | デバッグ・最終調整 | しない |
 | Phase 6 | 残心体験の徹底強化・UI/UX再設計 | しない |
-| Phase 7〜 | 将来拡張 | 別途検討 |
+| Phase 7 | App Store向け広告・Premium枠組み | しない |
+| Phase 8 | UI/UX総合監査・残心品質ブラッシュアップ | しない |
+| Phase 9〜 | 将来拡張 | 別途検討 |
 
 ---
 
@@ -165,14 +167,77 @@ docs/zanshin-experience-phase-6.md
 
 ---
 
+## Phase 7: App Store向け広告・Premium枠組み
+
+**ステータス：** 🟢 実施
+
+### 目的
+
+- 広告枠とPremium導線を、残心の静けさを壊さない配置で追加する
+- 購入復元導線を用意し、App Store申請準備を進める
+- SDK/StoreKit本実装前の検証用モックレイヤーを整える
+
+### 成果物
+
+```
+docs/monetization-phase-7.md
+docs/app-store-monetization-checklist.md
+```
+
+### 完了条件
+
+- エディタに広告を出さない
+- 保存直後に広告を出さない
+- Premium時に広告を非表示にできる
+- 購入復元導線が存在する
+- モック実装であることをdocsに明記する
+
+### Cloudflareデプロイ
+
+**しない**
+
+---
+
+## Phase 8: UI/UX総合監査・残心品質ブラッシュアップ
+
+**ステータス：** 🟢 実施
+
+### 目的
+
+- 広告・Premium導線追加後も「書く体験の静けさ」が維持されているかを総合監査する
+- 上部の課金圧や広告ノイズを抑え、iPhone中心の可読性と余白を調整する
+- 機能追加ではなく、残心らしくない要素の削減と整形を行う
+
+### 成果物
+
+```
+docs/uiux-integrity-review-phase-8.md
+```
+
+### 完了条件
+
+- エディタ画面で広告とPremium導線を表示しない
+- 保存直後に広告を表示しない
+- 空状態の中心を広告/課金導線で壊さない
+- Premium導線が煽りすぎない
+- iPhone幅で崩れない
+- build成功を確認する
+- Cloudflare Pagesへはデプロイしない
+
+### Cloudflareデプロイ
+
+**しない**
+
+---
+
 ## 将来 Phase 候補
 
 | フェーズ | 内容 |
 |----------|------|
-| Phase 7 | 集中モード（UI最小化） |
-| Phase 8 | iCloud / Supabase同期 |
-| Phase 9 | CapacitorでiOS化 |
-| Phase 10 | App Store準備 |
+| Phase 9 | 集中モード（UI最小化） |
+| Phase 10 | iCloud / Supabase同期 |
+| Phase 11 | CapacitorでiOS化 |
+| Phase 12 | App Store本番実装最終化 |
 
 ---
 
