@@ -32,8 +32,11 @@ export function EmptyState({ onCreate, searching = false }: Props) {
         <p className="font-mincho text-[17px] tracking-mincho text-sumi/90">
           {copy.emptyTitle}
         </p>
-        <p className="text-[12px] tracking-[0.18em] text-ink-muted">
+        <p className="font-mincho text-[13px] leading-ample text-ink-muted whitespace-pre-line">
           {copy.emptySubtitle}
+        </p>
+        <p className="text-[11px] tracking-[0.18em] text-ink-muted/75">
+          {copy.emptySubtitleEn}
         </p>
       </div>
       <button

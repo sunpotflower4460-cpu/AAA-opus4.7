@@ -8,10 +8,14 @@ type Props = {
 };
 
 function preview(body: string): string {
-  // 改行を一行に畳んで、冒頭を返す
-  const flat = body.replace(/\s+/g, " ").trim();
+  const lines = body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const lastLine = lines.at(-1) ?? "";
+  const flat = lastLine.replace(/\s+/g, " ").trim();
   if (!flat) return "";
-  return flat.length > 80 ? `${flat.slice(0, 80)}…` : flat;
+  return flat.length > 88 ? `${flat.slice(0, 88)}…` : flat;
 }
 
 export function NoteCard({ note, onOpen }: Props) {
@@ -26,7 +30,7 @@ export function NoteCard({ note, onOpen }: Props) {
       className="
         group relative block w-full text-left
         rounded-[13px] bg-paper/90
-        pl-gr-5 pr-gr-4 py-gr-4
+        pl-gr-5 pr-gr-5 py-gr-5
         shadow-paper-soft border border-[color:var(--color-line)]
         transition-soft
         hover:bg-paper hover:shadow-paper-hover hover:-translate-y-[1px]
@@ -54,20 +58,28 @@ export function NoteCard({ note, onOpen }: Props) {
           </h3>
 
           {bodyPreview && (
-            <p className="mt-gr-2 line-clamp-2 text-[14px] leading-golden text-ink-muted">
-              {bodyPreview}
-            </p>
+            <div className="mt-gr-3 flex flex-col gap-gr-2">
+              <span className="text-[11px] tracking-[0.14em] text-ink-muted/70">
+                {copy.lastRemains}
+              </span>
+              <p className="line-clamp-2 text-[14px] leading-golden text-ink-muted">
+                {bodyPreview}
+              </p>
+            </div>
           )}
 
-          <p className="mt-gr-3 text-[11px] uppercase tracking-[0.18em] text-ink-muted/70">
-            {formatUpdatedAt(note.updatedAt)}
-          </p>
+          <div className="mt-gr-4 flex items-center gap-gr-2 text-[11px] tracking-[0.14em] text-ink-muted/70">
+            <span className="font-mincho tracking-mincho text-ink-muted/80">
+              {copy.settledOn}
+            </span>
+            <span>{formatUpdatedAt(note.updatedAt)}</span>
+          </div>
         </div>
 
         {note.isFavorite && (
           <span
-            aria-label={copy.favorites}
-            title={copy.favorites}
+            aria-label={copy.favoriteBadge}
+            title={copy.favoriteBadge}
             className="mt-[6px] shrink-0 text-gold"
           >
             {/* 金の小さな印 — 装飾ではなく、しるし */}

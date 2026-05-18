@@ -6,60 +6,65 @@ export const copy = {
   appName: "残心",
   appSubtitle: "Zanshin Notes",
   tagline: "書いたあとにも、心がそこに残るメモ帳。",
-  taglineEn: "Write with stillness.",
+  taglineEn: "A quiet place for words that remain.",
+  zanshinDefinition: "残心とは、\n書き終えたあとにも\n心が静かに残っていること。",
 
   // 一覧
-  searchPlaceholder: "言葉を探す",
-  searchPlaceholderEn: "Search your words",
-  newNote: "新しい余白",
-  newNoteEn: "Open a new space",
-  favorites: "お気に入り",
+  searchPlaceholder: "残した言葉を探す",
+  searchPlaceholderEn: "Find the words you left behind",
+  newNote: "言葉を置く",
+  newNoteEn: "Place new words",
+  favorites: "大切な余韻",
+  favoriteBadge: "金のしるし",
+  lastRemains: "最後の余韻",
+  settledOn: "残した日",
 
   // 空状態
   emptyTitle: "まだ、言葉は置かれていません。",
-  emptySubtitle: "No words have settled yet.",
-  emptyAction: "新しい余白をひらく",
-  emptyActionEn: "Open a new space",
+  emptySubtitle: "残心とは、\n書き終えたあとにも\n心が静かに残っていること。",
+  emptySubtitleEn: "The first quiet trace begins here.",
+  emptyAction: "最初の余韻を残す",
+  emptyActionEn: "Leave the first trace",
 
   // エディタ
   back: "戻る",
   backEn: "Back",
-  titlePlaceholder: "題（つけなくてもよい）",
-  titlePlaceholderEn: "Title (optional)",
-  bodyPlaceholder: "ここに、静かに置いてください。",
-  bodyPlaceholderEn: "Place your words here, quietly.",
-  untitled: "無題の余白",
-  untitledEn: "Untitled space",
+  titlePlaceholder: "題を置く",
+  titlePlaceholderEn: "Place a title",
+  bodyPlaceholder: "いま残したい言葉を、静かに置く。",
+  bodyPlaceholderEn: "Place the words you wish to leave, quietly.",
+  untitled: "名のない余韻",
+  untitledEn: "Untitled trace",
 
   // 保存・状態
   saved: "余韻を保存しました",
   savedEn: "Saved in stillness",
-  saving: "そっと書き留めています",
-  savingEn: "Settling…",
+  saving: "余韻を静かに整えています",
+  savingEn: "Settling in stillness",
 
   // お気に入り
-  favoriteOn: "大切な言葉として残す",
-  favoriteOff: "大切な言葉から外す",
-  favoriteOnEn: "Mark as treasured",
-  favoriteOffEn: "Unmark treasured",
+  favoriteOn: "大切な余韻として残す",
+  favoriteOff: "大切な余韻から外す",
+  favoriteOnEn: "Keep as a treasured trace",
+  favoriteOffEn: "Remove treasured trace",
 
   // 削除
-  deleteNote: "言葉を手放す",
-  deleteNoteEn: "Let go of this note",
-  deleteConfirmTitle: "この言葉を手放しますか？",
-  deleteConfirmTitleEn: "Let this note go?",
+  deleteNote: "この余韻を手放す",
+  deleteNoteEn: "Let this trace go",
+  deleteConfirmTitle: "この余韻を手放しますか？",
+  deleteConfirmTitleEn: "Let this trace go?",
   deleteConfirmBody:
-    "一度手放すと、戻すことはできません。\n本当に削除してもよろしいですか？",
+    "この言葉を静かに手放しますか？\n削除すると、あとから戻すことはできません。",
   deleteConfirmBodyEn:
-    "Once released, it cannot be brought back.\nAre you sure you want to delete it?",
-  cancel: "やめる",
-  cancelEn: "Cancel",
-  confirmDelete: "手放す",
-  confirmDeleteEn: "Release",
+    "Let this note go quietly?\nOnce deleted, it cannot be brought back.",
+  cancel: "残しておく",
+  cancelEn: "Keep it",
+  confirmDelete: "手放す（削除）",
+  confirmDeleteEn: "Release (delete)",
 
   // 検索結果
-  noSearchResult: "見つかりませんでした。",
-  noSearchResultEn: "Nothing was found.",
+  noSearchResult: "その言葉は、まだ見つかっていません。",
+  noSearchResultEn: "That trace has not appeared yet.",
 } as const;
 
 export type Copy = typeof copy;
