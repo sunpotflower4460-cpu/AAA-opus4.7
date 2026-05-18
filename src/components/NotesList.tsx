@@ -1,15 +1,21 @@
 import { useMemo, useState } from "react";
 import type { Note } from "../types/note";
+import type { MonetizationState } from "../types/monetization";
 import { copy } from "../lib/i18n";
 import { NoteCard } from "./NoteCard";
 import { SearchBar } from "./SearchBar";
 import { EmptyState } from "./EmptyState";
 import { ZanshinMark } from "./ZanshinMark";
+import { AdSlot } from "./AdSlot";
+import { PremiumCard } from "./PremiumCard";
 
 type Props = {
   notes: Note[];
+  monetization: MonetizationState;
   onOpen: (id: string) => void;
   onCreate: () => void;
+  onOpenPremium: () => void;
+  onRestorePurchase: () => void | Promise<void>;
 };
 
 function sortNotes(notes: Note[]): Note[] {
@@ -19,8 +25,6 @@ function sortNotes(notes: Note[]): Note[] {
   });
 }
 
-// 入場アニメの段差を最大いくつまでつけるか。
-// それ以上は全カードを同時に出現させる（画面下で長く待たされるのを避けるため）。
 const MAX_STAGGERED_ITEMS = 6;
 const STAGGER_STEP_MS = 40;
 
@@ -33,19 +37,26 @@ function matches(note: Note, q: string): boolean {
   );
 }
 
-export function NotesList({ notes, onOpen, onCreate }: Props) {
+export function NotesList({
+  notes,
+  monetization,
+  onOpen,
+  onCreate,
+  onOpenPremium,
+  onRestorePurchase,
+}: Props) {
   const [query, setQuery] = useState("");
 
   const visible = useMemo(() => {
-    return sortNotes(notes.filter((n) => matches(n, query)));
+    return sortNotes(notes.filter((note) => matches(note, query)));
   }, [notes, query]);
 
   const isEmpty = visible.length === 0;
   const isSearching = query.trim().length > 0;
+  const showMonetizationFooter = !isSearching && !isEmpty;
 
   return (
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-4 animate-washiFade">
-      {/* ヘッダー */}
       <header className="pt-gr-4">
         <div
           className="
@@ -81,12 +92,10 @@ export function NotesList({ notes, onOpen, onCreate }: Props) {
         </div>
       </header>
 
-      {/* 検索 */}
       <div className="pt-gr-1">
         <SearchBar value={query} onChange={setQuery} />
       </div>
 
-      {/* 一覧 */}
       <section
         className="flex flex-1 flex-col gap-gr-3 pb-[max(env(safe-area-inset-bottom),89px)]"
         aria-label="メモ一覧"
@@ -95,12 +104,12 @@ export function NotesList({ notes, onOpen, onCreate }: Props) {
           <EmptyState onCreate={onCreate} searching={isSearching} />
         ) : (
           <ul className="flex flex-col gap-gr-3">
-            {visible.map((note, i) => (
+            {visible.map((note, index) => (
               <li
                 key={note.id}
                 className="animate-fadeIn"
                 style={{
-                  animationDelay: `${Math.min(i, MAX_STAGGERED_ITEMS) * STAGGER_STEP_MS}ms`,
+                  animationDelay: `${Math.min(index, MAX_STAGGERED_ITEMS) * STAGGER_STEP_MS}ms`,
                 }}
               >
                 <NoteCard note={note} onOpen={onOpen} />
@@ -108,9 +117,25 @@ export function NotesList({ notes, onOpen, onCreate }: Props) {
             ))}
           </ul>
         )}
+
+        {showMonetizationFooter && (
+          <div className="flex flex-col gap-gr-3 pt-gr-2">
+            <AdSlot
+              monetization={monetization}
+              currentScreen="notes-list"
+              isSearching={isSearching}
+              hasVisibleNotes={visible.length > 0}
+              onOpenPremium={onOpenPremium}
+            />
+            <PremiumCard
+              monetization={monetization}
+              onOpenPremium={onOpenPremium}
+              onRestorePurchase={onRestorePurchase}
+            />
+          </div>
+        )}
       </section>
 
-      {/* FAB — 新規作成（扇がひらくような印象） */}
       <button
         type="button"
         onClick={onCreate}
