@@ -108,7 +108,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             aria-pressed={note.isFavorite}
             title={note.isFavorite ? copy.favoriteOff : copy.favoriteOn}
             className={[
-              "flex h-[40px] w-[40px] items-center justify-center rounded-full",
+              "flex h-[44px] w-[44px] items-center justify-center rounded-full",
               "transition-soft active:scale-95",
               note.isFavorite
                 ? "text-gold hover:bg-gold/10"
@@ -132,7 +132,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             aria-label={copy.deleteNote}
             title={copy.deleteNote}
             className="
-              flex h-[40px] w-[40px] items-center justify-center rounded-full
+              flex h-[44px] w-[44px] items-center justify-center rounded-full
               text-ink-muted transition-soft
               hover:text-vermilion hover:bg-vermilion/5
               active:scale-95
@@ -158,7 +158,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
       </header>
 
       {/* エディタ本体 */}
-      <main className="flex flex-1 flex-col pt-gr-5">
+      <main className="flex flex-1 min-h-0 flex-col pt-gr-5">
         <input
           ref={titleRef}
           type="text"
@@ -169,6 +169,10 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
           maxLength={200}
           className="font-mincho text-[26px] leading-snug tracking-mincho text-sumi placeholder:text-ink-muted/55"
         />
+
+        <p className="mt-gr-3 text-[11px] tracking-[0.16em] text-ink-muted/72">
+          {copy.taglineEn}
+        </p>
 
         {/* タイトルと本文の間 — 短い金の余韻 */}
         <div
@@ -186,32 +190,42 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             mt-gr-4 flex-1 resize-none
             text-[16px] leading-ample text-sumi placeholder:text-ink-muted/55
           "
-          style={{ minHeight: "55vh" }}
+          style={{ minHeight: "34dvh" }}
         />
 
         {/* 状態行 — 小さく、静かに */}
-        <div className="flex items-center justify-between pb-gr-5 pt-gr-4 text-[11px] tracking-[0.12em] text-ink-muted/75">
+        <div className="flex items-end justify-between gap-gr-4 pb-gr-5 pt-gr-4 text-[11px] tracking-[0.12em] text-ink-muted/75">
           <span
             aria-live="polite"
-            className="flex min-h-[1em] items-center gap-gr-2"
+            className="flex min-h-[2.8em] flex-col justify-end gap-gr-1"
           >
             {saveState === "saving" && (
-              <>
+              <span className="flex items-center gap-gr-2">
                 <span className="zanshin-breath-dot" aria-hidden="true" />
                 <span className="font-mincho">{copy.saving}</span>
-              </>
+              </span>
             )}
             {saveState === "saved" && (
-              <>
+              <span className="flex items-center gap-gr-2">
                 <span
                   aria-hidden="true"
                   className="inline-block h-[6px] w-[6px] rounded-full bg-gold/85"
                 />
                 <span className="font-mincho">{copy.saved}</span>
-              </>
+              </span>
+            )}
+            {(saveState === "saving" || saveState === "saved") && (
+              <span className="pl-[14px] text-[10px] tracking-[0.16em] text-ink-muted/60">
+                {saveState === "saving" ? copy.savingEn : copy.savedEn}
+              </span>
             )}
           </span>
-          <span className="uppercase">{formatUpdatedAt(note.updatedAt)}</span>
+          <span className="flex shrink-0 flex-col items-end gap-1">
+            <span className="font-mincho tracking-mincho text-ink-muted/80">
+              {copy.settledOn}
+            </span>
+            <span>{formatUpdatedAt(note.updatedAt)}</span>
+          </span>
         </div>
       </main>
 

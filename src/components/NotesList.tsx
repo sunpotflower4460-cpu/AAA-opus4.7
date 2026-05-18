@@ -46,22 +46,39 @@ export function NotesList({ notes, onOpen, onCreate }: Props) {
   return (
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-4 animate-washiFade">
       {/* ヘッダー */}
-      <header className="flex flex-col items-center gap-gr-2 pt-gr-4 text-center">
-        <ZanshinMark size={34} className="text-sumi/85" />
-        <h1 className="font-mincho text-[30px] leading-none tracking-[0.22em] text-sumi">
-          {copy.appName}
-        </h1>
-        <p className="text-[10px] tracking-[0.42em] text-ink-muted/85">
-          {copy.appSubtitle.toUpperCase()}
-        </p>
-        <p className="mt-gr-3 max-w-[34ch] font-mincho text-[13px] leading-ample text-ink-muted">
-          {copy.tagline}
-        </p>
-        {/* ごく細い金の区切り — 一筋の余韻 */}
-        <span
-          aria-hidden="true"
-          className="mt-gr-3 block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
-        />
+      <header className="pt-gr-4">
+        <div
+          className="
+            flex flex-col items-center gap-gr-3 rounded-[21px]
+            border border-[color:var(--color-line)] bg-paper/75
+            px-gr-5 py-gr-5 text-center shadow-paper-soft
+          "
+        >
+          <ZanshinMark size={34} className="text-sumi/85" />
+          <div className="flex flex-col gap-gr-2">
+            <h1 className="font-mincho text-[30px] leading-none tracking-[0.22em] text-sumi">
+              {copy.appName}
+            </h1>
+            <p className="text-[10px] tracking-[0.42em] text-ink-muted/85">
+              {copy.appSubtitle.toUpperCase()}
+            </p>
+          </div>
+          <div className="flex flex-col gap-gr-2">
+            <p className="max-w-[24ch] font-mincho text-[18px] leading-snug text-sumi">
+              {copy.tagline}
+            </p>
+            <p className="text-[11px] tracking-[0.18em] text-ink-muted/75">
+              {copy.taglineEn}
+            </p>
+          </div>
+          <span
+            aria-hidden="true"
+            className="block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
+          />
+          <p className="max-w-[22ch] font-mincho text-[13px] leading-ample text-ink-muted whitespace-pre-line">
+            {copy.zanshinDefinition}
+          </p>
+        </div>
       </header>
 
       {/* 検索 */}

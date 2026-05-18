@@ -9,7 +9,7 @@ export function SearchBar({ value, onChange }: Props) {
   return (
     <label
       className="
-        flex items-center gap-gr-3 rounded-full bg-paper/75
+        flex items-center gap-gr-3 rounded-full bg-paper/70
         px-gr-4 py-gr-3 shadow-paper-soft
         border border-[color:var(--color-line)]
         transition-soft
@@ -49,7 +49,7 @@ export function SearchBar({ value, onChange }: Props) {
         onChange={(e) => onChange(e.target.value)}
         placeholder={copy.searchPlaceholder}
         aria-label={copy.searchPlaceholder}
-        className="text-[15px] text-sumi placeholder:text-ink-muted/70"
+        className="text-[15px] text-sumi placeholder:text-ink-muted/68"
       />
     </label>
   );

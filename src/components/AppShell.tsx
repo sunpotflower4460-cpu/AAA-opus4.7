@@ -12,12 +12,12 @@ type Props = {
  */
 export function AppShell({ children }: Props) {
   return (
-    <div className="relative min-h-full w-full">
+    <div className="relative min-h-screen min-h-[100dvh] w-full">
       {/* 円相の透かし — 画面の気配として、淡く一つだけ */}
       <div className="zanshin-enso" aria-hidden="true" />
       <div
         className="
-          relative z-[1] mx-auto flex min-h-full w-full max-w-zanshin flex-col
+          relative z-[1] mx-auto flex min-h-screen min-h-[100dvh] w-full max-w-zanshin flex-col
           px-gr-4 safe-top safe-bottom
         "
       >
