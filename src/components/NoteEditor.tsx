@@ -69,7 +69,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col pt-gr-3">
+    <div className="flex min-h-full flex-1 flex-col pt-gr-3 animate-washiFade">
       {/* 上部バー */}
       <header className="flex items-center justify-between gap-gr-3">
         <button
@@ -79,7 +79,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
           className="
             -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
-            transition-soft hover:text-sumi
+            transition-soft hover:text-sumi hover:bg-paper/60
           "
         >
           <svg
@@ -92,15 +92,15 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             <path
               d="M15 6l-6 6 6 6"
               stroke="currentColor"
-              strokeWidth="1.6"
+              strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-mincho">{copy.back}</span>
+          <span className="font-mincho tracking-mincho">{copy.back}</span>
         </button>
 
-        <div className="flex items-center gap-gr-2">
+        <div className="flex items-center gap-gr-1">
           <button
             type="button"
             onClick={toggleFavorite}
@@ -108,19 +108,19 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             aria-pressed={note.isFavorite}
             title={note.isFavorite ? copy.favoriteOff : copy.favoriteOn}
             className={[
-              "flex h-[34px] w-[34px] items-center justify-center rounded-full",
+              "flex h-[40px] w-[40px] items-center justify-center rounded-full",
               "transition-soft active:scale-95",
               note.isFavorite
-                ? "text-gold"
-                : "text-ink-muted hover:text-sumi",
+                ? "text-gold hover:bg-gold/10"
+                : "text-ink-muted hover:text-sumi hover:bg-paper/60",
             ].join(" ")}
           >
             {note.isFavorite ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <circle cx="12" cy="12" r="6" />
               </svg>
             ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="5.4" stroke="currentColor" strokeWidth="1.4" />
               </svg>
             )}
@@ -132,8 +132,10 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             aria-label={copy.deleteNote}
             title={copy.deleteNote}
             className="
-              flex h-[34px] w-[34px] items-center justify-center rounded-full
-              text-ink-muted transition-soft hover:text-vermilion active:scale-95
+              flex h-[40px] w-[40px] items-center justify-center rounded-full
+              text-ink-muted transition-soft
+              hover:text-vermilion hover:bg-vermilion/5
+              active:scale-95
             "
           >
             <svg
@@ -146,7 +148,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
               <path
                 d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-9 0v12a2 2 0 002 2h6a2 2 0 002-2V7"
                 stroke="currentColor"
-                strokeWidth="1.5"
+                strokeWidth="1.4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -165,10 +167,14 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
           placeholder={copy.titlePlaceholder}
           aria-label={copy.titlePlaceholder}
           maxLength={200}
-          className="font-mincho text-[24px] leading-snug text-sumi placeholder:text-ink-muted/60"
+          className="font-mincho text-[26px] leading-snug tracking-mincho text-sumi placeholder:text-ink-muted/55"
         />
 
-        <div className="mt-gr-3 h-px w-gr-6 bg-[color:var(--color-line)]" />
+        {/* タイトルと本文の間 — 短い金の余韻 */}
+        <div
+          aria-hidden="true"
+          className="mt-gr-4 h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/35 to-transparent"
+        />
 
         <textarea
           ref={bodyRef}
@@ -178,18 +184,34 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
           aria-label={copy.bodyPlaceholder}
           className="
             mt-gr-4 flex-1 resize-none
-            text-[16px] leading-golden text-sumi placeholder:text-ink-muted/60
+            text-[16px] leading-ample text-sumi placeholder:text-ink-muted/55
           "
           style={{ minHeight: "55vh" }}
         />
 
-        {/* 状態行 */}
-        <div className="flex items-center justify-between pb-gr-5 pt-gr-4 text-[12px] text-ink-muted/80">
-          <span aria-live="polite" className="min-h-[1em]">
-            {saveState === "saving" && copy.saving}
-            {saveState === "saved" && copy.saved}
+        {/* 状態行 — 小さく、静かに */}
+        <div className="flex items-center justify-between pb-gr-5 pt-gr-4 text-[11px] tracking-[0.12em] text-ink-muted/75">
+          <span
+            aria-live="polite"
+            className="flex min-h-[1em] items-center gap-gr-2"
+          >
+            {saveState === "saving" && (
+              <>
+                <span className="zanshin-breath-dot" aria-hidden="true" />
+                <span className="font-mincho">{copy.saving}</span>
+              </>
+            )}
+            {saveState === "saved" && (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-[6px] w-[6px] rounded-full bg-gold/85"
+                />
+                <span className="font-mincho">{copy.saved}</span>
+              </>
+            )}
           </span>
-          <span>{formatUpdatedAt(note.updatedAt)}</span>
+          <span className="uppercase">{formatUpdatedAt(note.updatedAt)}</span>
         </div>
       </main>
 
@@ -219,23 +241,24 @@ function DeleteConfirm({
       role="dialog"
       aria-modal="true"
       aria-labelledby="zanshin-delete-title"
-      className="fixed inset-0 z-20 flex items-end justify-center bg-sumi/40 px-gr-4 pb-gr-5 sm:items-center animate-fadeIn"
+      className="fixed inset-0 z-20 flex items-end justify-center bg-sumi/35 backdrop-blur-[2px] px-gr-4 pb-gr-5 sm:items-center animate-fadeIn"
       onClick={onCancel}
     >
       <div
         className="
           w-full max-w-[420px] rounded-[13px] bg-paper
-          p-gr-5 shadow-paper border border-[color:var(--color-line)]
+          p-gr-5 shadow-paper-hover border border-[color:var(--color-line)]
+          animate-softUp
         "
         onClick={(e) => e.stopPropagation()}
       >
         <h2
           id="zanshin-delete-title"
-          className="font-mincho text-[18px] text-sumi"
+          className="font-mincho text-[18px] tracking-mincho text-sumi"
         >
           {copy.deleteConfirmTitle}
         </h2>
-        <p className="mt-gr-3 whitespace-pre-line text-[13px] leading-golden text-ink-muted">
+        <p className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted">
           {copy.deleteConfirmBody}
         </p>
         <div className="mt-gr-5 flex items-center justify-end gap-gr-3">
@@ -244,7 +267,7 @@ function DeleteConfirm({
             onClick={onCancel}
             className="
               rounded-full px-gr-4 py-gr-2 font-mincho text-[14px]
-              text-ink-muted transition-soft hover:text-sumi
+              text-ink-muted transition-soft hover:text-sumi hover:bg-paper/60
             "
           >
             {copy.cancel}
@@ -253,8 +276,9 @@ function DeleteConfirm({
             type="button"
             onClick={onConfirm}
             className="
-              rounded-full bg-vermilion px-gr-4 py-gr-3 font-mincho text-[14px]
-              text-washi transition-soft hover:bg-vermilion/90 active:scale-[0.98]
+              rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
+              text-washi shadow-paper-soft transition-soft
+              hover:bg-vermilion/90 active:scale-[0.98]
             "
           >
             {copy.confirmDelete}
