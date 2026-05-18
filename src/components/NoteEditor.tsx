@@ -190,7 +190,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             mt-gr-4 flex-1 resize-none
             text-[16px] leading-ample text-sumi placeholder:text-ink-muted/55
           "
-          style={{ minHeight: "34vh" }}
+          style={{ minHeight: "34dvh" }}
         />
 
         {/* 状態行 — 小さく、静かに */}
