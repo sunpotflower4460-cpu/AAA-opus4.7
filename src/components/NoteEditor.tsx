@@ -209,7 +209,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
               <span className="flex items-center gap-gr-2">
                 <span
                   aria-hidden="true"
-                  className="inline-block h-[5px] w-[5px] rounded-full bg-ink-muted/55"
+                  className="inline-block h-[6px] w-[6px] rounded-full bg-ink-muted/70"
                 />
                 <span className="font-mincho">{copy.saved}</span>
               </span>

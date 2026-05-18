@@ -37,7 +37,7 @@ export function PremiumCard({
           <button
             type="button"
             onClick={onOpenPremium}
-            className="rounded-full border border-[color:var(--color-line)] bg-paper/85 px-gr-5 py-gr-3 font-mincho text-[14px] tracking-mincho text-sumi transition-soft hover:bg-washi/90"
+            className="rounded-full border border-[color:var(--color-line)] bg-paper/85 px-gr-5 py-gr-3 font-mincho text-[14px] tracking-mincho text-sumi transition-soft hover:border-indigo/30 hover:bg-washi"
           >
             {isPremium ? copy.premiumManage : copy.premiumCta}
           </button>
