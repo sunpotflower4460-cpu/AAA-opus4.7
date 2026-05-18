@@ -26,7 +26,7 @@ export const PREMIUM_PRODUCTS: PremiumProduct[] = [
 
 export const REMOVE_ADS_PRODUCT = PREMIUM_PRODUCTS[0];
 
-function buildState(isPremium: boolean): MonetizationState {
+function createMonetizationState(isPremium: boolean): MonetizationState {
   return {
     isPremium,
     adsEnabled: !isPremium,
@@ -44,25 +44,19 @@ function readPremiumFlag(): boolean {
 }
 
 export function loadMonetizationState(): MonetizationState {
-  return buildState(readPremiumFlag());
+  return createMonetizationState(readPremiumFlag());
 }
 
-export async function purchasePremiumMock(
-  productId: string = REMOVE_ADS_PRODUCT_ID,
-): Promise<MonetizationState> {
-  if (productId !== REMOVE_ADS_PRODUCT_ID) {
-    return loadMonetizationState();
-  }
-
+export async function purchasePremiumMock(): Promise<MonetizationState> {
   if (typeof window !== "undefined") {
     try {
       window.localStorage.setItem(PREMIUM_KEY, "true");
     } catch {
-      return { ...buildState(false), purchaseStatus: "error" };
+      return { ...createMonetizationState(false), purchaseStatus: "error" };
     }
   }
 
-  return buildState(true);
+  return createMonetizationState(true);
 }
 
 export async function restorePurchasesMock(): Promise<MonetizationState> {
@@ -74,11 +68,11 @@ export async function clearPremiumMock(): Promise<MonetizationState> {
     try {
       window.localStorage.removeItem(PREMIUM_KEY);
     } catch {
-      return { ...buildState(true), purchaseStatus: "error" };
+      return { ...createMonetizationState(true), purchaseStatus: "error" };
     }
   }
 
-  return buildState(false);
+  return createMonetizationState(false);
 }
 
 type AdVisibilityInput = {

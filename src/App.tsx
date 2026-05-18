@@ -102,7 +102,7 @@ export default function App() {
 
   const handlePurchase = useCallback(async () => {
     setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
-    const next = await purchasePremiumMock(REMOVE_ADS_PRODUCT.id);
+    const next = await purchasePremiumMock();
     setMonetization(next);
     if (next.isPremium) setIsPremiumSheetOpen(false);
   }, []);

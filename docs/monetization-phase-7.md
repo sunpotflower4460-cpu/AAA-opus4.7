@@ -32,7 +32,7 @@
 - `AdSlot` は広告 SDK の代わりに広告位置を確認するプレースホルダー
 - 本番申請前にモック購入導線を残したままにしない
 
-## App Privacy / ATT 注意
+## App Privacy / ATT (App Tracking Transparency) 注意
 App Store Connect では、アプリ本体だけでなく第三者 SDK が収集するデータも含めて申告する必要がある。
 
 広告 SDK を入れる場合は以下を確認する。

@@ -69,15 +69,14 @@ export const copy = {
   // Monetization
   adLabel: "広告",
   adLabelEn: "Ad",
+  adSectionLabel: "広告セクション",
   adSlotBody: "静かな余白を守るための小さな広告枠",
   adSlotBodyEn: "A small support space for Zanshin.",
   removeAds: "広告を外す",
   removeAdsEn: "Remove ads",
   premiumName: "残心 Premium",
-  premiumBody: `広告を外して、
-静かな余白を守ります。`,
-  premiumBodyEn: `Remove ads.
-Keep the stillness.`,
+  premiumBody: "広告を外して、\n静かな余白を守ります。",
+  premiumBodyEn: "Remove ads.\nKeep the stillness.",
   premiumActiveBody: "静かな余白を守っています。",
   premiumActiveBodyEn: "Stillness is being kept.",
   premiumCta: "静かな余白を守る",

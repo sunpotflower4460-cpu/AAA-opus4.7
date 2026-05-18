@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { copy } from "../lib/i18n";
 import type { MonetizationState, PremiumProduct } from "../types/monetization";
 import { RestorePurchaseButton } from "./RestorePurchaseButton";
@@ -27,6 +28,25 @@ export function PremiumSheet({
   onRestore,
   onDisableMock,
 }: Props) {
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      returnFocusRef.current?.focus();
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const isBusy = monetization.purchaseStatus === "loading";
