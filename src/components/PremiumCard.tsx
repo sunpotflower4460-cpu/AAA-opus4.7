@@ -16,7 +16,7 @@ export function PremiumCard({
   const isPremium = monetization.isPremium;
 
   return (
-    <aside className="rounded-[21px] border border-[color:var(--color-line)] bg-paper/80 px-gr-5 py-gr-5 shadow-paper-soft animate-fadeIn">
+    <aside className="rounded-[21px] border border-[color:var(--color-line)] bg-paper/72 px-gr-5 py-gr-5 shadow-paper-soft animate-fadeIn">
       <div className="flex flex-col gap-gr-4">
         <div className="flex flex-col gap-gr-2">
           <p className="text-[10px] tracking-[0.3em] text-ink-muted/72">
@@ -37,7 +37,7 @@ export function PremiumCard({
           <button
             type="button"
             onClick={onOpenPremium}
-            className="rounded-full bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] tracking-mincho text-washi shadow-paper-soft transition-soft hover:bg-indigo active:scale-[0.99]"
+            className="rounded-full border border-[color:var(--color-line)] bg-paper/85 px-gr-5 py-gr-3 font-mincho text-[14px] tracking-mincho text-sumi transition-soft hover:bg-washi/90"
           >
             {isPremium ? copy.premiumManage : copy.premiumCta}
           </button>

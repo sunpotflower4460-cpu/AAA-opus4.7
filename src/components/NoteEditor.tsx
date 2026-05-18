@@ -71,7 +71,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
   return (
     <div className="flex min-h-full flex-1 flex-col pt-gr-3 animate-washiFade">
       {/* 上部バー */}
-      <header className="flex items-center justify-between gap-gr-3">
+      <header className="flex items-center justify-between gap-gr-4">
         <button
           type="button"
           onClick={onBack}
@@ -100,7 +100,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
           <span className="font-mincho tracking-mincho">{copy.back}</span>
         </button>
 
-        <div className="flex items-center gap-gr-1">
+        <div className="flex items-center gap-gr-2">
           <button
             type="button"
             onClick={toggleFavorite}
@@ -194,7 +194,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
         />
 
         {/* 状態行 — 小さく、静かに */}
-        <div className="flex items-end justify-between gap-gr-4 pb-gr-5 pt-gr-4 text-[11px] tracking-[0.12em] text-ink-muted/75">
+        <div className="flex items-end justify-between gap-gr-4 pb-gr-5 pt-gr-4 text-[10px] tracking-[0.12em] text-ink-muted/70">
           <span
             aria-live="polite"
             className="flex min-h-[2.8em] flex-col justify-end gap-gr-1"
@@ -209,7 +209,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
               <span className="flex items-center gap-gr-2">
                 <span
                   aria-hidden="true"
-                  className="inline-block h-[6px] w-[6px] rounded-full bg-gold/85"
+                  className="inline-block h-[5px] w-[5px] rounded-full bg-ink-muted/55"
                 />
                 <span className="font-mincho">{copy.saved}</span>
               </span>

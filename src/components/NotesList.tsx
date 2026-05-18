@@ -53,11 +53,14 @@ export function NotesList({
 
   const isEmpty = visible.length === 0;
   const isSearching = query.trim().length > 0;
-  const showMonetizationFooter = !isSearching && !isEmpty;
+  const hasWrittenAtLeastOnce = notes.length > 0;
+  const showAdSlot = !isSearching && !isEmpty && visible.length > 1;
+  const showPremiumCard =
+    !isSearching && hasWrittenAtLeastOnce && (notes.length > 1 || monetization.isPremium);
 
   return (
-    <div className="flex flex-1 flex-col gap-gr-5 pt-gr-4 animate-washiFade">
-      <header className="pt-gr-4">
+    <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
+      <header className="pt-gr-3">
         <div
           className="
             flex flex-col items-center gap-gr-3 rounded-[21px]
@@ -67,7 +70,7 @@ export function NotesList({
         >
           <ZanshinMark size={34} className="text-sumi/85" />
           <div className="flex flex-col gap-gr-2">
-            <h1 className="font-mincho text-[30px] leading-none tracking-[0.22em] text-sumi">
+            <h1 className="font-mincho text-[26px] leading-none tracking-[0.2em] text-sumi">
               {copy.appName}
             </h1>
             <p className="text-[10px] tracking-[0.42em] text-ink-muted/85">
@@ -75,7 +78,7 @@ export function NotesList({
             </p>
           </div>
           <div className="flex flex-col gap-gr-2">
-            <p className="max-w-[24ch] font-mincho text-[18px] leading-snug text-sumi">
+            <p className="max-w-[24ch] font-mincho text-[17px] leading-snug text-sumi">
               {copy.tagline}
             </p>
             <p className="text-[11px] tracking-[0.18em] text-ink-muted/75">
@@ -86,7 +89,7 @@ export function NotesList({
             aria-hidden="true"
             className="block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
           />
-          <p className="max-w-[22ch] font-mincho text-[13px] leading-ample text-ink-muted whitespace-pre-line">
+          <p className="max-w-[22ch] font-mincho text-[12px] leading-ample text-ink-muted whitespace-pre-line">
             {copy.zanshinDefinition}
           </p>
         </div>
@@ -118,20 +121,24 @@ export function NotesList({
           </ul>
         )}
 
-        {showMonetizationFooter && (
+        {(showAdSlot || showPremiumCard) && (
           <div className="flex flex-col gap-gr-3 pt-gr-2">
-            <AdSlot
-              monetization={monetization}
-              currentScreen="notes-list"
-              isSearching={isSearching}
-              hasVisibleNotes={visible.length > 0}
-              onOpenPremium={onOpenPremium}
-            />
-            <PremiumCard
-              monetization={monetization}
-              onOpenPremium={onOpenPremium}
-              onRestorePurchase={onRestorePurchase}
-            />
+            {showAdSlot && (
+              <AdSlot
+                monetization={monetization}
+                currentScreen="notes-list"
+                isSearching={isSearching}
+                hasVisibleNotes={visible.length > 0}
+                onOpenPremium={onOpenPremium}
+              />
+            )}
+            {showPremiumCard && (
+              <PremiumCard
+                monetization={monetization}
+                onOpenPremium={onOpenPremium}
+                onRestorePurchase={onRestorePurchase}
+              />
+            )}
           </div>
         )}
       </section>

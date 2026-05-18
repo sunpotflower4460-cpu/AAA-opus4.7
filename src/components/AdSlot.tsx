@@ -34,7 +34,7 @@ export function AdSlot({
   return (
     <aside
       aria-label={copy.adSectionLabel}
-      className="rounded-[13px] border border-[color:var(--color-line)] bg-washi/45 px-gr-4 py-gr-4 shadow-paper-soft animate-fadeIn"
+      className="rounded-[13px] border border-dashed border-[color:var(--color-line)] bg-washi/45 px-gr-4 py-gr-4 shadow-paper-soft animate-fadeIn"
     >
       <div className="flex items-start justify-between gap-gr-4">
         <div className="min-w-0">
