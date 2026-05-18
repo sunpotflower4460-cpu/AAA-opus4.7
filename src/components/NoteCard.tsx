@@ -12,7 +12,7 @@ function preview(body: string): string {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-  const lastLine = lines.at(-1) ?? "";
+  const lastLine = lines.length > 0 ? lines[lines.length - 1] : "";
   const flat = lastLine.replace(/\s+/g, " ").trim();
   if (!flat) return "";
   return flat.length > 88 ? `${flat.slice(0, 88)}…` : flat;
