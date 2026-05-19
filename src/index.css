@@ -693,7 +693,7 @@ textarea:focus-visible {
   border-radius: 9999px;
   pointer-events: none;
   opacity: 0.32;
-  filter: blur(0.2px);
+  filter: blur(1px);
   isolation: isolate;
   z-index: 0;
 }
@@ -729,7 +729,6 @@ textarea:focus-visible {
     inset -18px -14px 34px var(--moon-ink-deep),
     inset 12px 10px 28px rgba(255, 255, 255, 0.22),
     0 0 0 1px rgba(255, 249, 239, 0.12);
-  mix-blend-mode: multiply;
 }
 
 .zanshin-moon__grain {
