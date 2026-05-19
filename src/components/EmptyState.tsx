@@ -1,5 +1,6 @@
 import { copy } from "../lib/i18n";
 import { ZanshinMark } from "./ZanshinMark";
+import { PoeticLines } from "./PoeticLines";
 
 type Props = {
   onCreate: () => void;
@@ -29,13 +30,21 @@ export function EmptyState({ onCreate, searching = false }: Props) {
     <div className="flex flex-col items-center gap-gr-5 py-gr-7 text-center animate-fadeIn">
       <ZanshinMark size={89} breathing className="text-sumi/80" />
       <div className="flex flex-col gap-gr-3">
-        <p className="font-mincho text-[17px] tracking-mincho text-sumi/90">
-          {copy.emptyTitle}
-        </p>
-        <p className="font-mincho text-[13px] leading-ample text-ink-muted whitespace-pre-line">
-          {copy.emptySubtitle}
-        </p>
-        <p className="english-subcopy">{copy.emptySubtitleEn}</p>
+        <PoeticLines
+          as="p"
+          lines={copy.emptyTitleLines}
+          className="max-w-[12em] font-mincho text-[17px] leading-[1.76] tracking-mincho text-sumi/90"
+        />
+        <PoeticLines
+          as="p"
+          lines={copy.emptySubtitleLines}
+          className="max-w-[14em] font-mincho text-[13px] leading-[1.92] tracking-[0.03em] text-ink-muted"
+        />
+        <PoeticLines
+          as="p"
+          lines={copy.emptySubtitleEnLines}
+          className="english-subcopy max-w-[14em]"
+        />
       </div>
       <button
         type="button"

@@ -8,6 +8,7 @@ import { EmptyState } from "./EmptyState";
 import { ZanshinMark } from "./ZanshinMark";
 import { AdSlot } from "./AdSlot";
 import { PremiumCard } from "./PremiumCard";
+import { PoeticLines } from "./PoeticLines";
 
 type Props = {
   notes: Note[];
@@ -79,18 +80,27 @@ export function NotesList({
               {copy.appSubtitle.toUpperCase()}
             </p>
           </div>
-          <p className="max-w-[22ch] font-mincho text-[17px] leading-snug text-sumi">
-            {copy.tagline}
-          </p>
+          <PoeticLines
+            as="p"
+            lines={copy.taglineLines}
+            className="max-w-[11em] font-mincho text-[17px] leading-[1.72] tracking-[0.03em] text-sumi"
+          />
           {showZanshinDefinition && (
             <>
               <span
                 aria-hidden="true"
                 className="block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
               />
-              <p className="max-w-[22ch] font-mincho text-[12px] leading-ample text-ink-muted whitespace-pre-line">
-                {copy.zanshinDefinition}
-              </p>
+              <PoeticLines
+                as="p"
+                lines={copy.zanshinDefinitionLines}
+                className="max-w-[13em] font-mincho text-[12px] leading-[1.95] tracking-[0.03em] text-ink-muted"
+              />
+              <PoeticLines
+                as="p"
+                lines={copy.taglineEnLines}
+                className="english-subcopy max-w-[14em] text-[11px]"
+              />
             </>
           )}
         </div>
