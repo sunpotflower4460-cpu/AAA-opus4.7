@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
+import { useSaveTrace } from "../hooks/useSaveTrace";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
@@ -17,6 +18,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 900);
 
   // 自動保存ステータス: 入力後すぐ "saving"、少し経って "saved"、さらに経って消える
   const savingTimer = useRef<number | null>(null);
@@ -161,7 +163,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
       <main className="flex flex-1 min-h-0 flex-col pt-gr-5">
         {/* Phase 13: 日付印を控えめに表示 */}
         <div className="mb-gr-4 flex justify-center">
-          <ZanshinDateStamp isoString={note.createdAt} />
+          <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
         </div>
 
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5">
@@ -200,7 +202,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             className="flex min-h-[2.8em] flex-col justify-end gap-gr-1"
           >
             {saveState === "saving" && (
-              <span className="flex items-center gap-gr-2">
+              <span className="zanshin-save-status zanshin-save-status--saving flex items-center gap-gr-2">
                 <span className="zanshin-breath-dot" aria-hidden="true" />
                 <span className="font-mincho">{copy.saving}</span>
               </span>
@@ -208,17 +210,13 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             {saveState === "saved" && (
               <span
                 key={`saved-${note.updatedAt}`}
-                className="save-afterglow flex items-center gap-gr-2"
+                className="zanshin-save-status zanshin-save-status--saved flex items-center gap-gr-2"
               >
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-[6px] w-[6px] rounded-full bg-gold/70"
-                />
                 <span className="font-mincho">{copy.saved}</span>
               </span>
             )}
             {(saveState === "saving" || saveState === "saved") && (
-              <span className="english-subcopy pl-[14px] text-[10px]">
+              <span className="english-subcopy pl-[14px] text-[10px] opacity-70">
                 {saveState === "saving" ? copy.savingEn : copy.savedEn}
               </span>
             )}
