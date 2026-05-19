@@ -24,6 +24,11 @@
   --paper-aged: #e8dcc4;     /* 経年紙 — 端に染み出す時間 */
   --paper-fiber: rgba(31, 27, 24, 0.035);    /* 繊維の影 */
   --paper-warm-shadow: rgba(92, 70, 42, 0.08); /* 紙が落とすあたたかい影 */
+  --moonlight-core: rgba(255, 249, 230, 0.78);
+  --moonlight-haze: rgba(239, 226, 196, 0.42);
+  --moonlight-gold: rgba(201, 166, 70, 0.18);
+  --moonlight-indigo: rgba(36, 59, 83, 0.08);
+  --moonlight-ink: rgba(31, 27, 24, 0.12);
 
   /*
    * Phase 9: フォントを3つの役割に分ける。
@@ -429,9 +434,9 @@ textarea:focus-visible {
     linear-gradient(
       110deg,
       rgba(255, 248, 220, 0) 0%,
-      rgba(255, 248, 220, 0.28) 28%,
-      rgba(201, 166, 70, 0.18) 52%,
-      rgba(31, 27, 24, 0.08) 82%,
+      rgba(255, 248, 220, 0.24) 24%,
+      rgba(201, 166, 70, 0.14) 48%,
+      rgba(31, 27, 24, 0.07) 80%,
       rgba(31, 27, 24, 0) 100%
     );
 }
@@ -466,7 +471,7 @@ textarea:focus-visible {
 .zanshin-yohaku-label {
   position: relative;
   z-index: 1;
-  color: rgba(31, 27, 24, 0.68);
+  color: rgba(56, 47, 38, 0.68);
   font-family: var(--font-display);
   letter-spacing: 0.06em;
   transition: color 420ms ease, opacity 420ms ease;
@@ -475,7 +480,7 @@ textarea:focus-visible {
 .zanshin-date {
   position: relative;
   z-index: 1;
-  color: rgba(31, 27, 24, 0.46);
+  color: rgba(67, 58, 50, 0.48);
   font-family: var(--font-ui);
   letter-spacing: 0.14em;
   font-size: 0.72rem;
@@ -489,17 +494,18 @@ textarea:focus-visible {
   height: 9px;
   flex: 0 0 auto;
   border-radius: 9999px;
-  opacity: 0.48;
+  opacity: 0.5;
   background:
     radial-gradient(
       circle at 38% 34%,
-      rgba(255, 248, 220, 0.92),
-      rgba(201, 166, 70, 0.3) 58%,
-      rgba(31, 27, 24, 0.08) 100%
+      rgba(255, 249, 233, 0.95),
+      rgba(240, 226, 191, 0.5) 40%,
+      rgba(201, 166, 70, 0.24) 62%,
+      rgba(31, 27, 24, 0.1) 100%
     );
   box-shadow:
     0 0 0 1px rgba(255, 249, 239, 0.12),
-    0 0 10px rgba(201, 166, 70, 0.12);
+    0 0 10px rgba(201, 166, 70, 0.09);
 }
 
 @keyframes zanshin-date-settle {
@@ -561,30 +567,30 @@ textarea:focus-visible {
 
 @keyframes zanshin-yohaku-settle {
   0% {
-    color: rgba(201, 166, 70, 0.3);
+    color: rgba(201, 166, 70, 0.28);
     opacity: 0.74;
   }
   34% {
-    color: rgba(201, 166, 70, 0.72);
+    color: rgba(201, 166, 70, 0.62);
     opacity: 0.98;
   }
   100% {
-    color: rgba(31, 27, 24, 0.68);
+    color: rgba(56, 47, 38, 0.68);
     opacity: 1;
   }
 }
 
 @keyframes zanshin-date-ink-settle {
   0% {
-    color: rgba(201, 166, 70, 0.24);
+    color: rgba(201, 166, 70, 0.22);
     opacity: 0.68;
   }
   34% {
-    color: rgba(201, 166, 70, 0.62);
+    color: rgba(201, 166, 70, 0.52);
     opacity: 0.94;
   }
   100% {
-    color: rgba(31, 27, 24, 0.46);
+    color: rgba(67, 58, 50, 0.48);
     opacity: 1;
   }
 }
@@ -652,7 +658,8 @@ textarea:focus-visible {
 /* 広告枠 — 紙に薄く置かれた札。メモと誤認されないよう破線を控えめに残す */
 .paper-ad-slot {
   background:
-    linear-gradient(155deg, rgba(251, 246, 234, 0.68), rgba(232, 220, 196, 0.56));
+    linear-gradient(155deg, rgba(251, 246, 234, 0.84), rgba(236, 225, 203, 0.76)),
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.18), transparent 52%);
   border: 1px dashed rgba(31, 27, 24, 0.18);
   box-shadow:
     0 1px 1px rgba(31, 27, 24, 0.03),
@@ -662,8 +669,9 @@ textarea:focus-visible {
 /* Premium 札 — 売り込みではなく、静かなしるし */
 .paper-premium {
   background:
-    linear-gradient(150deg, rgba(255, 252, 244, 0.82), rgba(238, 226, 204, 0.68)),
-    radial-gradient(circle at 86% 14%, rgba(201, 166, 70, 0.07), transparent 38%);
+    linear-gradient(150deg, rgba(255, 252, 244, 0.88), rgba(238, 226, 204, 0.78)),
+    radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.2), transparent 42%),
+    radial-gradient(circle at 86% 14%, rgba(201, 166, 70, 0.045), transparent 34%);
   border: 1px solid rgba(31, 27, 24, 0.08);
   box-shadow:
     0 8px 24px rgba(31, 27, 24, 0.045),
@@ -672,60 +680,123 @@ textarea:focus-visible {
 }
 
 /*
- * 月の気配。
- * 朧な円を右上にひとつだけ置き、「あれ、月かもしれない」と感じる程度に留める。
+ * Phase 15: 背景の月を「時間の気配」として再設計する。
+ * 装飾的な丸ではなく、紙の奥に沈んだ朧月として扱う。
  */
 .zanshin-moon {
   position: fixed;
   top: max(env(safe-area-inset-top), 21px);
-  right: -42px;
-  width: 230px;
-  height: 230px;
-  border-radius: 9999px;
+  right: clamp(-220px, -42vw, -176px);
+  width: clamp(220px, 58vw, 252px);
+  aspect-ratio: 1;
   pointer-events: none;
-  opacity: 0.54;
-  background:
-    radial-gradient(circle at 35% 34%, rgba(255, 253, 247, 0.66) 0 12%, rgba(250, 242, 228, 0.38) 18%, rgba(239, 226, 205, 0.24) 44%, rgba(239, 226, 205, 0) 74%),
-    radial-gradient(circle at 60% 58%, rgba(143, 117, 91, 0.11) 0%, transparent 31%),
-    radial-gradient(circle at 44% 67%, rgba(121, 99, 73, 0.07) 0%, transparent 24%),
-    radial-gradient(circle at 50% 50%, rgba(255, 250, 242, 0.18) 0%, rgba(255, 250, 242, 0) 72%);
-  box-shadow:
-    0 0 0 1px rgba(255, 249, 239, 0.2),
-    0 0 55px rgba(255, 248, 236, 0.12);
-  mix-blend-mode: soft-light;
   z-index: 0;
+  opacity: 0.96;
+  filter: blur(0.18px);
 }
 
-.zanshin-moon::before,
-.zanshin-moon::after {
+.zanshin-moon__halo,
+.zanshin-moon__body,
+.zanshin-moon__core {
+  position: absolute;
+  border-radius: 9999px;
+}
+
+.zanshin-moon__halo {
+  inset: -13%;
+  background:
+    radial-gradient(
+      circle at 42% 40%,
+      rgba(255, 249, 233, 0.26) 0%,
+      rgba(239, 226, 196, 0.16) 34%,
+      rgba(201, 166, 70, 0.08) 56%,
+      transparent 78%
+    );
+  filter: blur(18px);
+  opacity: 0.9;
+}
+
+.zanshin-moon__body {
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 38% 34%,
+      var(--moonlight-core) 0%,
+      rgba(248, 238, 214, 0.56) 26%,
+      var(--moonlight-haze) 48%,
+      var(--moonlight-gold) 68%,
+      rgba(201, 166, 70, 0.02) 78%,
+      transparent 84%
+    ),
+    radial-gradient(circle at 64% 62%, var(--moonlight-ink) 0%, transparent 34%),
+    radial-gradient(circle at 42% 68%, var(--moonlight-indigo) 0%, transparent 26%),
+    radial-gradient(circle at 29% 24%, rgba(255, 255, 255, 0.28) 0%, transparent 24%);
+  box-shadow:
+    inset -18px -14px 34px rgba(31, 27, 24, 0.035),
+    inset 12px 10px 28px rgba(255, 255, 255, 0.22),
+    0 0 0 1px rgba(255, 249, 239, 0.16);
+  mix-blend-mode: multiply;
+}
+
+.zanshin-moon__body::before,
+.zanshin-moon__body::after {
   content: "";
   position: absolute;
-  inset: 0;
   border-radius: inherit;
+  pointer-events: none;
 }
 
-.zanshin-moon::before {
-  inset: -15%;
-  background: radial-gradient(circle, rgba(255, 251, 243, 0.28) 0%, rgba(255, 251, 243, 0.08) 48%, transparent 74%);
-  opacity: 0.8;
-}
-
-.zanshin-moon::after {
+.zanshin-moon__body::before {
   inset: 8%;
   background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><filter id='moon'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='11'/><feColorMatrix values='0 0 0 0 0.34 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.09 0'/></filter><rect width='120' height='120' rx='60' fill='rgba(255,255,255,0.05)' filter='url(%23moon)'/></svg>")
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><filter id='moon'><feTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='2' seed='11'/><feColorMatrix values='0 0 0 0 0.34 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.1 0'/></filter><rect width='120' height='120' rx='60' fill='rgba(255,255,255,0.06)' filter='url(%23moon)'/></svg>")
       center / cover no-repeat;
-  opacity: 0.2;
-  filter: blur(5px);
+  opacity: 0.18;
+  filter: blur(4px);
+}
+
+.zanshin-moon__body::after {
+  inset: -2%;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.08), transparent 46%),
+    repeating-linear-gradient(
+      14deg,
+      rgba(31, 27, 24, 0.02) 0px,
+      rgba(31, 27, 24, 0.02) 1px,
+      transparent 1px,
+      transparent 9px
+    );
+  opacity: 0.24;
+  mix-blend-mode: multiply;
+}
+
+.zanshin-moon__core {
+  inset: 19%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 252, 241, 0.34) 0%, rgba(255, 252, 241, 0) 62%),
+    radial-gradient(circle at 70% 72%, rgba(31, 27, 24, 0.06) 0%, transparent 34%);
+  opacity: 0.72;
+  filter: blur(10px);
 }
 
 @media (min-width: 768px) {
   .zanshin-moon {
-    right: 5%;
-    top: max(env(safe-area-inset-top), 34px);
-    width: 320px;
-    height: 320px;
-    opacity: 0.5;
+    top: max(env(safe-area-inset-top), 42px);
+    right: clamp(-118px, -12vw, -72px);
+    width: clamp(300px, 34vw, 344px);
+  }
+
+  .zanshin-moon__halo {
+    inset: -16%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .zanshin-moon {
+    top: max(env(safe-area-inset-top), 55px);
+    right: -48px;
+    width: 356px;
   }
 }
 
