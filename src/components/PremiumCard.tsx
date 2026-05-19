@@ -16,7 +16,7 @@ export function PremiumCard({
   const isPremium = monetization.isPremium;
 
   return (
-    <aside className="rounded-[21px] border border-[color:var(--color-line)] bg-paper/72 px-gr-5 py-gr-5 shadow-paper-soft animate-fadeIn">
+    <aside className="rounded-[21px] paper-premium px-gr-5 py-gr-5 animate-fadeIn">
       <div className="flex flex-col gap-gr-4">
         <div className="flex flex-col gap-gr-2">
           <p className="text-[10px] tracking-[0.3em] text-ink-muted/72">

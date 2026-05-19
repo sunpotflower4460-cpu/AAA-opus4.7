@@ -29,20 +29,19 @@ export function NoteCard({ note, onOpen }: Props) {
       aria-label={`${title} — ${formatUpdatedAt(note.updatedAt)}`}
       className="
         group relative block w-full text-left
-        rounded-[13px] bg-paper/90
+        rounded-[13px] paper-card
         pl-gr-5 pr-gr-5 py-gr-5
-        shadow-paper-soft border border-[color:var(--color-line)]
         transition-soft
-        hover:bg-paper hover:shadow-paper-hover hover:-translate-y-[1px]
+        hover:-translate-y-[1px]
         active:translate-y-0 active:scale-[0.997]
       "
     >
-      {/* 刀の刃のような細い縦線 — お気に入りは金、それ以外は墨の余韻 */}
+      {/* 刀の刃のような細い縦線 — お気に入りは金、それ以外は薄墨の余韻 */}
       <span
         aria-hidden="true"
         className={[
           "absolute left-gr-3 top-gr-3 bottom-gr-3 rounded-full",
-          note.isFavorite ? "w-[2px] bg-gold/85" : "w-px bg-sumi/15",
+          note.isFavorite ? "w-[2px] bg-gold/85" : "w-px bg-sumi/12",
         ].join(" ")}
       />
 
