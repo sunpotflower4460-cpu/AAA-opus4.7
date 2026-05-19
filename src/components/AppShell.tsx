@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ZanshinMoon } from "./ZanshinMoon";
 
 type Props = {
   children: ReactNode;
@@ -13,8 +14,7 @@ type Props = {
 export function AppShell({ children }: Props) {
   return (
     <div className="relative min-h-screen min-h-[100dvh] w-full">
-      {/* 月の気配 — 背景に溶ける、朧な丸い余韻 */}
-      <div className="zanshin-moon" aria-hidden="true" />
+      <ZanshinMoon />
       <div
         className="
           relative z-[1] mx-auto flex min-h-screen min-h-[100dvh] w-full max-w-zanshin flex-col
