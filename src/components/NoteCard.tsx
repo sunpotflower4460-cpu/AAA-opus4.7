@@ -1,6 +1,6 @@
 import type { Note } from "../types/note";
-import { formatUpdatedAt } from "../lib/date";
 import { copy } from "../lib/i18n";
+import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
   note: Note;
@@ -26,7 +26,7 @@ export function NoteCard({ note, onOpen }: Props) {
     <button
       type="button"
       onClick={() => onOpen(note.id)}
-      aria-label={`${title} — ${formatUpdatedAt(note.updatedAt)}`}
+      aria-label={`${title}`}
       className="
         group relative block w-full text-left
         rounded-[13px] paper-card
@@ -47,6 +47,11 @@ export function NoteCard({ note, onOpen }: Props) {
 
       <div className="flex items-start gap-gr-3">
         <div className="min-w-0 flex-1">
+          {/* Phase 13: 日付印を上部に配置 */}
+          <div className="mb-gr-3">
+            <ZanshinDateStamp isoString={note.createdAt} compact />
+          </div>
+
           <h3
             className={[
               "font-mincho text-[17px] leading-snug tracking-mincho",
@@ -66,13 +71,6 @@ export function NoteCard({ note, onOpen }: Props) {
               </p>
             </div>
           )}
-
-          <div className="mt-gr-4 flex items-center gap-gr-2 text-[10px] tracking-[0.12em] text-ink-muted/55">
-            <span className="font-mincho tracking-mincho text-ink-muted/65">
-              {copy.settledOn}
-            </span>
-            <span>{formatUpdatedAt(note.updatedAt)}</span>
-          </div>
         </div>
 
         {note.isFavorite && (

@@ -44,10 +44,10 @@ export const copy = {
   untitledEn: "Untitled trace",
 
   // 保存・状態
-  saved: "余韻を保存しました",
-  savedEn: "Saved in stillness",
-  saving: "余韻を静かに整えています",
-  savingEn: "Settling in stillness",
+  saved: "保存済み",
+  savedEn: "Saved",
+  saving: "保存中",
+  savingEn: "Saving",
 
   // お気に入り
   favoriteOn: "大切な余韻として残す",

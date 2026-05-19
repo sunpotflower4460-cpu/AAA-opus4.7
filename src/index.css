@@ -398,6 +398,39 @@ textarea:focus-visible {
   color: rgba(31, 27, 24, 0.34);
 }
 
+/*
+ * Phase 13: 日付印 — 紙に残ったしるしとして扱う。
+ * 日付を管理情報として出さず、心の余白に言葉が残ったことを静かに示す。
+ */
+.zanshin-date-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+}
+
+.zanshin-date-stamp--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.zanshin-yohaku-label {
+  color: rgba(31, 27, 24, 0.68);
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+}
+
+.zanshin-date {
+  color: rgba(31, 27, 24, 0.46);
+  font-family: var(--font-ui);
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+}
+
 /* やわらかい transition のデフォルト */
 .transition-soft {
   transition:

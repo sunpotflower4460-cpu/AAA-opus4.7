@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
-import { formatUpdatedAt } from "../lib/date";
+import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
   note: Note;
@@ -159,6 +159,11 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
 
       {/* エディタ本体 — 一枚の和紙に向かう場所 */}
       <main className="flex flex-1 min-h-0 flex-col pt-gr-5">
+        {/* Phase 13: 日付印を控えめに表示 */}
+        <div className="mb-gr-4 flex justify-center">
+          <ZanshinDateStamp isoString={note.createdAt} />
+        </div>
+
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5">
           <input
             ref={titleRef}
@@ -189,7 +194,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
         </div>
 
         {/* 状態行 — 小さく、静かに */}
-        <div className="flex items-end justify-between gap-gr-4 pb-gr-5 pt-gr-4 text-[10px] tracking-[0.12em] text-ink-muted/70">
+        <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-4 text-[10px] tracking-[0.12em] text-ink-muted/70">
           <span
             aria-live="polite"
             className="flex min-h-[2.8em] flex-col justify-end gap-gr-1"
@@ -217,12 +222,6 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
                 {saveState === "saving" ? copy.savingEn : copy.savedEn}
               </span>
             )}
-          </span>
-          <span className="flex shrink-0 flex-col items-end gap-1">
-            <span className="font-mincho tracking-mincho text-ink-muted/80">
-              {copy.settledOn}
-            </span>
-            <span>{formatUpdatedAt(note.updatedAt)}</span>
           </span>
         </div>
       </main>
