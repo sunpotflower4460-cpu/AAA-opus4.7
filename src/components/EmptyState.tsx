@@ -38,12 +38,7 @@ export function EmptyState({ onCreate, searching = false }: Props) {
         <PoeticLines
           as="p"
           lines={copy.emptySubtitleLines}
-          className="max-w-[14em] font-mincho text-[13px] leading-[1.92] tracking-[0.03em] text-ink-muted"
-        />
-        <PoeticLines
-          as="p"
-          lines={copy.emptySubtitleEnLines}
-          className="english-subcopy max-w-[14em]"
+          className="max-w-[14em] font-mincho text-[13px] leading-[1.96] tracking-[0.03em] text-ink-muted"
         />
       </div>
       <button

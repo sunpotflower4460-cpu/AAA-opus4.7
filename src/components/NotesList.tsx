@@ -9,6 +9,7 @@ import { ZanshinMark } from "./ZanshinMark";
 import { AdSlot } from "./AdSlot";
 import { PremiumCard } from "./PremiumCard";
 import { PoeticLines } from "./PoeticLines";
+import { ZanshinPaperSlip } from "./ZanshinPaperSlip";
 
 type Props = {
   notes: Note[];
@@ -64,15 +65,9 @@ export function NotesList({
   return (
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
       <header className="pt-gr-3">
-        <div
-          className="
-            flex flex-col items-center gap-gr-3 rounded-[21px]
-            border border-[color:var(--color-line)] bg-paper/75
-            px-gr-5 py-gr-5 text-center shadow-paper-soft
-          "
-        >
-          <ZanshinMark size={34} className="text-sumi/85" />
-          <div className="flex flex-col gap-gr-2">
+        <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-4 text-center">
+          <div className="flex flex-col items-center gap-gr-3">
+            <ZanshinMark size={34} className="text-sumi/85" />
             <h1 className="font-mincho text-[26px] leading-none tracking-[0.2em] text-sumi">
               {copy.appName}
             </h1>
@@ -80,13 +75,9 @@ export function NotesList({
               {copy.appSubtitle.toUpperCase()}
             </p>
           </div>
-          <PoeticLines
-            as="p"
-            lines={copy.taglineLines}
-            className="max-w-[11em] font-mincho text-[17px] leading-[1.72] tracking-[0.03em] text-sumi"
-          />
+          <ZanshinPaperSlip lines={copy.taglineLines} englishLine={copy.taglineEn} />
           {showZanshinDefinition && (
-            <>
+            <div className="flex max-w-[15em] flex-col items-center gap-gr-3 text-center">
               <span
                 aria-hidden="true"
                 className="block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
@@ -94,19 +85,14 @@ export function NotesList({
               <PoeticLines
                 as="p"
                 lines={copy.zanshinDefinitionLines}
-                className="max-w-[13em] font-mincho text-[12px] leading-[1.95] tracking-[0.03em] text-ink-muted"
+                className="font-mincho text-[12px] leading-[1.95] tracking-[0.03em] text-ink-muted"
               />
-              <PoeticLines
-                as="p"
-                lines={copy.taglineEnLines}
-                className="english-subcopy max-w-[14em] text-[11px]"
-              />
-            </>
+            </div>
           )}
         </div>
       </header>
 
-      <div className="pt-gr-1">
+      <div className="pt-gr-3">
         <SearchBar value={query} onChange={setQuery} />
       </div>
 

@@ -8,11 +8,11 @@ export const copy = {
   appName: "残心",
   appSubtitle: "Zanshin Notes",
   taglineLines: ["書いたあとにも、", "心が残る。"] as PoeticLines,
-  taglineEnLines: ["A quiet place", "for words that remain."] as PoeticLines,
+  taglineEn: "A quiet place for words that remain.",
   zanshinDefinitionLines: [
     "残心とは、",
     "書き終えたあとにも",
-    "心が静かに残っていること。",
+    "心が静かに残ること。",
   ] as PoeticLines,
 
   // 一覧
@@ -28,12 +28,10 @@ export const copy = {
   // 空状態
   emptyTitleLines: ["まだ、言葉は", "置かれていません。"] as PoeticLines,
   emptySubtitleLines: [
-    "書き終えたあとに残る、",
-    "心のしずけさをここに。",
+    "最初の余白をひらいて、",
+    "言葉をひとつ置いてみる。",
   ] as PoeticLines,
-  emptySubtitleEnLines: ["A quiet place", "for words that remain."] as PoeticLines,
-  emptyAction: "最初の余韻を残す",
-  emptyActionEn: "Leave the first trace",
+  emptyAction: "最初の余白をひらく",
 
   // エディタ
   back: "戻る",
