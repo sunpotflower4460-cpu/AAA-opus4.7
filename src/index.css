@@ -13,6 +13,27 @@
   --color-line: rgba(31, 27, 24, 0.12);
   --color-shadow: rgba(31, 27, 24, 0.08);
 
+  /*
+   * Phase 9: フォントを3つの役割に分ける。
+   * - display: 見出し・タイトル（静かな明朝）
+   * - writing: 本文入力（手触りのある明朝 / 読みやすい明朝）
+   * - ui:      ボタン・検索・補助文（読みやすい sans）
+   *
+   * MVPの間は外部Webフォントを読み込まず、iOS標準フォント中心とする。
+   * 現時点では display と writing は同じスタックだが、将来 writing 側だけ
+   * Klee One のような手書き調を導入する余地を残すため、意図的に2つの
+   * 変数に分けている（Web フォントを足す場合は font-display: swap 必須）。
+   */
+  --font-display:
+    "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", "Noto Serif JP",
+    "Noto Serif", serif;
+  --font-writing:
+    "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", "Noto Serif JP",
+    "Noto Serif", serif;
+  --font-ui:
+    "Hiragino Sans", "Noto Sans JP", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
   color-scheme: light;
 }
 
@@ -32,9 +53,7 @@ body {
   margin: 0;
   background-color: var(--color-washi);
   color: var(--color-sumi);
-  font-family:
-    "Hiragino Sans", "Noto Sans JP", system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ui);
   line-height: 1.618;
 
   /*
@@ -135,8 +154,63 @@ textarea:focus-visible {
 
 /* 見出し用 明朝 */
 .font-mincho {
-  font-family:
-    "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", "Noto Serif", serif;
+  font-family: var(--font-display);
+}
+
+/*
+ * Phase 9 — 書字体験のためのクラス群。
+ * テキストエリアやタイトル入力は、ただの入力欄ではなく
+ * 「和紙に向かう場所」として静かに整える。
+ */
+.font-writing {
+  font-family: var(--font-writing);
+}
+
+.writing-textarea {
+  font-family: var(--font-writing);
+  font-size: 18px;
+  line-height: 2.05;
+  letter-spacing: 0.03em;
+  color: rgba(31, 27, 24, 0.88);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+}
+
+.writing-textarea::placeholder {
+  color: rgba(31, 27, 24, 0.3);
+}
+
+.note-title-input {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.6;
+  letter-spacing: 0.06em;
+  color: rgba(31, 27, 24, 0.92);
+}
+
+.note-title-input::placeholder {
+  color: rgba(31, 27, 24, 0.32);
+}
+
+/* エディタの「紙面」 — 入力を包む薄い和紙の面 */
+.editor-paper {
+  background: rgba(251, 248, 241, 0.72);
+  border: 1px solid rgba(31, 27, 24, 0.08);
+  border-radius: 34px;
+  box-shadow:
+    0 21px 55px rgba(31, 27, 24, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* 英語サブコピーの密度を下げる — 小さく、薄く、文字間は控えめ */
+.english-subcopy {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.8;
+  letter-spacing: 0.12em;
+  color: rgba(31, 27, 24, 0.42);
 }
 
 /* やわらかい transition のデフォルト */
@@ -188,6 +262,27 @@ textarea:focus-visible {
   border-radius: 9999px;
   background-color: var(--color-gold);
   animation: breathDot 2.8s ease-in-out infinite;
+}
+
+/*
+ * 保存後の余韻 — 文字に呼びかけて静かに引いていく。
+ * 派手な閃光ではなく、墨が和紙に滲んでから消える感覚。
+ */
+.save-afterglow {
+  animation: zanshin-fade 2.4s ease-out forwards;
+}
+@keyframes zanshin-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /*

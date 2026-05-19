@@ -18,7 +18,7 @@ export function EmptyState({ onCreate, searching = false }: Props) {
         <p className="font-mincho text-base tracking-mincho text-ink-muted">
           {copy.noSearchResult}
         </p>
-        <p className="text-[12px] tracking-[0.18em] text-ink-muted/75">
+        <p className="english-subcopy">
           {copy.noSearchResultEn}
         </p>
       </div>
@@ -28,16 +28,14 @@ export function EmptyState({ onCreate, searching = false }: Props) {
   return (
     <div className="flex flex-col items-center gap-gr-5 py-gr-7 text-center animate-fadeIn">
       <ZanshinMark size={89} breathing className="text-sumi/80" />
-      <div className="flex flex-col gap-gr-2">
+      <div className="flex flex-col gap-gr-3">
         <p className="font-mincho text-[17px] tracking-mincho text-sumi/90">
           {copy.emptyTitle}
         </p>
         <p className="font-mincho text-[13px] leading-ample text-ink-muted whitespace-pre-line">
           {copy.emptySubtitle}
         </p>
-        <p className="text-[11px] tracking-[0.18em] text-ink-muted/75">
-          {copy.emptySubtitleEn}
-        </p>
+        <p className="english-subcopy">{copy.emptySubtitleEn}</p>
       </div>
       <button
         type="button"

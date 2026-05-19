@@ -5,7 +5,7 @@
 export const copy = {
   appName: "残心",
   appSubtitle: "Zanshin Notes",
-  tagline: "書いたあとにも、心がそこに残るメモ帳。",
+  tagline: "書いたあとにも、心が残る。",
   taglineEn: "A quiet place for words that remain.",
   zanshinDefinition: "残心とは、\n書き終えたあとにも\n心が静かに残っていること。",
 
@@ -21,8 +21,8 @@ export const copy = {
 
   // 空状態
   emptyTitle: "まだ、言葉は置かれていません。",
-  emptySubtitle: "残心とは、\n書き終えたあとにも\n心が静かに残っていること。",
-  emptySubtitleEn: "The first quiet trace begins here.",
+  emptySubtitle: "書き終えたあとに残る、\n心のしずけさをここに。",
+  emptySubtitleEn: "A quiet place for words that remain.",
   emptyAction: "最初の余韻を残す",
   emptyActionEn: "Leave the first trace",
 

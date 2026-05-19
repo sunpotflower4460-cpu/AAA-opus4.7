@@ -59,17 +59,17 @@ export function NoteCard({ note, onOpen }: Props) {
 
           {bodyPreview && (
             <div className="mt-gr-3 flex flex-col gap-gr-2">
-              <span className="text-[11px] tracking-[0.14em] text-ink-muted/70">
+              <span className="text-[10px] tracking-[0.12em] text-ink-muted/55">
                 {copy.lastRemains}
               </span>
-              <p className="line-clamp-2 text-[14px] leading-golden text-ink-muted">
+              <p className="line-clamp-2 text-[14px] leading-ample text-ink-muted">
                 {bodyPreview}
               </p>
             </div>
           )}
 
-          <div className="mt-gr-4 flex items-center gap-gr-2 text-[11px] tracking-[0.14em] text-ink-muted/70">
-            <span className="font-mincho tracking-mincho text-ink-muted/80">
+          <div className="mt-gr-4 flex items-center gap-gr-2 text-[10px] tracking-[0.12em] text-ink-muted/55">
+            <span className="font-mincho tracking-mincho text-ink-muted/65">
               {copy.settledOn}
             </span>
             <span>{formatUpdatedAt(note.updatedAt)}</span>

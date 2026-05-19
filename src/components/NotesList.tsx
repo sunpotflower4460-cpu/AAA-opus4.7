@@ -56,6 +56,9 @@ export function NotesList({
   const showAdSlot = !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
     !isSearching && (visible.length > 1 || monetization.isPremium);
+  // ノートがまだ無い間だけ、残心の説明を静かに添える。
+  // ノートが置かれ始めたら、説明は引き、書く場所に席を譲る。
+  const showZanshinDefinition = notes.length === 0;
 
   return (
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
@@ -72,25 +75,24 @@ export function NotesList({
             <h1 className="font-mincho text-[26px] leading-none tracking-[0.2em] text-sumi">
               {copy.appName}
             </h1>
-            <p className="text-[10px] tracking-[0.42em] text-ink-muted/85">
+            <p className="english-subcopy text-[10px] tracking-[0.28em]">
               {copy.appSubtitle.toUpperCase()}
             </p>
           </div>
-          <div className="flex flex-col gap-gr-2">
-            <p className="max-w-[24ch] font-mincho text-[17px] leading-snug text-sumi">
-              {copy.tagline}
-            </p>
-            <p className="text-[11px] tracking-[0.18em] text-ink-muted/75">
-              {copy.taglineEn}
-            </p>
-          </div>
-          <span
-            aria-hidden="true"
-            className="block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
-          />
-          <p className="max-w-[22ch] font-mincho text-[12px] leading-ample text-ink-muted whitespace-pre-line">
-            {copy.zanshinDefinition}
+          <p className="max-w-[22ch] font-mincho text-[17px] leading-snug text-sumi">
+            {copy.tagline}
           </p>
+          {showZanshinDefinition && (
+            <>
+              <span
+                aria-hidden="true"
+                className="block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
+              />
+              <p className="max-w-[22ch] font-mincho text-[12px] leading-ample text-ink-muted whitespace-pre-line">
+                {copy.zanshinDefinition}
+              </p>
+            </>
+          )}
         </div>
       </header>
 
@@ -150,15 +152,19 @@ export function NotesList({
         className="
           fixed bottom-[max(env(safe-area-inset-bottom),21px)] right-gr-4
           z-10 flex h-[55px] w-[55px] items-center justify-center
-          rounded-full bg-sumi text-washi
-          shadow-paper-hover transition-soft
-          hover:bg-indigo hover:-translate-y-[1px]
+          rounded-full text-washi
+          transition-soft
+          hover:-translate-y-[1px]
           active:translate-y-0 active:scale-95
         "
+        style={{
+          backgroundColor: "rgba(31, 27, 24, 0.92)",
+          boxShadow: "0 13px 34px rgba(31, 27, 24, 0.18)",
+        }}
       >
         <svg
-          width="22"
-          height="22"
+          width="20"
+          height="20"
           viewBox="0 0 24 24"
           fill="none"
           aria-hidden="true"
@@ -166,7 +172,7 @@ export function NotesList({
           <path
             d="M12 5v14M5 12h14"
             stroke="currentColor"
-            strokeWidth="1.5"
+            strokeWidth="1.3"
             strokeLinecap="round"
           />
         </svg>
