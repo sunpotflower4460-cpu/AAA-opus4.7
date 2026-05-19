@@ -16,9 +16,8 @@ type SaveState = "idle" | "saving" | "saved";
 export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 900);
+  const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
 
   // 自動保存ステータス: 入力後すぐ "saving"、少し経って "saved"、さらに経って消える
   const savingTimer = useRef<number | null>(null);
@@ -30,8 +29,8 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
     if (savedTimer.current) window.clearTimeout(savedTimer.current);
     savingTimer.current = window.setTimeout(() => {
       setSaveState("saved");
-      savedTimer.current = window.setTimeout(() => setSaveState("idle"), 1800);
-    }, 420);
+      savedTimer.current = window.setTimeout(() => setSaveState("idle"), 1100);
+    }, 320);
   }
 
   useEffect(() => {
@@ -71,7 +70,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col pt-gr-3 animate-washiFade">
+    <div className="mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
       {/* 上部バー */}
       <header className="flex items-center justify-between gap-gr-4">
         <button
@@ -160,15 +159,13 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
       </header>
 
       {/* エディタ本体 — 一枚の和紙に向かう場所 */}
-      <main className="flex flex-1 min-h-0 flex-col pt-gr-5">
-        {/* Phase 13: 日付印を控えめに表示 */}
-        <div className="mb-gr-4 flex justify-center">
-          <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
-        </div>
+      <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
+        <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
+          <div className="mb-gr-5 self-start">
+            <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
+          </div>
 
-        <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5">
           <input
-            ref={titleRef}
             type="text"
             value={note.title}
             onChange={handleTitle}
@@ -181,7 +178,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
           {/* タイトルと本文の間 — 短い金の余韻 */}
           <div
             aria-hidden="true"
-            className="mt-gr-4 h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/35 to-transparent"
+            className="mt-gr-4 h-px w-gr-4 bg-gradient-to-r from-transparent via-gold/22 to-transparent"
           />
 
           <textarea
@@ -190,17 +187,14 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
             onChange={handleBody}
             placeholder={copy.bodyPlaceholder}
             aria-label={copy.bodyPlaceholder}
-            className="writing-textarea mt-gr-4 flex-1"
-            style={{ minHeight: "34dvh" }}
+            className="writing-textarea mt-gr-5 flex-1"
+            style={{ minHeight: "42dvh" }}
           />
         </div>
 
         {/* 状態行 — 小さく、静かに */}
-        <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-4 text-[10px] tracking-[0.12em] text-ink-muted/70">
-          <span
-            aria-live="polite"
-            className="flex min-h-[2.8em] flex-col justify-end gap-gr-1"
-          >
+        <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/62">
+          <span aria-live="polite" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
             {saveState === "saving" && (
               <span className="zanshin-save-status zanshin-save-status--saving flex items-center gap-gr-2">
                 <span className="zanshin-breath-dot" aria-hidden="true" />
@@ -213,11 +207,6 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
                 className="zanshin-save-status zanshin-save-status--saved flex items-center gap-gr-2"
               >
                 <span className="font-mincho">{copy.saved}</span>
-              </span>
-            )}
-            {(saveState === "saving" || saveState === "saved") && (
-              <span className="english-subcopy pl-[14px] text-[10px] opacity-70">
-                {saveState === "saving" ? copy.savingEn : copy.savedEn}
               </span>
             )}
           </span>
