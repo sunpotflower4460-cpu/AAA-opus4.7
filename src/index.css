@@ -403,32 +403,190 @@ textarea:focus-visible {
  * 日付を管理情報として出さず、心の余白に言葉が残ったことを静かに示す。
  */
 .zanshin-date-stamp {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  opacity: 0.96;
+  transform: translateY(0);
+  transition: opacity 420ms ease, transform 420ms ease;
+  isolation: isolate;
+}
+
+.zanshin-date-stamp::after {
+  content: "";
+  position: absolute;
+  inset: -8px -12px;
+  border-radius: 9999px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 0;
+  filter: blur(8px);
+  background:
+    linear-gradient(
+      110deg,
+      rgba(255, 248, 220, 0) 0%,
+      rgba(255, 248, 220, 0.28) 28%,
+      rgba(201, 166, 70, 0.18) 52%,
+      rgba(31, 27, 24, 0.08) 82%,
+      rgba(31, 27, 24, 0) 100%
+    );
+}
+
+.zanshin-date-stamp__text {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  line-height: 1.4;
 }
 
 .zanshin-date-stamp--compact {
+  gap: 8px;
+}
+
+.zanshin-date-stamp--compact .zanshin-date-stamp__text {
   flex-direction: row;
   align-items: center;
   gap: 8px;
 }
 
+.zanshin-date-stamp.settling {
+  animation: zanshin-date-settle 900ms ease-out both;
+}
+
+.zanshin-date-stamp.settling::after {
+  animation: zanshin-date-settle-wash 900ms ease-out both;
+}
+
 .zanshin-yohaku-label {
+  position: relative;
+  z-index: 1;
   color: rgba(31, 27, 24, 0.68);
   font-family: var(--font-display);
   letter-spacing: 0.06em;
+  transition: color 420ms ease, opacity 420ms ease;
 }
 
 .zanshin-date {
+  position: relative;
+  z-index: 1;
   color: rgba(31, 27, 24, 0.46);
   font-family: var(--font-ui);
   letter-spacing: 0.14em;
   font-size: 0.72rem;
+  transition: color 420ms ease, opacity 420ms ease;
+}
+
+.zanshin-moon-seal {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  opacity: 0.48;
+  background:
+    radial-gradient(
+      circle at 38% 34%,
+      rgba(255, 248, 220, 0.92),
+      rgba(201, 166, 70, 0.3) 58%,
+      rgba(31, 27, 24, 0.08) 100%
+    );
+  box-shadow:
+    0 0 0 1px rgba(255, 249, 239, 0.12),
+    0 0 10px rgba(201, 166, 70, 0.12);
+}
+
+@keyframes zanshin-date-settle {
+  0% {
+    opacity: 0.56;
+    transform: translateY(1px);
+  }
+  34% {
+    opacity: 0.98;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0.96;
+    transform: translateY(0);
+  }
+}
+
+@keyframes zanshin-date-settle-wash {
+  0% {
+    opacity: 0;
+    transform: translateX(-6%);
+  }
+  42% {
+    opacity: 0.88;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(5%);
+  }
+}
+
+@keyframes zanshin-moon-seal-settle {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.82);
+  }
+  45% {
+    opacity: 0.82;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 0.48;
+    transform: scale(1);
+  }
+}
+
+.zanshin-date-stamp.settling .zanshin-moon-seal {
+  animation: zanshin-moon-seal-settle 900ms ease-out both;
+}
+
+.zanshin-date-stamp.settling .zanshin-yohaku-label {
+  animation: zanshin-yohaku-settle 900ms ease-out both;
+}
+
+.zanshin-date-stamp.settling .zanshin-date {
+  animation: zanshin-date-ink-settle 900ms ease-out both;
+}
+
+@keyframes zanshin-yohaku-settle {
+  0% {
+    color: rgba(201, 166, 70, 0.3);
+    opacity: 0.74;
+  }
+  34% {
+    color: rgba(201, 166, 70, 0.72);
+    opacity: 0.98;
+  }
+  100% {
+    color: rgba(31, 27, 24, 0.68);
+    opacity: 1;
+  }
+}
+
+@keyframes zanshin-date-ink-settle {
+  0% {
+    color: rgba(201, 166, 70, 0.24);
+    opacity: 0.68;
+  }
+  34% {
+    color: rgba(201, 166, 70, 0.62);
+    opacity: 0.94;
+  }
+  100% {
+    color: rgba(31, 27, 24, 0.46);
+    opacity: 1;
+  }
 }
 
 /* やわらかい transition のデフォルト */
@@ -602,20 +760,29 @@ textarea:focus-visible {
  * 保存後の余韻 — 文字に呼びかけて静かに引いていく。
  * 派手な閃光ではなく、墨が和紙に滲んでから消える感覚。
  */
-.save-afterglow {
-  animation: zanshin-fade 2.4s ease-out forwards;
+.zanshin-save-status {
+  color: rgba(31, 27, 24, 0.48);
+  transition: opacity 300ms ease, color 300ms ease;
+}
+
+.zanshin-save-status--saving {
+  color: rgba(31, 27, 24, 0.58);
+}
+
+.zanshin-save-status--saved {
+  animation: zanshin-fade 1.6s ease-out forwards;
 }
 @keyframes zanshin-fade {
   0% {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(2px);
   }
-  20% {
-    opacity: 1;
+  22% {
+    opacity: 0.74;
     transform: translateY(0);
   }
   100% {
-    opacity: 0;
+    opacity: 0.48;
   }
 }
 
@@ -631,5 +798,12 @@ textarea:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .zanshin-date-stamp.settling,
+  .zanshin-date-stamp.settling::after,
+  .zanshin-date-stamp.settling .zanshin-moon-seal,
+  .zanshin-save-status--saved {
+    animation: none !important;
   }
 }

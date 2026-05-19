@@ -4,6 +4,8 @@ type ZanshinDateStampProps = {
   isoString: string;
   /** true のとき、横並びコンパクト表示 */
   compact?: boolean;
+  /** 保存後、紙に定着する短い余韻を出す */
+  isSettling?: boolean;
   /** aria-label に追加する説明文（任意） */
   ariaLabel?: string;
 };
@@ -20,21 +22,27 @@ type ZanshinDateStampProps = {
 export function ZanshinDateStamp({
   isoString,
   compact = false,
+  isSettling = false,
   ariaLabel,
 }: ZanshinDateStampProps) {
   const { label, date } = getZanshinStamp(isoString);
 
   return (
     <div
-      className={
-        compact
-          ? "zanshin-date-stamp zanshin-date-stamp--compact"
-          : "zanshin-date-stamp"
-      }
+      className={[
+        "zanshin-date-stamp",
+        compact ? "zanshin-date-stamp--compact" : "",
+        isSettling ? "settling" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-label={ariaLabel || `${label} ${date}`}
     >
-      <span className="zanshin-yohaku-label">{label}</span>
-      <span className="zanshin-date">{date}</span>
+      <span className="zanshin-moon-seal" aria-hidden="true" />
+      <span className="zanshin-date-stamp__text">
+        <span className="zanshin-yohaku-label">{label}</span>
+        <span className="zanshin-date">{date}</span>
+      </span>
     </div>
   );
 }
