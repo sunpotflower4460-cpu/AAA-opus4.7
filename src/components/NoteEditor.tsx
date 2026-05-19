@@ -157,41 +157,36 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
         </div>
       </header>
 
-      {/* エディタ本体 */}
+      {/* エディタ本体 — 一枚の和紙に向かう場所 */}
       <main className="flex flex-1 min-h-0 flex-col pt-gr-5">
-        <input
-          ref={titleRef}
-          type="text"
-          value={note.title}
-          onChange={handleTitle}
-          placeholder={copy.titlePlaceholder}
-          aria-label={copy.titlePlaceholder}
-          maxLength={200}
-          className="font-mincho text-[26px] leading-snug tracking-mincho text-sumi placeholder:text-ink-muted/55"
-        />
+        <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5">
+          <input
+            ref={titleRef}
+            type="text"
+            value={note.title}
+            onChange={handleTitle}
+            placeholder={copy.titlePlaceholder}
+            aria-label={copy.titlePlaceholder}
+            maxLength={200}
+            className="note-title-input"
+          />
 
-        <p className="mt-gr-3 text-[11px] tracking-[0.16em] text-ink-muted/72">
-          {copy.taglineEn}
-        </p>
+          {/* タイトルと本文の間 — 短い金の余韻 */}
+          <div
+            aria-hidden="true"
+            className="mt-gr-4 h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/35 to-transparent"
+          />
 
-        {/* タイトルと本文の間 — 短い金の余韻 */}
-        <div
-          aria-hidden="true"
-          className="mt-gr-4 h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/35 to-transparent"
-        />
-
-        <textarea
-          ref={bodyRef}
-          value={note.body}
-          onChange={handleBody}
-          placeholder={copy.bodyPlaceholder}
-          aria-label={copy.bodyPlaceholder}
-          className="
-            mt-gr-4 flex-1 resize-none
-            text-[16px] leading-ample text-sumi placeholder:text-ink-muted/55
-          "
-          style={{ minHeight: "34dvh" }}
-        />
+          <textarea
+            ref={bodyRef}
+            value={note.body}
+            onChange={handleBody}
+            placeholder={copy.bodyPlaceholder}
+            aria-label={copy.bodyPlaceholder}
+            className="writing-textarea mt-gr-4 flex-1"
+            style={{ minHeight: "34dvh" }}
+          />
+        </div>
 
         {/* 状態行 — 小さく、静かに */}
         <div className="flex items-end justify-between gap-gr-4 pb-gr-5 pt-gr-4 text-[10px] tracking-[0.12em] text-ink-muted/70">
@@ -206,16 +201,19 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
               </span>
             )}
             {saveState === "saved" && (
-              <span className="flex items-center gap-gr-2">
+              <span
+                key={`saved-${note.updatedAt}`}
+                className="save-afterglow flex items-center gap-gr-2"
+              >
                 <span
                   aria-hidden="true"
-                  className="inline-block h-[6px] w-[6px] rounded-full bg-ink-muted/70"
+                  className="inline-block h-[6px] w-[6px] rounded-full bg-gold/70"
                 />
                 <span className="font-mincho">{copy.saved}</span>
               </span>
             )}
             {(saveState === "saving" || saveState === "saved") && (
-              <span className="pl-[14px] text-[10px] tracking-[0.16em] text-ink-muted/60">
+              <span className="english-subcopy pl-[14px] text-[10px]">
                 {saveState === "saving" ? copy.savingEn : copy.savedEn}
               </span>
             )}
