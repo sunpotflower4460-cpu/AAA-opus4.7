@@ -7,5 +7,3 @@ export function ZanshinMoon() {
     </div>
   );
 }
-
-export default ZanshinMoon;
