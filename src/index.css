@@ -14,6 +14,18 @@
   --color-shadow: rgba(31, 27, 24, 0.08);
 
   /*
+   * Phase 12: 紙そのもののパレット。
+   * 残心の世界では「紙」は背景ではなく、言葉が残る場所そのもの。
+   * 生成り（kinari）を基調にし、明るい紙・経年紙を重ねて
+   * 時間を含んだ和紙の気配を作る。派手な羊皮紙にはしない。
+   */
+  --paper-base: #f3ead7;     /* 古紙の基底 — 生成り */
+  --paper-light: #fbf6ea;    /* 明るい紙 — 月光の当たる場所 */
+  --paper-aged: #e8dcc4;     /* 経年紙 — 端に染み出す時間 */
+  --paper-fiber: rgba(31, 27, 24, 0.035);    /* 繊維の影 */
+  --paper-warm-shadow: rgba(92, 70, 42, 0.08); /* 紙が落とすあたたかい影 */
+
+  /*
    * Phase 9: フォントを3つの役割に分ける。
    * - display: 見出し・タイトル（静かな明朝）
    * - writing: 本文入力（手触りのある明朝 / 読みやすい明朝）
@@ -51,54 +63,100 @@ html {
 
 body {
   margin: 0;
-  background-color: var(--color-washi);
+  background-color: var(--paper-base);
   color: var(--color-sumi);
   font-family: var(--font-ui);
   line-height: 1.618;
 
   /*
-   * 和紙のような、ごく薄い質感。
-   * - SVG turbulence で繊維のような微細なノイズを敷く（タイル可）
-   * - 上にうっすらした光のグラデーションを重ねる
-   * - すべて控えめ。文字を邪魔しない強度に保つ。
+   * Phase 12: 紙の質感を「層」として丁寧に重ねる。
+   *
+   * 下から:
+   *   1. 生成り → 明るい紙 → 経年紙のグラデーション（紙の地）
+   *   2. 月光のような明るい部分（左上）
+   *   3. ごく淡い金（右上端）
+   *   4. 深い藍のささやかな沈み（下中央）
+   *   5. 中央の経年影（紙が呼吸する場所）
+   *   6. 紙端の落ち着き（右下）
+   *   7. 繊維のような微細なノイズ（タイル）
+   *
+   * すべて控えめ。文字を邪魔しない強度に保つ。
    */
   background-image:
-    linear-gradient(180deg, rgba(255, 250, 243, 0.72) 0%, rgba(242, 233, 220, 0.96) 100%),
-    /* 繊維ノイズ（タイル） */
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='paper'><feTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.32 0 0 0 0 0.24 0 0 0 0 0.16 0 0 0 0.065 0'/></filter><rect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.7'/><path d='M0 40C28 28 48 30 80 42C111 54 136 56 170 45C196 36 209 34 220 38V0H0Z' fill='rgba(255,255,255,0.16)' opacity='0.45'/><path d='M0 180C36 170 64 172 94 182C126 193 150 196 186 187C202 183 212 182 220 184V220H0Z' fill='rgba(120,94,68,0.08)' opacity='0.45'/></svg>"),
-    /* 乾いた紙の明るいムラ */
-    radial-gradient(
-      circle at 16% 14%,
-      rgba(255, 250, 242, 0.42) 0%,
-      transparent 36%
-    ),
-    /* 古紙の周辺の落ち着き */
-    radial-gradient(
-      circle at 88% 84%,
-      rgba(122, 95, 66, 0.13) 0%,
-      transparent 42%
-    ),
-    /* 金の差し色（左上） */
+    /* 月光 — 左上 */
     radial-gradient(
       circle at 18% 10%,
-      rgba(201, 166, 70, 0.06) 0%,
-      transparent 55%
+      rgba(255, 252, 235, 0.62) 0%,
+      transparent 34%
     ),
-    /* 藍の差し色（右下） */
+    /* 淡い金 — 右上 */
     radial-gradient(
-      circle at 82% 88%,
-      rgba(36, 59, 83, 0.04) 0%,
-      transparent 55%
+      circle at 82% 18%,
+      rgba(201, 166, 70, 0.09) 0%,
+      transparent 30%
     ),
-    /* 画面中央のやわらかな経年影 */
+    /* 深い藍 — 下中央のささやか */
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(36, 59, 83, 0.045) 0%,
+      transparent 42%
+    ),
+    /* 紙端のあたたかい落ち着き — 右下 */
+    radial-gradient(
+      circle at 88% 84%,
+      rgba(122, 95, 66, 0.11) 0%,
+      transparent 42%
+    ),
+    /* 中央のやわらかな経年影 */
     radial-gradient(
       circle at 50% 55%,
-      rgba(31, 27, 24, 0.05) 0%,
+      rgba(31, 27, 24, 0.045) 0%,
       transparent 76%
+    ),
+    /* 繊維ノイズ（タイル） */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='paper'><feTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.32 0 0 0 0 0.24 0 0 0 0 0.16 0 0 0 0.065 0'/></filter><rect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.72'/><path d='M0 40C28 28 48 30 80 42C111 54 136 56 170 45C196 36 209 34 220 38V0H0Z' fill='rgba(255,255,255,0.16)' opacity='0.45'/><path d='M0 180C36 170 64 172 94 182C126 193 150 196 186 187C202 183 212 182 220 184V220H0Z' fill='rgba(120,94,68,0.08)' opacity='0.45'/></svg>"),
+    /* 紙の地 — 生成り → 明るい紙 → 経年紙 */
+    linear-gradient(
+      135deg,
+      var(--paper-base) 0%,
+      var(--paper-light) 46%,
+      var(--paper-aged) 100%
     );
   background-attachment: fixed, fixed, fixed, fixed, fixed, fixed, fixed;
-  background-repeat: no-repeat, repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-  background-size: auto, 220px 220px, auto, auto, auto, auto, auto;
+  /* 順序: 月光 / 淡い金 / 静かな藍 / 紙端 / 中央経年影 / 繊維タイル / 紙の地 */
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat, no-repeat;
+  background-size: auto, auto, auto, auto, auto, 220px 220px, auto;
+}
+
+/*
+ * Phase 12: 紙目レイヤー。
+ * ごく薄い縦・横のかすかな線で「紙目」を作る。
+ * モアレを避けるため、縦横で間隔を変える。
+ * 文字の上に乗らないよう pointer-events: none。
+ */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.16;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      var(--paper-fiber) 0px,
+      var(--paper-fiber) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(31, 27, 24, 0.018) 0px,
+      rgba(31, 27, 24, 0.018) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+  mix-blend-mode: multiply;
 }
 
 body::before {
@@ -206,7 +264,7 @@ textarea:focus-visible {
   font-size: 18px;
   line-height: 2.05;
   letter-spacing: 0.03em;
-  color: rgba(31, 27, 24, 0.88);
+  color: #1f1b18;
   background: transparent;
   border: none;
   outline: none;
@@ -234,12 +292,18 @@ textarea:focus-visible {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(252, 247, 237, 0.9) 0%, rgba(246, 237, 224, 0.82) 100%),
+    linear-gradient(180deg, rgba(255, 252, 244, 0.94) 0%, rgba(243, 234, 216, 0.86) 100%),
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.32), transparent 42%),
+    radial-gradient(circle at 86% 80%, rgba(201, 166, 70, 0.06), transparent 38%),
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='paper'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='5' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.23 0 0 0 0 0.18 0 0 0 0 0.12 0 0 0 0.042 0'/></filter><rect width='100%25' height='100%25' filter='url(%23paper)'/></svg>");
-  border: 1px solid rgba(31, 27, 24, 0.08);
+  /* 順序: 紙の地 / 月光 / 淡い金 / 繊維タイル */
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  background-size: auto, auto, auto, 180px 180px;
+  border: 1px solid rgba(31, 27, 24, 0.07);
   border-radius: 34px;
   box-shadow:
-    0 21px 55px rgba(31, 27, 24, 0.075),
+    0 21px 55px rgba(31, 27, 24, 0.055),
+    0 2px 8px var(--paper-warm-shadow),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
@@ -274,15 +338,21 @@ textarea:focus-visible {
   width: min(100%, 320px);
   margin-inline: auto;
   padding: 21px 24px;
-  border: 1px solid rgba(31, 27, 24, 0.08);
+  border: 1px solid rgba(31, 27, 24, 0.075);
   border-radius: 20px;
   text-align: center;
   background:
-    linear-gradient(145deg, rgba(255, 252, 244, 0.88), rgba(240, 230, 208, 0.74)),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='slip'><feTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' seed='13' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.31 0 0 0 0 0.23 0 0 0 0 0.15 0 0 0 0.038 0'/></filter><rect width='100%25' height='100%25' filter='url(%23slip)' opacity='0.38'/></svg>");
+    linear-gradient(145deg, rgba(255, 252, 244, 0.92), rgba(238, 226, 204, 0.78)),
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.32), transparent 42%),
+    radial-gradient(circle at 86% 78%, rgba(201, 166, 70, 0.06), transparent 36%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='slip'><feTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' seed='13' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.31 0 0 0 0 0.23 0 0 0 0 0.15 0 0 0 0.038 0'/></filter><rect width='100%25' height='100%25' filter='url(%23slip)' opacity='0.42'/></svg>");
+  /* 順序: 紙の地 / 月光 / 淡い金 / 繊維タイル */
+  background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+  background-size: auto, auto, auto, 160px 160px;
   box-shadow:
-    0 13px 34px rgba(31, 27, 24, 0.055),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    0 13px 34px rgba(31, 27, 24, 0.052),
+    0 2px 8px var(--paper-warm-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
   left: auto;
   transform: none;
 }
@@ -336,6 +406,78 @@ textarea:focus-visible {
     opacity 300ms ease,
     transform 300ms ease,
     box-shadow 300ms ease;
+}
+
+/*
+ * Phase 12: メモカードを「紙片」に近づける。
+ * 単なるカードではなく、心の余白が積もっていく紙の束として見せる。
+ * - 白すぎない生成りベース
+ * - 端にやわらかい紙の影
+ * - inset の白で紙の表面の光
+ */
+.paper-card {
+  background:
+    linear-gradient(150deg, rgba(255, 252, 244, 0.94), rgba(239, 229, 209, 0.84));
+  border: 1px solid rgba(31, 27, 24, 0.08);
+  box-shadow:
+    0 13px 34px rgba(31, 27, 24, 0.06),
+    0 2px 6px var(--paper-warm-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.54);
+}
+
+.paper-card:hover {
+  background:
+    linear-gradient(150deg, rgba(255, 253, 246, 0.96), rgba(241, 231, 211, 0.88));
+  box-shadow:
+    0 18px 42px rgba(31, 27, 24, 0.075),
+    0 2px 8px var(--paper-warm-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/*
+ * Phase 12: 検索バー・補助面用の「紙に置かれた小さな面」。
+ * 白い現代UIっぽさを消し、紙世界に馴染ませる。
+ */
+.paper-surface {
+  background:
+    linear-gradient(160deg, rgba(255, 252, 244, 0.78), rgba(238, 226, 204, 0.62));
+  border: 1px solid rgba(31, 27, 24, 0.07);
+  box-shadow:
+    0 1px 1px rgba(31, 27, 24, 0.035),
+    0 4px 13px rgba(31, 27, 24, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.paper-surface:focus-within {
+  background:
+    linear-gradient(160deg, rgba(255, 253, 246, 0.9), rgba(240, 229, 207, 0.74));
+  border-color: rgba(36, 59, 83, 0.22);
+  box-shadow:
+    0 1px 1px rgba(31, 27, 24, 0.04),
+    0 6px 16px rgba(31, 27, 24, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* 広告枠 — 紙に薄く置かれた札。メモと誤認されないよう破線を控えめに残す */
+.paper-ad-slot {
+  background:
+    linear-gradient(155deg, rgba(251, 246, 234, 0.68), rgba(232, 220, 196, 0.56));
+  border: 1px dashed rgba(31, 27, 24, 0.18);
+  box-shadow:
+    0 1px 1px rgba(31, 27, 24, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Premium 札 — 売り込みではなく、静かなしるし */
+.paper-premium {
+  background:
+    linear-gradient(150deg, rgba(255, 252, 244, 0.82), rgba(238, 226, 204, 0.68)),
+    radial-gradient(circle at 86% 14%, rgba(201, 166, 70, 0.07), transparent 38%);
+  border: 1px solid rgba(31, 27, 24, 0.08);
+  box-shadow:
+    0 8px 24px rgba(31, 27, 24, 0.045),
+    0 2px 6px var(--paper-warm-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 /*
