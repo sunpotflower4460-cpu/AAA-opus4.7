@@ -434,6 +434,7 @@ textarea:focus-visible {
   z-index: 0;
   filter: blur(8px);
   background:
+    /* 背景月と同じ月光 → 薄金 → 墨色の流れで、定着の世界観をそろえる */
     linear-gradient(
       110deg,
       rgba(255, 248, 220, 0) 0%,
