@@ -79,11 +79,15 @@
 | **Phase 6** | 残心体験の徹底強化・UI/UX再設計 | しない |
 | **Phase 7** | App Store向け広告・Premium枠組み | しない |
 | **Phase 8** | UI/UX総合監査・残心品質ブラッシュアップ | しない |
+| **Phase 9** | タイポグラフィ・紙感・書字体験の磨き込み | しない |
+| **Phase 10** | 日本語改行品質・紙質感・月モチーフ改善 | しない |
 
 詳細は [docs/development-phases.md](docs/development-phases.md) を参照。  
 Phase 4 の最終調整レポートは [docs/final-polish-and-deploy-phase-4.md](docs/final-polish-and-deploy-phase-4.md) を参照。
 Phase 6 の体験強化レポートは [docs/zanshin-experience-phase-6.md](docs/zanshin-experience-phase-6.md) を参照。
 Phase 8 のUI/UX監査レポートは [docs/uiux-integrity-review-phase-8.md](docs/uiux-integrity-review-phase-8.md) を参照。
+Phase 9 のタイポグラフィ・質感レポートは [docs/zanshin-typography-texture-phase-9.md](docs/zanshin-typography-texture-phase-9.md) を参照。
+Phase 10 の改行・紙質感・月モチーフ改善レポートは [docs/japanese-wrap-paper-moon-phase-10.md](docs/japanese-wrap-paper-moon-phase-10.md) を参照。
 
 ---
 
