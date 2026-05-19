@@ -195,7 +195,6 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.14em;
-  text-wrap: balance;
 }
 
 .poetic-line {

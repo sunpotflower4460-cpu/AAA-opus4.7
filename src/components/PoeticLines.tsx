@@ -15,8 +15,8 @@ export function PoeticLines({
 
   return (
     <Tag className={["poetic-lines", className].filter(Boolean).join(" ")}>
-      {lines.map((line) => (
-        <span key={line} className={["poetic-line", lineClassName].filter(Boolean).join(" ")}>
+      {lines.map((line, index) => (
+        <span key={index} className={["poetic-line", lineClassName].filter(Boolean).join(" ")}>
           {line}
         </span>
       ))}
