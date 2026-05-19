@@ -1,3 +1,5 @@
+export type PoeticLines = readonly [string, ...string[]];
+
 /**
  * 残心 / Zanshin の文言。
  * 日本語をメインとし、英語のサブ表現を併記する。
@@ -5,9 +7,13 @@
 export const copy = {
   appName: "残心",
   appSubtitle: "Zanshin Notes",
-  tagline: "書いたあとにも、心が残る。",
-  taglineEn: "A quiet place for words that remain.",
-  zanshinDefinition: "残心とは、\n書き終えたあとにも\n心が静かに残っていること。",
+  taglineLines: ["書いたあとにも、", "心が残る。"] as PoeticLines,
+  taglineEnLines: ["A quiet place", "for words that remain."] as PoeticLines,
+  zanshinDefinitionLines: [
+    "残心とは、",
+    "書き終えたあとにも",
+    "心が静かに残っていること。",
+  ] as PoeticLines,
 
   // 一覧
   searchPlaceholder: "残した言葉を探す",
@@ -20,9 +26,12 @@ export const copy = {
   settledOn: "残した日",
 
   // 空状態
-  emptyTitle: "まだ、言葉は置かれていません。",
-  emptySubtitle: "書き終えたあとに残る、\n心のしずけさをここに。",
-  emptySubtitleEn: "A quiet place for words that remain.",
+  emptyTitleLines: ["まだ、言葉は", "置かれていません。"] as PoeticLines,
+  emptySubtitleLines: [
+    "書き終えたあとに残る、",
+    "心のしずけさをここに。",
+  ] as PoeticLines,
+  emptySubtitleEnLines: ["A quiet place", "for words that remain."] as PoeticLines,
   emptyAction: "最初の余韻を残す",
   emptyActionEn: "Leave the first trace",
 

@@ -13,8 +13,8 @@ type Props = {
 export function AppShell({ children }: Props) {
   return (
     <div className="relative min-h-screen min-h-[100dvh] w-full">
-      {/* 円相の透かし — 画面の気配として、淡く一つだけ */}
-      <div className="zanshin-enso" aria-hidden="true" />
+      {/* 月の気配 — 背景に溶ける、朧な丸い余韻 */}
+      <div className="zanshin-moon" aria-hidden="true" />
       <div
         className="
           relative z-[1] mx-auto flex min-h-screen min-h-[100dvh] w-full max-w-zanshin flex-col
