@@ -19,17 +19,11 @@ export function PremiumCard({
     <aside className="rounded-[21px] paper-premium px-gr-5 py-gr-5 animate-fadeIn">
       <div className="flex flex-col gap-gr-4">
         <div className="flex flex-col gap-gr-2">
-          <p className="text-[10px] tracking-[0.3em] text-ink-muted/72">
-            {copy.premiumName.toUpperCase()}
-          </p>
-          <h2 className="font-mincho text-[19px] leading-snug text-sumi">
+          <h2 className="font-mincho text-[18px] leading-snug text-sumi">
             {copy.premiumName}
           </h2>
-          <p className="font-mincho text-[15px] leading-ample whitespace-pre-line text-sumi/88">
+          <p className="font-mincho text-[14px] leading-[1.9] whitespace-pre-line text-sumi/88">
             {isPremium ? copy.premiumActiveBody : copy.premiumBody}
-          </p>
-          <p className="text-[11px] tracking-[0.18em] text-ink-muted/72 whitespace-pre-line">
-            {isPremium ? copy.premiumActiveBodyEn : copy.premiumBodyEn}
           </p>
         </div>
 

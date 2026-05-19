@@ -15,7 +15,7 @@ function preview(body: string): string {
   const lastLine = lines.length > 0 ? lines[lines.length - 1] : "";
   const flat = lastLine.replace(/\s+/g, " ").trim();
   if (!flat) return "";
-  return flat.length > 88 ? `${flat.slice(0, 88)}…` : flat;
+  return flat.length > 72 ? `${flat.slice(0, 72)}…` : flat;
 }
 
 export function NoteCard({ note, onOpen }: Props) {
@@ -41,7 +41,7 @@ export function NoteCard({ note, onOpen }: Props) {
         aria-hidden="true"
         className={[
           "absolute left-gr-3 top-gr-3 bottom-gr-3 rounded-full",
-          note.isFavorite ? "w-[2px] bg-gold/85" : "w-px bg-sumi/12",
+          note.isFavorite ? "w-[2px] bg-gold/72" : "w-px bg-sumi/10",
         ].join(" ")}
       />
 
@@ -62,11 +62,8 @@ export function NoteCard({ note, onOpen }: Props) {
           </h3>
 
           {bodyPreview && (
-            <div className="mt-gr-3 flex flex-col gap-gr-2">
-              <span className="text-[10px] tracking-[0.12em] text-ink-muted/55">
-                {copy.lastRemains}
-              </span>
-              <p className="line-clamp-2 text-[14px] leading-ample text-ink-muted">
+            <div className="mt-gr-2">
+              <p className="line-clamp-2 text-[14px] leading-ample text-ink-muted/92">
                 {bodyPreview}
               </p>
             </div>
@@ -77,12 +74,12 @@ export function NoteCard({ note, onOpen }: Props) {
           <span
             aria-label={copy.favoriteBadge}
             title={copy.favoriteBadge}
-            className="mt-[6px] shrink-0 text-gold"
+            className="mt-[6px] shrink-0 text-gold/82"
           >
             {/* 金の小さな印 — 装飾ではなく、しるし */}
             <svg
-              width="10"
-              height="10"
+              width="9"
+              height="9"
               viewBox="0 0 24 24"
               fill="currentColor"
               aria-hidden="true"

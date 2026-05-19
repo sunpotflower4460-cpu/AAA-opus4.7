@@ -41,11 +41,8 @@ export function AdSlot({
           <span className="inline-flex rounded-full border border-[color:var(--color-line)] px-gr-2 py-[3px] text-[10px] tracking-[0.24em] text-ink-muted/75">
             {copy.adLabel.toUpperCase()} / {copy.adLabelEn.toUpperCase()}
           </span>
-          <p className="mt-gr-3 font-mincho text-[14px] leading-snug text-sumi/90">
+          <p className="mt-gr-3 font-mincho text-[13px] leading-[1.85] text-sumi/88">
             {copy.adSlotBody}
-          </p>
-          <p className="mt-gr-2 text-[11px] tracking-[0.16em] text-ink-muted/72">
-            {copy.adSlotBodyEn}
           </p>
         </div>
 

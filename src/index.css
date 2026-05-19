@@ -94,35 +94,35 @@ body {
     /* 月光 — 左上 */
     radial-gradient(
       circle at 18% 10%,
-      rgba(255, 252, 235, 0.62) 0%,
+      rgba(255, 252, 235, 0.5) 0%,
       transparent 34%
     ),
     /* 淡い金 — 右上 */
     radial-gradient(
       circle at 82% 18%,
-      rgba(201, 166, 70, 0.09) 0%,
+      rgba(201, 166, 70, 0.06) 0%,
       transparent 30%
     ),
     /* 深い藍 — 下中央のささやか */
     radial-gradient(
       circle at 50% 100%,
-      rgba(36, 59, 83, 0.045) 0%,
+      rgba(36, 59, 83, 0.032) 0%,
       transparent 42%
     ),
     /* 紙端のあたたかい落ち着き — 右下 */
     radial-gradient(
       circle at 88% 84%,
-      rgba(122, 95, 66, 0.11) 0%,
+      rgba(122, 95, 66, 0.085) 0%,
       transparent 42%
     ),
     /* 中央のやわらかな経年影 */
     radial-gradient(
       circle at 50% 55%,
-      rgba(31, 27, 24, 0.045) 0%,
+      rgba(31, 27, 24, 0.03) 0%,
       transparent 76%
     ),
     /* 繊維ノイズ（タイル） */
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='paper'><feTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.32 0 0 0 0 0.24 0 0 0 0 0.16 0 0 0 0.065 0'/></filter><rect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.72'/><path d='M0 40C28 28 48 30 80 42C111 54 136 56 170 45C196 36 209 34 220 38V0H0Z' fill='rgba(255,255,255,0.16)' opacity='0.45'/><path d='M0 180C36 170 64 172 94 182C126 193 150 196 186 187C202 183 212 182 220 184V220H0Z' fill='rgba(120,94,68,0.08)' opacity='0.45'/></svg>"),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='paper'><feTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.32 0 0 0 0 0.24 0 0 0 0 0.16 0 0 0 0.045 0'/></filter><rect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.5'/><path d='M0 40C28 28 48 30 80 42C111 54 136 56 170 45C196 36 209 34 220 38V0H0Z' fill='rgba(255,255,255,0.12)' opacity='0.3'/><path d='M0 180C36 170 64 172 94 182C126 193 150 196 186 187C202 183 212 182 220 184V220H0Z' fill='rgba(120,94,68,0.06)' opacity='0.3'/></svg>"),
     /* 紙の地 — 生成り → 明るい紙 → 経年紙 */
     linear-gradient(
       135deg,
@@ -148,7 +148,7 @@ body::after {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.16;
+  opacity: 0.09;
   background-image:
     repeating-linear-gradient(
       0deg,
@@ -175,7 +175,7 @@ body::before {
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.18), transparent 42%),
     linear-gradient(180deg, transparent 0%, rgba(115, 88, 61, 0.05) 100%);
-  opacity: 0.8;
+  opacity: 0.55;
   z-index: 0;
 }
 
@@ -270,8 +270,8 @@ textarea:focus-visible {
 .writing-textarea {
   font-family: var(--font-writing);
   font-size: 18px;
-  line-height: 2.05;
-  letter-spacing: 0.03em;
+  line-height: 2;
+  letter-spacing: 0.024em;
   color: #1f1b18;
   background: transparent;
   border: none;
@@ -285,9 +285,9 @@ textarea:focus-visible {
 
 .note-title-input {
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 23px;
   line-height: 1.6;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: rgba(31, 27, 24, 0.92);
 }
 
@@ -300,18 +300,18 @@ textarea:focus-visible {
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(255, 252, 244, 0.94) 0%, rgba(243, 234, 216, 0.86) 100%),
-    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.32), transparent 42%),
-    radial-gradient(circle at 86% 80%, rgba(201, 166, 70, 0.06), transparent 38%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='paper'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='5' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.23 0 0 0 0 0.18 0 0 0 0 0.12 0 0 0 0.042 0'/></filter><rect width='100%25' height='100%25' filter='url(%23paper)'/></svg>");
+    linear-gradient(180deg, rgba(255, 252, 244, 0.92) 0%, rgba(243, 234, 216, 0.8) 100%),
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.26), transparent 42%),
+    radial-gradient(circle at 86% 80%, rgba(201, 166, 70, 0.045), transparent 38%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='paper'><feTurbulence type='fractalNoise' baseFrequency='0.74' numOctaves='2' seed='5' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.23 0 0 0 0 0.18 0 0 0 0 0.12 0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.7'/></svg>");
   /* 順序: 紙の地 / 月光 / 淡い金 / 繊維タイル */
   background-repeat: no-repeat, no-repeat, no-repeat, repeat;
   background-size: auto, auto, auto, 180px 180px;
-  border: 1px solid rgba(31, 27, 24, 0.07);
+  border: 1px solid rgba(31, 27, 24, 0.055);
   border-radius: 34px;
   box-shadow:
-    0 21px 55px rgba(31, 27, 24, 0.055),
-    0 2px 8px var(--paper-warm-shadow),
+    0 13px 34px rgba(31, 27, 24, 0.045),
+    0 1px 6px rgba(92, 70, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
@@ -329,7 +329,7 @@ textarea:focus-visible {
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.34), transparent 34%),
     radial-gradient(circle at bottom right, rgba(118, 90, 59, 0.08), transparent 38%);
-  opacity: 0.95;
+  opacity: 0.72;
 }
 
 /* 英語サブコピーの密度を下げる — 小さく、薄く、文字間は控えめ */
@@ -343,23 +343,23 @@ textarea:focus-visible {
 
 .zanshin-paper-slip {
   position: relative;
-  width: min(100%, 320px);
+  width: min(100%, 304px);
   margin-inline: auto;
-  padding: 21px 24px;
-  border: 1px solid rgba(31, 27, 24, 0.075);
+  padding: 18px 21px;
+  border: 1px solid rgba(31, 27, 24, 0.065);
   border-radius: 20px;
   text-align: center;
   background:
-    linear-gradient(145deg, rgba(255, 252, 244, 0.92), rgba(238, 226, 204, 0.78)),
-    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.32), transparent 42%),
-    radial-gradient(circle at 86% 78%, rgba(201, 166, 70, 0.06), transparent 36%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='slip'><feTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' seed='13' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.31 0 0 0 0 0.23 0 0 0 0 0.15 0 0 0 0.038 0'/></filter><rect width='100%25' height='100%25' filter='url(%23slip)' opacity='0.42'/></svg>");
+    linear-gradient(145deg, rgba(255, 252, 244, 0.9), rgba(238, 226, 204, 0.74)),
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.24), transparent 42%),
+    radial-gradient(circle at 86% 78%, rgba(201, 166, 70, 0.045), transparent 36%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='slip'><feTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' seed='13' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.31 0 0 0 0 0.23 0 0 0 0 0.15 0 0 0 0.028 0'/></filter><rect width='100%25' height='100%25' filter='url(%23slip)' opacity='0.34'/></svg>");
   /* 順序: 紙の地 / 月光 / 淡い金 / 繊維タイル */
   background-repeat: no-repeat, no-repeat, no-repeat, repeat;
   background-size: auto, auto, auto, 160px 160px;
   box-shadow:
-    0 13px 34px rgba(31, 27, 24, 0.052),
-    0 2px 8px var(--paper-warm-shadow),
+    0 8px 24px rgba(31, 27, 24, 0.04),
+    0 1px 6px rgba(92, 70, 42, 0.055),
     inset 0 1px 0 rgba(255, 255, 255, 0.58);
   left: auto;
   transform: none;
@@ -379,17 +379,17 @@ textarea:focus-visible {
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.36), transparent 44%),
     radial-gradient(circle at 50% 100%, rgba(130, 101, 72, 0.08), transparent 42%);
-  opacity: 0.92;
+  opacity: 0.72;
 }
 
 .zanshin-main-copy {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   margin: 0;
-  font-size: 17px;
-  line-height: 1.76;
+  font-size: 16px;
+  line-height: 1.7;
   letter-spacing: 0.03em;
   text-wrap: balance;
 }
@@ -414,35 +414,35 @@ textarea:focus-visible {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.76rem;
+  gap: 7px;
+  font-size: 0.72rem;
   letter-spacing: 0.08em;
   line-height: 1.4;
-  opacity: 0.96;
+  opacity: 0.88;
   transform: translateY(0);
-  transition: opacity 420ms ease, transform 420ms ease;
+  transition: opacity 320ms ease, transform 320ms ease;
   isolation: isolate;
 }
 
 .zanshin-date-stamp::after {
   content: "";
   position: absolute;
-  inset: -8px -12px;
+  inset: -6px -10px;
   border-radius: 9999px;
   pointer-events: none;
   opacity: 0;
   z-index: 0;
-  filter: blur(8px);
+  filter: blur(10px);
   background:
     /* 背景月と同じ月光 → 薄金 → 墨色の流れで、定着の世界観をそろえる */
     linear-gradient(
       110deg,
       rgba(255, 248, 220, 0) 0%,
-      rgba(255, 250, 232, 0.3) 28%,
-      rgba(201, 166, 70, 0.18) 52%,
-      rgba(31, 27, 24, 0.08) 82%,
-      rgba(31, 27, 24, 0) 100%
-    );
+        rgba(255, 250, 232, 0.2) 28%,
+        rgba(201, 166, 70, 0.12) 52%,
+        rgba(31, 27, 24, 0.05) 82%,
+        rgba(31, 27, 24, 0) 100%
+      );
 }
 
 .zanshin-date-stamp__text {
@@ -451,54 +451,54 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 3px;
 }
 
 .zanshin-date-stamp--compact {
-  gap: 8px;
+  gap: 6px;
 }
 
 .zanshin-date-stamp--compact .zanshin-date-stamp__text {
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .zanshin-date-stamp.settling {
-  animation: zanshin-date-settle 900ms ease-out both;
+  animation: zanshin-date-settle 640ms ease-out both;
 }
 
 .zanshin-date-stamp.settling::after {
-  animation: zanshin-date-settle-wash 900ms ease-out both;
+  animation: zanshin-date-settle-wash 640ms ease-out both;
 }
 
 .zanshin-yohaku-label {
   position: relative;
   z-index: 1;
-  color: rgba(31, 27, 24, 0.68);
+  color: rgba(31, 27, 24, 0.62);
   font-family: var(--font-display);
   letter-spacing: 0.06em;
-  transition: color 420ms ease, opacity 420ms ease;
+  transition: color 320ms ease, opacity 320ms ease;
 }
 
 .zanshin-date {
   position: relative;
   z-index: 1;
-  color: rgba(31, 27, 24, 0.46);
+  color: rgba(31, 27, 24, 0.42);
   font-family: var(--font-ui);
   letter-spacing: 0.14em;
-  font-size: 0.72rem;
-  transition: color 420ms ease, opacity 420ms ease;
+  font-size: 0.68rem;
+  transition: color 320ms ease, opacity 320ms ease;
 }
 
 .zanshin-moon-seal {
   position: relative;
   z-index: 1;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   flex: 0 0 auto;
   border-radius: 9999px;
-  opacity: 0.48;
+  opacity: 0.38;
   background:
     radial-gradient(
       circle at 38% 34%,
@@ -508,8 +508,8 @@ textarea:focus-visible {
       rgba(31, 27, 24, 0.12) 100%
     );
   box-shadow:
-    0 0 0 1px rgba(255, 249, 239, 0.14),
-    0 0 10px rgba(201, 166, 70, 0.08);
+    0 0 0 1px rgba(255, 249, 239, 0.1),
+    0 0 8px rgba(201, 166, 70, 0.05);
 }
 
 @keyframes zanshin-date-settle {
@@ -558,43 +558,43 @@ textarea:focus-visible {
 }
 
 .zanshin-date-stamp.settling .zanshin-moon-seal {
-  animation: zanshin-moon-seal-settle 900ms ease-out both;
+  animation: zanshin-moon-seal-settle 640ms ease-out both;
 }
 
 .zanshin-date-stamp.settling .zanshin-yohaku-label {
-  animation: zanshin-yohaku-settle 900ms ease-out both;
+  animation: zanshin-yohaku-settle 640ms ease-out both;
 }
 
 .zanshin-date-stamp.settling .zanshin-date {
-  animation: zanshin-date-ink-settle 900ms ease-out both;
+  animation: zanshin-date-ink-settle 640ms ease-out both;
 }
 
 @keyframes zanshin-yohaku-settle {
   0% {
-    color: rgba(201, 166, 70, 0.3);
-    opacity: 0.74;
+    color: rgba(201, 166, 70, 0.22);
+    opacity: 0.7;
   }
   34% {
-    color: rgba(201, 166, 70, 0.72);
-    opacity: 0.98;
+    color: rgba(201, 166, 70, 0.46);
+    opacity: 0.9;
   }
   100% {
-    color: rgba(31, 27, 24, 0.68);
+    color: rgba(31, 27, 24, 0.62);
     opacity: 1;
   }
 }
 
 @keyframes zanshin-date-ink-settle {
   0% {
-    color: rgba(201, 166, 70, 0.24);
-    opacity: 0.68;
+    color: rgba(201, 166, 70, 0.18);
+    opacity: 0.64;
   }
   34% {
-    color: rgba(201, 166, 70, 0.62);
-    opacity: 0.94;
+    color: rgba(201, 166, 70, 0.4);
+    opacity: 0.84;
   }
   100% {
-    color: rgba(31, 27, 24, 0.46);
+    color: rgba(31, 27, 24, 0.42);
     opacity: 1;
   }
 }
@@ -618,20 +618,20 @@ textarea:focus-visible {
  */
 .paper-card {
   background:
-    linear-gradient(150deg, rgba(255, 252, 244, 0.94), rgba(239, 229, 209, 0.84));
-  border: 1px solid rgba(31, 27, 24, 0.08);
+    linear-gradient(150deg, rgba(255, 252, 244, 0.92), rgba(239, 229, 209, 0.8));
+  border: 1px solid rgba(31, 27, 24, 0.07);
   box-shadow:
-    0 13px 34px rgba(31, 27, 24, 0.06),
-    0 2px 6px var(--paper-warm-shadow),
+    0 8px 24px rgba(31, 27, 24, 0.045),
+    0 1px 4px rgba(92, 70, 42, 0.055),
     inset 0 1px 0 rgba(255, 255, 255, 0.54);
 }
 
 .paper-card:hover {
   background:
-    linear-gradient(150deg, rgba(255, 253, 246, 0.96), rgba(241, 231, 211, 0.88));
+    linear-gradient(150deg, rgba(255, 253, 246, 0.94), rgba(241, 231, 211, 0.84));
   box-shadow:
-    0 18px 42px rgba(31, 27, 24, 0.075),
-    0 2px 8px var(--paper-warm-shadow),
+    0 13px 34px rgba(31, 27, 24, 0.055),
+    0 1px 6px rgba(92, 70, 42, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
@@ -641,11 +641,11 @@ textarea:focus-visible {
  */
 .paper-surface {
   background:
-    linear-gradient(160deg, rgba(255, 252, 244, 0.78), rgba(238, 226, 204, 0.62));
+    linear-gradient(160deg, rgba(255, 252, 244, 0.76), rgba(238, 226, 204, 0.58));
   border: 1px solid rgba(31, 27, 24, 0.07);
   box-shadow:
     0 1px 1px rgba(31, 27, 24, 0.035),
-    0 4px 13px rgba(31, 27, 24, 0.03),
+    0 3px 10px rgba(31, 27, 24, 0.026),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -662,8 +662,8 @@ textarea:focus-visible {
 /* 広告枠 — 紙に薄く置かれた札。メモと誤認されないよう破線を控えめに残す */
 .paper-ad-slot {
   background:
-    linear-gradient(155deg, rgba(251, 246, 234, 0.68), rgba(232, 220, 196, 0.56));
-  border: 1px dashed rgba(31, 27, 24, 0.18);
+    linear-gradient(155deg, rgba(251, 246, 234, 0.62), rgba(232, 220, 196, 0.5));
+  border: 1px dashed rgba(31, 27, 24, 0.14);
   box-shadow:
     0 1px 1px rgba(31, 27, 24, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
@@ -672,12 +672,12 @@ textarea:focus-visible {
 /* Premium 札 — 売り込みではなく、静かなしるし */
 .paper-premium {
   background:
-    linear-gradient(150deg, rgba(255, 252, 244, 0.82), rgba(238, 226, 204, 0.68)),
-    radial-gradient(circle at 86% 14%, rgba(201, 166, 70, 0.07), transparent 38%);
+    linear-gradient(150deg, rgba(255, 252, 244, 0.8), rgba(238, 226, 204, 0.64)),
+    radial-gradient(circle at 86% 14%, rgba(201, 166, 70, 0.05), transparent 38%);
   border: 1px solid rgba(31, 27, 24, 0.08);
   box-shadow:
-    0 8px 24px rgba(31, 27, 24, 0.045),
-    0 2px 6px var(--paper-warm-shadow),
+    0 6px 18px rgba(31, 27, 24, 0.036),
+    0 1px 4px rgba(92, 70, 42, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
@@ -687,14 +687,14 @@ textarea:focus-visible {
  */
 .zanshin-moon {
   position: fixed;
-  top: max(env(safe-area-inset-top), 55px);
-  right: -72px;
-  width: 260px;
-  height: 260px;
+  top: max(env(safe-area-inset-top), 68px);
+  right: -96px;
+  width: 228px;
+  height: 228px;
   border-radius: 9999px;
   pointer-events: none;
-  opacity: 0.32;
-  filter: blur(1px);
+  opacity: 0.24;
+  filter: blur(2px);
   isolation: isolate;
   z-index: 0;
 }
@@ -707,11 +707,11 @@ textarea:focus-visible {
 }
 
 .zanshin-moon__wash {
-  inset: -22px;
+  inset: -26px;
   background:
     radial-gradient(circle, var(--moon-gold-soft) 0%, rgba(255, 250, 232, 0.05) 46%, transparent 72%);
-  filter: blur(14px);
-  opacity: 0.92;
+  filter: blur(16px);
+  opacity: 0.56;
 }
 
 .zanshin-moon__core {
@@ -719,17 +719,17 @@ textarea:focus-visible {
   background:
     radial-gradient(
       circle at 38% 34%,
-      var(--moon-light) 0%,
-      var(--moon-paper) 40%,
-      var(--moon-gold) 66%,
-      transparent 74%
+      rgba(255, 250, 232, 0.62) 0%,
+      rgba(239, 226, 196, 0.32) 40%,
+      rgba(201, 166, 70, 0.07) 66%,
+      transparent 76%
     ),
-    radial-gradient(circle at 63% 62%, var(--moon-indigo) 0%, transparent 30%),
-    radial-gradient(circle at 50% 52%, var(--moon-haze) 0%, rgba(255, 250, 242, 0) 70%);
+    radial-gradient(circle at 63% 62%, rgba(36, 59, 83, 0.026) 0%, transparent 30%),
+    radial-gradient(circle at 50% 52%, rgba(255, 250, 242, 0.1) 0%, rgba(255, 250, 242, 0) 70%);
   box-shadow:
-    inset -18px -14px 34px var(--moon-ink-deep),
-    inset 12px 10px 28px rgba(255, 255, 255, 0.22),
-    0 0 0 1px rgba(255, 249, 239, 0.12);
+    inset -16px -12px 28px rgba(31, 27, 24, 0.035),
+    inset 10px 8px 24px rgba(255, 255, 255, 0.16),
+    0 0 0 1px rgba(255, 249, 239, 0.08);
 }
 
 .zanshin-moon__grain {
@@ -738,44 +738,44 @@ textarea:focus-visible {
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><filter id='moon-grain'><feTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' seed='11'/><feColorMatrix values='0 0 0 0 0.34 0 0 0 0 0.28 0 0 0 0 0.2 0 0 0 0.08 0'/></filter><rect width='120' height='120' rx='60' fill='rgba(255,255,255,0.04)' filter='url(%23moon-grain)'/></svg>")
       center / cover no-repeat,
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(31, 27, 24, 0.02));
-  opacity: 0.16;
-  filter: blur(3px);
+  opacity: 0.1;
+  filter: blur(4px);
   mix-blend-mode: multiply;
 }
 
 @media (min-width: 768px) {
   .zanshin-moon {
-    right: 4%;
-    top: max(env(safe-area-inset-top), 72px);
-    width: 320px;
-    height: 320px;
-    opacity: 0.3;
+    right: 5%;
+    top: max(env(safe-area-inset-top), 84px);
+    width: 260px;
+    height: 260px;
+    opacity: 0.22;
   }
 }
 
 @media (min-width: 1024px) {
   .zanshin-moon {
-    right: max(8%, 34px);
-    width: 340px;
-    height: 340px;
+    right: max(9%, 34px);
+    width: 280px;
+    height: 280px;
   }
 }
 
 @media (max-width: 430px) {
   .zanshin-moon {
-    right: -88px;
-    width: 248px;
-    height: 248px;
+    right: -102px;
+    width: 220px;
+    height: 220px;
   }
 }
 
 @media (max-width: 374px) {
   .zanshin-moon {
-    top: max(env(safe-area-inset-top), 64px);
-    right: -94px;
-    width: 228px;
-    height: 228px;
-    opacity: 0.28;
+    top: max(env(safe-area-inset-top), 72px);
+    right: -108px;
+    width: 204px;
+    height: 204px;
+    opacity: 0.2;
   }
 }
 
@@ -799,10 +799,10 @@ textarea:focus-visible {
  */
 .zanshin-breath-dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 9999px;
-  background-color: var(--color-gold);
+  background-color: rgba(201, 166, 70, 0.72);
   animation: breathDot 2.8s ease-in-out infinite;
 }
 
@@ -811,16 +811,16 @@ textarea:focus-visible {
  * 派手な閃光ではなく、墨が和紙に滲んでから消える感覚。
  */
 .zanshin-save-status {
-  color: rgba(31, 27, 24, 0.48);
-  transition: opacity 300ms ease, color 300ms ease;
+  color: rgba(31, 27, 24, 0.42);
+  transition: opacity 240ms ease, color 240ms ease;
 }
 
 .zanshin-save-status--saving {
-  color: rgba(31, 27, 24, 0.58);
+  color: rgba(31, 27, 24, 0.5);
 }
 
 .zanshin-save-status--saved {
-  animation: zanshin-fade 1.6s ease-out forwards;
+  animation: zanshin-fade 1.1s ease-out forwards;
 }
 @keyframes zanshin-fade {
   0% {

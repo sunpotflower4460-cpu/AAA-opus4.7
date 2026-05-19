@@ -8,7 +8,6 @@ import { EmptyState } from "./EmptyState";
 import { ZanshinMark } from "./ZanshinMark";
 import { AdSlot } from "./AdSlot";
 import { PremiumCard } from "./PremiumCard";
-import { PoeticLines } from "./PoeticLines";
 import { ZanshinPaperSlip } from "./ZanshinPaperSlip";
 
 type Props = {
@@ -58,46 +57,30 @@ export function NotesList({
   const showAdSlot = !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
     !isSearching && (visible.length > 1 || monetization.isPremium);
-  // ノートがまだ無い間だけ、残心の説明を静かに添える。
-  // ノートが置かれ始めたら、説明は引き、書く場所に席を譲る。
-  const showZanshinDefinition = notes.length === 0;
 
   return (
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
       <header className="pt-gr-3">
-        <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-4 text-center">
-          <div className="flex flex-col items-center gap-gr-3">
-            <ZanshinMark size={34} className="text-sumi/85" />
-            <h1 className="font-mincho text-[26px] leading-none tracking-[0.2em] text-sumi">
+        <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-3 text-center">
+          <div className="flex flex-col items-center gap-gr-2">
+            <ZanshinMark size={30} className="text-sumi/82" />
+            <h1 className="font-mincho text-[24px] leading-none tracking-[0.18em] text-sumi">
               {copy.appName}
             </h1>
-            <p className="english-subcopy text-[10px] tracking-[0.28em]">
+            <p className="english-subcopy text-[9px] tracking-[0.24em] opacity-80">
               {copy.appSubtitle.toUpperCase()}
             </p>
           </div>
-          <ZanshinPaperSlip lines={copy.taglineLines} englishLine={copy.taglineEn} />
-          {showZanshinDefinition && (
-            <div className="flex max-w-[15em] flex-col items-center gap-gr-3 text-center">
-              <span
-                aria-hidden="true"
-                className="block h-px w-gr-5 bg-gradient-to-r from-transparent via-gold/40 to-transparent"
-              />
-              <PoeticLines
-                as="p"
-                lines={copy.zanshinDefinitionLines}
-                className="font-mincho text-[12px] leading-[1.95] tracking-[0.03em] text-ink-muted"
-              />
-            </div>
-          )}
+          <ZanshinPaperSlip lines={copy.taglineLines} />
         </div>
       </header>
 
-      <div className="pt-gr-3">
+      <div className="mx-auto w-full max-w-[430px] pt-gr-2">
         <SearchBar value={query} onChange={setQuery} />
       </div>
 
       <section
-        className="flex flex-1 flex-col gap-gr-3 pb-[max(env(safe-area-inset-bottom),89px)]"
+        className="mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-gr-3 pb-[max(env(safe-area-inset-bottom),89px)]"
         aria-label="メモ一覧"
       >
         {isEmpty ? (

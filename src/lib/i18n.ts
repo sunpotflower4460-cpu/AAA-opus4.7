@@ -26,19 +26,19 @@ export const copy = {
   settledOn: "残した日",
 
   // 空状態
-  emptyTitleLines: ["まだ、言葉は", "置かれていません。"] as PoeticLines,
+  emptyTitleLines: ["まだ、言葉は置かれていません。"] as PoeticLines,
   emptySubtitleLines: [
-    "最初の余白をひらいて、",
-    "言葉をひとつ置いてみる。",
+    "その日の余白に、",
+    "最初の言葉を残す。",
   ] as PoeticLines,
   emptyAction: "最初の余白をひらく",
 
   // エディタ
   back: "戻る",
   backEn: "Back",
-  titlePlaceholder: "題を置く",
+  titlePlaceholder: "この余白に名をつける",
   titlePlaceholderEn: "Place a title",
-  bodyPlaceholder: "いま残したい言葉を、静かに置く。",
+  bodyPlaceholder: "いま残したい言葉を、ここに。",
   bodyPlaceholderEn: "Place the words you wish to leave, quietly.",
   untitled: "名のない余韻",
   untitledEn: "Untitled trace",
