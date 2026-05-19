@@ -782,7 +782,7 @@ textarea:focus-visible {
     transform: translateY(0);
   }
   100% {
-    opacity: 0.46;
+    opacity: 0.48;
   }
 }
 
