@@ -12,7 +12,9 @@
 | Phase 6 | 残心体験の徹底強化・UI/UX再設計 | しない |
 | Phase 7 | App Store向け広告・Premium枠組み | しない |
 | Phase 8 | UI/UX総合監査・残心品質ブラッシュアップ | しない |
-| Phase 9〜 | 将来拡張 | 別途検討 |
+| Phase 9〜16 | UI/UX磨き込み | しない |
+| Phase 17 | 最終デバッグ・Cloudflare Pages公開準備 | 接続済みの場合のみ |
+| Phase 18 | App Store申請準備・Privacy/ATT整理 | しない |
 
 ---
 
@@ -230,14 +232,79 @@ docs/uiux-integrity-review-phase-8.md
 
 ---
 
+## Phase 17: 最終デバッグ・Cloudflare Pages公開準備
+
+**ステータス：** 🟢 実施
+
+### 目的
+
+- Phase 11〜16で整えたUI/UXを含め、アプリ全体を最終確認する
+- Cloudflare Pages 公開前提の build / 表示 / Premium mock 状態を整理する
+- App Store 申請前に残る課題を明確にする
+
+### 成果物
+
+```
+docs/phase-17-final-debug-and-deploy-report.md
+```
+
+### 完了条件
+
+- build成功を確認する
+- メモ作成 / 編集 / 削除 / 保存 / 検索 / お気に入りを再確認する
+- Premium mock と広告配置を再確認する
+- Cloudflare Pages 接続時の設定と確認項目を整理する
+
+### Cloudflareデプロイ
+
+**接続済みの場合のみ**
+
+---
+
+## Phase 18: App Store申請準備
+
+**ステータス：** 🟢 実施
+
+### 目的
+
+- App Store 申請前に必要な情報を docs として整理する
+- StoreKit 本番化、広告 SDK、App Privacy、ATT の責任範囲を明確にする
+- mock Premium を本番扱いしない前提を固定する
+
+### 成果物
+
+```
+docs/app-store-preparation-phase-18.md
+docs/app-store-submission-checklist.md
+docs/app-store-metadata-draft.md
+docs/privacy-and-tracking-notes.md
+docs/storekit-production-plan.md
+docs/ios-wrapper-plan.md
+docs/app-review-risk-notes.md
+```
+
+### 完了条件
+
+- App Store申請準備docsが作成されている
+- StoreKit本番化計画がある
+- 広告SDK / App Privacy / ATT の注意が整理されている
+- Metadata草案とスクリーンショット方針がある
+- 審査リスクが整理されている
+- mock Premium を本番扱いしていない
+
+### Cloudflareデプロイ
+
+**しない**
+
+---
+
 ## 将来 Phase 候補
 
 | フェーズ | 内容 |
 |----------|------|
-| Phase 9 | 集中モード（UI最小化） |
-| Phase 10 | iCloud / Supabase同期 |
-| Phase 11 | CapacitorでiOS化 |
-| Phase 12 | App Store本番実装最終化 |
+| Phase 19 | iOSラッパー / Capacitor導入 |
+| Phase 20 | StoreKit / 広告SDK 本番実装 |
+| Phase 21 | TestFlight / App Store Connect 最終提出準備 |
 
 ---
 
