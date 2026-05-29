@@ -7,7 +7,7 @@ import "./index.css";
 const root = document.getElementById("root");
 
 if (!root) {
-  throw new Error("Root element #root not found");
+  throw new Error('Root element #root not found in index.html. Ensure the HTML template includes <div id="root"></div>.');
 }
 
 ReactDOM.createRoot(root).render(

@@ -16,7 +16,7 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("Unexpected app error", error, info);
+    console.error("React error boundary caught unhandled error", error, info);
   }
 
   render() {
@@ -28,16 +28,18 @@ export class AppErrorBoundary extends Component<Props, State> {
             role="alert"
             aria-live="assertive"
           >
-            <h1 className="font-mincho text-[22px] leading-snug text-sumi">問題が発生しました</h1>
+            <h1 className="font-mincho text-[22px] leading-snug text-sumi">問題が発生しました / Something went wrong</h1>
             <p className="mt-gr-3 text-[14px] leading-ample text-ink-muted">
               予期しないエラーが発生しました。再読み込みして、もう一度お試しください。
+              <br />
+              An unexpected error occurred. Please reload and try again.
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="mt-gr-5 rounded-full bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] text-washi transition-soft hover:bg-sumi/92"
             >
-              再読み込み
+              再読み込み / Reload
             </button>
           </div>
         </div>
