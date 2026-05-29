@@ -87,6 +87,7 @@ export default function App() {
   }, []);
 
   const createNote = useCallback(() => {
+    saveGuardRef.current = false; // 明示的な操作: 保存ガードを解除する
     const iso = nowIso();
     const note: Note = {
       id: createId(),
@@ -103,6 +104,7 @@ export default function App() {
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
+      saveGuardRef.current = false; // 明示的な編集: 保存ガードを解除する
       setNotes((prev) =>
         prev.map((note) =>
           note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
@@ -133,8 +135,7 @@ export default function App() {
     if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
     setLastDeleted((deleted) => {
       if (!deleted) return null;
-      const { deletedAt, ...note } = deleted;
-      void deletedAt; // deletedAt は Undo 後は不要
+      const { deletedAt: _, ...note } = deleted;
       setNotes((prev) => [note, ...prev]);
       return null;
     });

@@ -50,8 +50,6 @@ export const copy = {
   savingEn: "Saving",
   saveError: "保存できませんでした",
   saveErrorEn: "Could not save",
-  saveErrorQuota: "保存できません（容量超過）",
-  saveErrorQuotaEn: "Storage full",
 
   // お気に入り
   favoriteOn: "大切な余韻として残す",

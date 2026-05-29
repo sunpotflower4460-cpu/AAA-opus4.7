@@ -27,8 +27,8 @@ function isNote(value: unknown): value is Note {
 
 function isQuotaError(e: unknown): boolean {
   if (!(e instanceof DOMException)) return false;
-  // QuotaExceededError は code 22 または name "QuotaExceededError"
-  return e.code === 22 || e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED";
+  // DOMException.code は非推奨のため name で判定する
+  return e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED";
 }
 
 /**
