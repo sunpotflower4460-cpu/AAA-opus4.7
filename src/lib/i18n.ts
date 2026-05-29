@@ -48,6 +48,10 @@ export const copy = {
   savedEn: "Saved",
   saving: "保存中",
   savingEn: "Saving",
+  saveError: "保存できませんでした",
+  saveErrorEn: "Could not save",
+  saveErrorQuota: "保存できません（容量超過）",
+  saveErrorQuotaEn: "Storage full",
 
   // お気に入り
   favoriteOn: "大切な余韻として残す",
@@ -68,6 +72,10 @@ export const copy = {
   cancelEn: "Keep it",
   confirmDelete: "手放す（削除）",
   confirmDeleteEn: "Release (delete)",
+  undoDelete: "元に戻す",
+  undoDeleteEn: "Undo",
+  undoDeleteMessage: "余韻を手放しました",
+  undoDeleteMessageEn: "Trace released",
 
   // 検索結果
   noSearchResult: "その言葉は、まだ見つかっていません。",
