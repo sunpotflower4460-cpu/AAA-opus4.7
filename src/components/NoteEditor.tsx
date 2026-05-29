@@ -9,11 +9,13 @@ type Props = {
   onChange: (patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => void;
   onBack: () => void;
   onDelete: () => void;
+  /** 最後の自動保存が失敗した場合に true。保存失敗をUIに反映する。 */
+  saveError?: boolean;
 };
 
-type SaveState = "idle" | "saving" | "saved";
+type SaveState = "idle" | "saving" | "saved" | "error";
 
-export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
+export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -48,6 +50,8 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
   useEffect(() => {
     if (savingTimer.current) window.clearTimeout(savingTimer.current);
     if (savedTimer.current) window.clearTimeout(savedTimer.current);
+    // ノート切り替え時に保存ステータスをリセット（意図的な setState in effect）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveState("idle");
     setConfirmingDelete(false);
     if (!note.title && !note.body) {
@@ -201,12 +205,17 @@ export function NoteEditor({ note, onChange, onBack, onDelete }: Props) {
                 <span className="font-mincho">{copy.saving}</span>
               </span>
             )}
-            {saveState === "saved" && (
+            {saveState === "saved" && !saveError && (
               <span
                 key={`saved-${note.updatedAt}`}
                 className="zanshin-save-status zanshin-save-status--saved flex items-center gap-gr-2"
               >
                 <span className="font-mincho">{copy.saved}</span>
+              </span>
+            )}
+            {(saveState === "error" || (saveState === "saved" && saveError)) && (
+              <span className="zanshin-save-status flex items-center gap-gr-2 text-vermilion">
+                <span className="font-mincho">{copy.saveError}</span>
               </span>
             )}
           </span>
