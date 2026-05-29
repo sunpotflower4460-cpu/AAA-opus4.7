@@ -102,21 +102,36 @@ export default function App() {
 
   const handlePurchase = useCallback(async () => {
     setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
-    const next = await purchasePremiumMock();
-    setMonetization(next);
-    if (next.isPremium) setIsPremiumSheetOpen(false);
+    try {
+      const next = await purchasePremiumMock();
+      setMonetization(next);
+      if (next.isPremium) setIsPremiumSheetOpen(false);
+    } catch (error) {
+      console.error("Premium purchase failed", error);
+      setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
+    }
   }, []);
 
   const handleRestore = useCallback(async () => {
     setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
-    const next = await restorePurchasesMock();
-    setMonetization(next);
+    try {
+      const next = await restorePurchasesMock();
+      setMonetization(next);
+    } catch (error) {
+      console.error("Purchase restore failed", error);
+      setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
+    }
   }, []);
 
   const handleDisablePremium = useCallback(async () => {
     setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
-    const next = await clearPremiumMock();
-    setMonetization(next);
+    try {
+      const next = await clearPremiumMock();
+      setMonetization(next);
+    } catch (error) {
+      console.error("Premium clear failed", error);
+      setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
+    }
   }, []);
 
   const currentNote = useMemo<Note | undefined>(() => {
