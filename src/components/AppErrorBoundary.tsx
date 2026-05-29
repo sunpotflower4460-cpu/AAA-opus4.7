@@ -17,7 +17,6 @@ export class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("Unexpected app error", error, info);
-    // 将来的な外部エラー収集（Sentry など）導入時はここに連携処理を追加する。
   }
 
   render() {
