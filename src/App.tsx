@@ -106,7 +106,8 @@ export default function App() {
       const next = await purchasePremiumMock();
       setMonetization(next);
       if (next.isPremium) setIsPremiumSheetOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Premium purchase failed", error);
       setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
     }
   }, []);
@@ -116,7 +117,8 @@ export default function App() {
     try {
       const next = await restorePurchasesMock();
       setMonetization(next);
-    } catch {
+    } catch (error) {
+      console.error("Purchase restore failed", error);
       setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
     }
   }, []);
@@ -126,7 +128,8 @@ export default function App() {
     try {
       const next = await clearPremiumMock();
       setMonetization(next);
-    } catch {
+    } catch (error) {
+      console.error("Premium clear failed", error);
       setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
     }
   }, []);
