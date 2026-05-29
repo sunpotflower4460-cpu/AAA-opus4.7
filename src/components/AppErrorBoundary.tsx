@@ -37,7 +37,7 @@ export class AppErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-gr-5 rounded-full bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] text-washi transition-soft hover:bg-sumi/92"
+              className="mt-gr-5 rounded-full bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] text-washi transition-soft hover:bg-sumi/92 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sumi focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
             >
               再読み込み / Reload
             </button>
