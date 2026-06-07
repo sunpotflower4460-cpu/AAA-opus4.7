@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import "./index.css";
+import "./phase19.css";
 
 const root = document.getElementById("root");
 
