@@ -8,6 +8,7 @@ import "./phase21.css";
 import "./phase22.css";
 import "./phase23.css";
 import "./phase24.css";
+import "./phase25.css";
 
 const root = document.getElementById("root");
 
