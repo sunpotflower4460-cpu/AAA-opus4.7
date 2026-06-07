@@ -4,6 +4,7 @@ import App from "./App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import "./index.css";
 import "./phase19.css";
+import "./phase21.css";
 
 const root = document.getElementById("root");
 
