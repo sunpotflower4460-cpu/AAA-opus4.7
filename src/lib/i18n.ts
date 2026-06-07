@@ -42,6 +42,16 @@ export const copy = {
   bodyPlaceholderEn: "Place the words you wish to leave, quietly.",
   untitled: "名のない余韻",
   untitledEn: "Untitled trace",
+  editNote: "言葉を直す",
+  editNoteEn: "Edit",
+
+  // 読み返し
+  readNote: "読み返す",
+  readNoteEn: "Read",
+  exitReadMode: "書く場所へ戻る",
+  exitReadModeEn: "Back to writing",
+  emptyReadBody: "まだ、言葉は置かれていません。",
+  emptyReadBodyEn: "No words have been placed yet.",
 
   // 保存・状態
   saved: "保存済み",

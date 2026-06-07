@@ -1,0 +1,229 @@
+/*
+ * Phase 19 — 紙・文字組み・間を研ぐための上書きレイヤー。
+ * 既存の index.css を壊さず、追加CSSとして静かに重ねる。
+ */
+
+:root {
+  --paper-organic-opacity: 0.028;
+}
+
+.jp-text-discipline {
+  line-break: strict;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.jp-poetic-copy {
+  line-break: strict;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.jp-writing-surface {
+  line-break: strict;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hanging-punctuation: allow-end;
+}
+
+@supports (text-spacing-trim: trim-start) {
+  .jp-text-discipline,
+  .jp-poetic-copy,
+  .jp-writing-surface {
+    text-spacing-trim: trim-start;
+  }
+}
+
+/* 紙目を均一な線だけにせず、ごく低周波の繊維ゆらぎを重ねる。 */
+body::after {
+  opacity: 0.075;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='420'><filter id='organic-paper'><feTurbulence type='fractalNoise' baseFrequency='0.016' numOctaves='2' seed='19' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.30 0 0 0 0 0.23 0 0 0 0 0.16 0 0 0 0.09 0'/></filter><rect width='100%25' height='100%25' filter='url(%23organic-paper)' opacity='0.34'/></svg>"),
+    repeating-linear-gradient(
+      0deg,
+      var(--paper-fiber) 0px,
+      var(--paper-fiber) 1px,
+      transparent 1px,
+      transparent 5px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(31, 27, 24, 0.014) 0px,
+      rgba(31, 27, 24, 0.014) 1px,
+      transparent 1px,
+      transparent 7px
+    );
+  background-size: 420px 420px, auto, auto;
+  background-repeat: repeat, repeat, repeat;
+}
+
+/* 左上の月光を主光源に寄せる。副光源は足しすぎない。 */
+body::before {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 255, 255, 0.24), transparent 44%),
+    linear-gradient(180deg, transparent 0%, rgba(115, 88, 61, 0.032) 100%);
+  opacity: 0.48;
+}
+
+/* 手漉きの不均一さは、気づかれない程度だけ。 */
+.editor-paper {
+  border-radius: 29px 31px 28px 33px;
+}
+
+.paper-card {
+  border-radius: 13px 12px 15px 13px;
+}
+
+.zanshin-paper-slip {
+  border-radius: 21px 19px 22px 20px;
+}
+
+.note-title-input,
+.writing-textarea,
+.zanshin-main-copy,
+.poetic-lines,
+.paper-card,
+.editor-paper {
+  line-break: strict;
+  word-break: normal;
+}
+
+.writing-textarea {
+  overflow-wrap: break-word;
+  hanging-punctuation: allow-end;
+}
+
+/* 読み返し専用モード — 書く場所ではなく、残った言葉に会いに行く場所。 */
+.read-mode-shell {
+  min-height: 100%;
+}
+
+.read-mode-stage {
+  min-height: 0;
+}
+
+.read-mode-paper {
+  display: flex;
+  min-height: 56svh;
+  max-height: 70svh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  line-break: strict;
+  font-family: var(--font-writing);
+  line-height: 2.1;
+  letter-spacing: 0.08em;
+  scrollbar-width: thin;
+}
+
+.read-mode-paper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.read-mode-date {
+  writing-mode: horizontal-tb;
+  align-self: flex-start;
+  margin-inline-start: 13px;
+  margin-block-end: 21px;
+  opacity: 0.78;
+}
+
+.read-mode-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.9;
+  letter-spacing: 0.12em;
+  color: rgba(31, 27, 24, 0.92);
+}
+
+.read-mode-body {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 17px;
+  line-height: 2.15;
+  letter-spacing: 0.07em;
+  color: rgba(31, 27, 24, 0.86);
+}
+
+.read-mode-empty-body {
+  color: rgba(31, 27, 24, 0.42);
+}
+
+.read-mode-divider {
+  width: 1px;
+  min-height: 34px;
+  margin-inline: 21px;
+  background: linear-gradient(to bottom, transparent, rgba(201, 166, 70, 0.2), transparent);
+}
+
+/* 保存後の円相。見せるためでなく、墨が紙に沈む時間を置くための微細な余韻。 */
+.save-enso-afterglow {
+  position: absolute;
+  right: 21px;
+  bottom: 21px;
+  width: 55px;
+  height: 55px;
+  opacity: 0;
+  pointer-events: none;
+  color: rgba(201, 166, 70, 0.72);
+  z-index: 0;
+}
+
+.save-enso-afterglow[data-active="true"] {
+  animation: ensoAfterglow 2400ms ease-out both;
+}
+
+.save-enso-afterglow circle {
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+}
+
+.save-enso-afterglow[data-active="true"] circle {
+  animation: ensoStroke 1500ms ease-out both;
+}
+
+@keyframes ensoStroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ensoAfterglow {
+  0% { opacity: 0; transform: scale(0.98); }
+  18% { opacity: 0.15; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.03); }
+}
+
+/* 空状態は説明ではなく、余白そのものにする。 */
+.zanshin-empty-state {
+  min-height: 48svh;
+  justify-content: center;
+}
+
+.zanshin-empty-state .zanshin-mark {
+  opacity: 0.72;
+}
+
+@media (max-width: 374px) {
+  .read-mode-paper {
+    min-height: 52svh;
+    max-height: 68svh;
+  }
+
+  .read-mode-title {
+    font-size: 20px;
+  }
+
+  .read-mode-body {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .save-enso-afterglow,
+  .save-enso-afterglow circle {
+    animation: none !important;
+  }
+}
