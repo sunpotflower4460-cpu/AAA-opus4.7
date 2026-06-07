@@ -16,9 +16,10 @@ import { copy } from "./lib/i18n";
 import { AppShell } from "./components/AppShell";
 import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
+import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
 
-type View = { kind: "list" } | { kind: "editor"; id: string };
+type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; id: string };
 
 /** 削除後のUndoキュー。deletedAt で管理し、将来のゴミ箱機能へ拡張しやすくする。 */
 type DeletedNote = Note & { deletedAt: string };
@@ -177,12 +178,12 @@ export default function App() {
   }, []);
 
   const currentNote = useMemo<Note | undefined>(() => {
-    if (view.kind !== "editor") return undefined;
+    if (view.kind === "list") return undefined;
     return notes.find((note) => note.id === view.id);
   }, [view, notes]);
 
   useEffect(() => {
-    if (view.kind === "editor" && !currentNote) {
+    if (view.kind !== "list" && !currentNote) {
       // 開いていたノートが削除された場合に一覧へ戻す（意図的な setState in effect）
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setView({ kind: "list" });
@@ -199,7 +200,7 @@ export default function App() {
           aria-live="assertive"
           className="fixed inset-x-gr-4 top-gr-3 z-30 flex items-center justify-between gap-gr-3 rounded-[13px] border border-vermilion/30 bg-paper px-gr-4 py-gr-3 text-[12px] leading-ample text-vermilion shadow-paper-hover animate-fadeIn"
         >
-          <span className="font-mincho">
+          <span className="font-mincho jp-text-discipline">
             データの読み込みに問題がありました。メモが復元できない可能性があります。
           </span>
           <button
@@ -219,7 +220,7 @@ export default function App() {
           aria-live="polite"
           className="fixed inset-x-gr-4 bottom-[max(env(safe-area-inset-bottom),89px)] z-30 flex items-center justify-between gap-gr-3 rounded-[13px] border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-3 text-[13px] shadow-paper-hover animate-softUp"
         >
-          <span className="font-mincho text-sumi/88">{copy.undoDeleteMessage}</span>
+          <span className="font-mincho text-sumi/88 jp-text-discipline">{copy.undoDeleteMessage}</span>
           <button
             type="button"
             onClick={undoDelete}
@@ -251,11 +252,17 @@ export default function App() {
             />
           )}
         </>
+      ) : view.kind === "read" ? (
+        <ReadMode
+          note={currentNote}
+          onBack={() => setView({ kind: "editor", id: currentNote.id })}
+        />
       ) : (
         <NoteEditor
           note={currentNote}
           onChange={(patch) => updateNote(currentNote.id, patch)}
           onBack={() => setView({ kind: "list" })}
+          onRead={() => setView({ kind: "read", id: currentNote.id })}
           onDelete={() => deleteNote(currentNote.id)}
           saveError={saveError}
         />
