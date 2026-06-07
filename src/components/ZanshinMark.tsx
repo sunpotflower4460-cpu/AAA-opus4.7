@@ -22,7 +22,7 @@ export function ZanshinMark({
       role="img"
       aria-label="残心"
       className={[
-        "block",
+        "zanshin-logo-mark block",
         breathing ? "animate-breath" : "",
         className ?? "",
       ].join(" ")}
@@ -39,7 +39,9 @@ export function ZanshinMark({
         transform="rotate(-22 32 32)"
         opacity="0.85"
       />
-      <circle cx="48" cy="18" r="2.2" fill="#C9A646" />
+      <g className="zanshin-logo-dot-orbit">
+        <circle className="zanshin-logo-dot" cx="32" cy="10" r="2.2" fill="#C9A646" />
+      </g>
     </svg>
   );
 }
