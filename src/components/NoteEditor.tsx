@@ -3,6 +3,7 @@ import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
 import { useSaveTrace } from "../hooks/useSaveTrace";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
+import { SaveAfterglow } from "./SaveAfterglow";
 
 type Props = {
   note: Note;
@@ -165,6 +166,8 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
       {/* エディタ本体 — 一枚の和紙に向かう場所 */}
       <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
+          <SaveAfterglow active={saveState === "saved" && !saveError} token={note.updatedAt} />
+
           <div className="mb-gr-5 self-start">
             <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
           </div>
@@ -176,7 +179,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
             placeholder={copy.titlePlaceholder}
             aria-label={copy.titlePlaceholder}
             maxLength={200}
-            className="note-title-input"
+            className="note-title-input jp-writing-surface"
           />
 
           {/* タイトルと本文の間 — 短い金の余韻 */}
@@ -191,7 +194,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
             onChange={handleBody}
             placeholder={copy.bodyPlaceholder}
             aria-label={copy.bodyPlaceholder}
-            className="writing-textarea mt-gr-5 flex-1"
+            className="writing-textarea jp-writing-surface mt-gr-5 flex-1"
             style={{ minHeight: "42dvh" }}
           />
         </div>
@@ -261,11 +264,11 @@ function DeleteConfirm({
       >
         <h2
           id="zanshin-delete-title"
-          className="font-mincho text-[18px] tracking-mincho text-sumi"
+          className="font-mincho text-[18px] tracking-mincho text-sumi jp-text-discipline"
         >
           {copy.deleteConfirmTitle}
         </h2>
-        <p className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted">
+        <p className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted jp-text-discipline">
           {copy.deleteConfirmBody}
         </p>
         <div className="mt-gr-5 flex items-center justify-end gap-gr-3">
