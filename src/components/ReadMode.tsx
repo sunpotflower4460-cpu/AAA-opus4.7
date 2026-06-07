@@ -18,13 +18,13 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
 
   return (
     <div className="read-mode-shell mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
-      <header className="flex items-center justify-between gap-gr-4">
+      <header className="zanshin-screen-bar flex items-center justify-between gap-gr-4">
         <button
           type="button"
           onClick={onBack}
           aria-label={copy.back}
           className="
-            -ml-gr-2 flex items-center gap-gr-2 rounded-full
+            zanshin-nav-button -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
             transition-soft hover:text-sumi hover:bg-paper/60
           "
@@ -52,7 +52,7 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
           onClick={onEdit}
           aria-label={copy.editNote}
           className="
-            rounded-full border border-[color:var(--color-line)]
+            zanshin-secondary-button rounded-full border border-[color:var(--color-line)]
             bg-paper/62 px-gr-4 py-gr-2 font-mincho text-[13px]
             tracking-mincho text-ink-muted shadow-paper-soft transition-soft
             hover:bg-paper hover:text-sumi
@@ -62,7 +62,10 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
         </button>
       </header>
 
-      <main className="read-mode-stage flex min-h-0 flex-1 flex-col pt-gr-4 pb-gr-5">
+      <main className="read-mode-stage flex min-h-0 flex-1 flex-col pt-gr-3 pb-gr-5">
+        <p className="read-mode-hint mb-gr-3 self-end font-mincho text-[11px] tracking-[0.16em] text-ink-muted/54">
+          {copy.readModeHint}
+        </p>
         <article className="read-mode-paper editor-paper px-gr-5 py-gr-6 jp-text-discipline" aria-label={copy.readNote}>
           <div className="read-mode-date">
             <ZanshinDateStamp isoString={note.createdAt} />
