@@ -39,6 +39,11 @@ function matches(note: Note, q: string): boolean {
   );
 }
 
+function countLabel(count: number, isSearching: boolean): string {
+  if (count === 0) return copy.notesCountEmpty;
+  return isSearching ? `${count}件 見つかりました` : `${count}つの${copy.notesCount}`;
+}
+
 export function NotesList({
   notes,
   monetization,
@@ -63,7 +68,7 @@ export function NotesList({
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
       <header className="pt-gr-3">
         <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-3 text-center">
-          <div className="flex flex-col items-center gap-gr-2">
+          <div className="zanshin-app-title-block flex flex-col items-center gap-gr-2">
             <ZanshinMark size={30} className="text-sumi/82" />
             <h1 className="font-mincho text-[24px] leading-none tracking-[0.18em] text-sumi">
               {copy.appName}
@@ -78,6 +83,14 @@ export function NotesList({
 
       <div className="mx-auto w-full max-w-[430px] pt-gr-2">
         <SearchBar value={query} onChange={setQuery} />
+        <div className="zanshin-list-status mt-gr-3 flex items-center justify-between gap-gr-3 px-gr-1">
+          <p className="font-mincho text-[12px] tracking-[0.12em] text-ink-muted/72 jp-text-discipline">
+            {countLabel(visible.length, isSearching)}
+          </p>
+          <p className="text-[10px] tracking-[0.14em] text-ink-muted/48">
+            {copy.localOnly}
+          </p>
+        </div>
       </div>
 
       <section
@@ -130,8 +143,9 @@ export function NotesList({
         aria-label={copy.newNote}
         title={copy.newNote}
         className="
+          zanshin-compose-button
           fixed bottom-[max(env(safe-area-inset-bottom),21px)] right-gr-4
-          z-10 flex h-[55px] w-[55px] items-center justify-center
+          z-10 flex h-[55px] min-w-[55px] items-center justify-center gap-gr-2
           rounded-full text-washi
           transition-soft
           hover:-translate-y-[1px]
@@ -156,6 +170,9 @@ export function NotesList({
             strokeLinecap="round"
           />
         </svg>
+        <span className="zanshin-compose-label font-mincho text-[13px] tracking-mincho">
+          {copy.newNote}
+        </span>
       </button>
     </div>
   );

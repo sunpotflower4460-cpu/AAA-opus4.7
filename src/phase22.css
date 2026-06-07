@@ -1,0 +1,192 @@
+/*
+ * Phase 22 — Professional UX Polish Layer
+ *
+ * Phase 21の和紙感を保ちながら、プロダクトとしての所作を整える。
+ * 見た目の装飾ではなく、操作の迷い・タップ感・階層・アクセシビリティを磨く。
+ */
+
+:root {
+  --zanshin-focus: rgba(36, 59, 83, 0.26);
+  --zanshin-control-bg: rgba(255, 252, 244, 0.68);
+  --zanshin-control-bg-strong: rgba(255, 252, 244, 0.86);
+  --zanshin-control-border: rgba(71, 52, 31, 0.095);
+}
+
+button,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--zanshin-focus);
+  outline-offset: 3px;
+}
+
+.zanshin-screen-bar {
+  min-height: 48px;
+}
+
+.zanshin-nav-button,
+.zanshin-secondary-button,
+.zanshin-clear-button {
+  min-height: 44px;
+}
+
+.zanshin-secondary-button {
+  backdrop-filter: blur(8px);
+  box-shadow:
+    0 5px 14px rgba(31, 27, 24, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.zanshin-search-bar {
+  position: relative;
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 13px;
+  border-radius: 9999px;
+  padding: 0 13px 0 18px;
+  backdrop-filter: blur(10px);
+}
+
+.zanshin-search-bar:focus-within {
+  border-color: rgba(36, 59, 83, 0.24);
+  box-shadow:
+    0 8px 22px rgba(31, 27, 24, 0.052),
+    0 0 0 3px rgba(36, 59, 83, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.56);
+}
+
+.zanshin-clear-button {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: rgba(31, 27, 24, 0.45);
+  transition:
+    color 220ms ease,
+    background-color 220ms ease,
+    transform 220ms ease;
+}
+
+.zanshin-clear-button:hover {
+  color: rgba(31, 27, 24, 0.78);
+  background-color: rgba(255, 252, 244, 0.72);
+}
+
+.zanshin-clear-button:active {
+  transform: scale(0.94);
+}
+
+.zanshin-app-title-block {
+  position: relative;
+}
+
+.zanshin-app-title-block::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  width: 34px;
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(201, 166, 70, 0.3), transparent);
+}
+
+.zanshin-list-status {
+  min-height: 20px;
+}
+
+.zanshin-note-card {
+  overflow: hidden;
+}
+
+.zanshin-note-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.26), transparent 36%),
+    radial-gradient(circle at 88% 20%, rgba(201, 166, 70, 0.055), transparent 38%);
+  transition: opacity 260ms ease;
+}
+
+.zanshin-note-card:hover::before,
+.zanshin-note-card:focus-visible::before {
+  opacity: 1;
+}
+
+.zanshin-note-card:active {
+  box-shadow:
+    0 4px 14px rgba(31, 27, 24, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.read-mode-hint {
+  position: relative;
+  padding-inline-end: 21px;
+}
+
+.read-mode-hint::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 13px;
+  height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, rgba(201, 166, 70, 0.36), transparent);
+}
+
+.zanshin-compose-button {
+  padding-inline: 0;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.zanshin-compose-label {
+  display: none;
+  white-space: nowrap;
+}
+
+@media (min-width: 430px) {
+  .zanshin-compose-button {
+    right: max(calc((100vw - 430px) / 2), 21px);
+    padding-inline: 18px 20px;
+  }
+
+  .zanshin-compose-label {
+    display: inline;
+  }
+}
+
+@media (max-width: 374px) {
+  .zanshin-list-status {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .zanshin-search-bar {
+    min-height: 46px;
+    padding-left: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zanshin-note-card::before,
+  .zanshin-clear-button,
+  .zanshin-search-bar {
+    transition: none !important;
+  }
+}

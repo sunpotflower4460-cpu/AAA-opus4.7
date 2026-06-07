@@ -18,8 +18,14 @@ export const copy = {
   // 一覧
   searchPlaceholder: "残した言葉を探す",
   searchPlaceholderEn: "Find the words you left behind",
+  clearSearch: "検索を消す",
+  clearSearchEn: "Clear search",
   newNote: "言葉を置く",
   newNoteEn: "Place new words",
+  notesCount: "余韻",
+  notesCountEmpty: "まだ余韻はありません",
+  localOnly: "端末内に保存",
+  openReadMode: "読み返す",
   favorites: "大切な余韻",
   favoriteBadge: "金のしるし",
   lastRemains: "最後の余韻",
@@ -48,6 +54,7 @@ export const copy = {
   // 読み返し
   readNote: "読み返す",
   readNoteEn: "Read",
+  readModeHint: "横へ静かに読み進める",
   exitReadMode: "書く場所へ戻る",
   exitReadModeEn: "Back to writing",
   emptyReadBody: "まだ、言葉は置かれていません。",

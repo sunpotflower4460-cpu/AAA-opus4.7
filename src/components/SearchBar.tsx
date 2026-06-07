@@ -6,14 +6,10 @@ type Props = {
 };
 
 export function SearchBar({ value, onChange }: Props) {
+  const hasValue = value.trim().length > 0;
+
   return (
-    <label
-      className="
-        flex items-center gap-gr-3 rounded-full paper-surface
-        px-gr-4 py-gr-3
-        transition-soft
-      "
-    >
+    <label className="zanshin-search-bar paper-surface transition-soft">
       <svg
         width="17"
         height="17"
@@ -45,8 +41,28 @@ export function SearchBar({ value, onChange }: Props) {
         onChange={(e) => onChange(e.target.value)}
         placeholder={copy.searchPlaceholder}
         aria-label={copy.searchPlaceholder}
-        className="text-[15px] text-sumi placeholder:text-ink-muted/68"
+        className="min-w-0 flex-1 bg-transparent text-[15px] text-sumi outline-none placeholder:text-ink-muted/68 jp-text-discipline"
       />
+      {hasValue && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            onChange("");
+          }}
+          aria-label={copy.clearSearch}
+          className="zanshin-clear-button"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M7 7l10 10M17 7L7 17"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
     </label>
   );
 }
