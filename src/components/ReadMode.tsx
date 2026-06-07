@@ -5,13 +5,14 @@ import { ZanshinDateStamp } from "./ZanshinDateStamp";
 type Props = {
   note: Note;
   onBack: () => void;
+  onEdit: () => void;
 };
 
 /**
  * 読み返し専用モード。
  * 編集は横書きの実用、読み返しは縦書きの余韻として分ける。
  */
-export function ReadMode({ note, onBack }: Props) {
+export function ReadMode({ note, onBack, onEdit }: Props) {
   const title = note.title.trim() || copy.untitled;
   const body = note.body.trim();
 
@@ -21,7 +22,7 @@ export function ReadMode({ note, onBack }: Props) {
         <button
           type="button"
           onClick={onBack}
-          aria-label={copy.exitReadMode}
+          aria-label={copy.back}
           className="
             -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
@@ -43,7 +44,21 @@ export function ReadMode({ note, onBack }: Props) {
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-mincho tracking-mincho">{copy.exitReadMode}</span>
+          <span className="font-mincho tracking-mincho">{copy.back}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={copy.editNote}
+          className="
+            rounded-full border border-[color:var(--color-line)]
+            bg-paper/62 px-gr-4 py-gr-2 font-mincho text-[13px]
+            tracking-mincho text-ink-muted shadow-paper-soft transition-soft
+            hover:bg-paper hover:text-sumi
+          "
+        >
+          {copy.editNote}
         </button>
       </header>
 
