@@ -1,0 +1,101 @@
+/*
+ * Phase 25 — UI Texture Fixes
+ *
+ * 1. カード/検索バー/入力面の虹色ムラを無彩色〜茶系に抑える
+ * 2. 検索バー右端のテクスチャ見切れを防ぐ
+ * 3. 円相ロゴの金点を非常にゆっくり円周上で回す
+ */
+
+.paper-card,
+.editor-paper,
+.paper-surface,
+.zanshin-note-card,
+.zanshin-search-bar,
+.read-mode-paper,
+.zanshin-paper-slip {
+  position: relative;
+  overflow: hidden;
+}
+
+.paper-card::before,
+.editor-paper::before,
+.paper-surface::before,
+.zanshin-note-card::before,
+.zanshin-search-bar::before,
+.read-mode-paper::before,
+.zanshin-paper-slip::before,
+.paper-card::after,
+.editor-paper::after,
+.paper-surface::after,
+.zanshin-note-card::after,
+.zanshin-search-bar::after,
+.read-mode-paper::after,
+.zanshin-paper-slip::after {
+  border-radius: inherit;
+  mix-blend-mode: multiply;
+  filter: saturate(0) grayscale(1);
+}
+
+/*
+ * 最終テクスチャ保険。
+ * feTurbulence は環境によって色ムラに見えるため、疑似要素で無彩色ノイズを薄く重ねる。
+ */
+.paper-card::before,
+.editor-paper::before,
+.paper-surface::before,
+.zanshin-note-card::before,
+.zanshin-search-bar::before,
+.read-mode-paper::before,
+.zanshin-paper-slip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='fc'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.016' numOctaves='2' seed='25' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23fc)'/%3E%3C/svg%3E");
+  background-size: 300px 300px;
+}
+
+/* 背景側にも虹色化の保険をかける。 */
+body::after {
+  filter: saturate(0) grayscale(1);
+}
+
+.zanshin-search-bar {
+  overflow: hidden;
+}
+
+.zanshin-search-bar::before,
+.zanshin-search-bar::after {
+  border-radius: inherit;
+  inset: 0;
+}
+
+.zanshin-logo-mark {
+  overflow: visible;
+}
+
+.zanshin-logo-dot-orbit {
+  transform-box: fill-box;
+  transform-origin: 32px 32px;
+  animation: zanshinLogoOrbit 16s linear infinite;
+}
+
+.zanshin-logo-dot {
+  filter: none;
+}
+
+@keyframes zanshinLogoOrbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zanshin-logo-dot-orbit {
+    animation: none !important;
+  }
+}
