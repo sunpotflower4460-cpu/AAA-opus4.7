@@ -26,10 +26,10 @@ export function NoteCard({ note, onOpen }: Props) {
     <button
       type="button"
       onClick={() => onOpen(note.id)}
-      aria-label={`${title}`}
+      aria-label={`${title}、${copy.openReadMode}`}
       className="
         group relative block w-full text-left
-        rounded-[13px] paper-card
+        rounded-[13px] paper-card zanshin-note-card
         pl-gr-5 pr-gr-5 py-gr-5
         transition-soft
         hover:-translate-y-[1px]
@@ -68,6 +68,11 @@ export function NoteCard({ note, onOpen }: Props) {
               </p>
             </div>
           )}
+
+          <div className="mt-gr-4 flex items-center gap-gr-2 text-[11px] tracking-[0.12em] text-ink-muted/54">
+            <span className="h-px w-gr-4 bg-gradient-to-r from-gold/28 to-transparent" aria-hidden="true" />
+            <span className="font-mincho">{copy.openReadMode}</span>
+          </div>
         </div>
 
         {note.isFavorite && (
