@@ -15,6 +15,8 @@
 .zanshin-paper-slip {
   position: relative;
   overflow: hidden;
+  background-blend-mode: multiply, multiply, normal;
+  filter: saturate(0.82);
 }
 
 .paper-card::before,
@@ -51,8 +53,8 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='fc'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.016' numOctaves='2' seed='25' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23fc)'/%3E%3C/svg%3E");
+  opacity: 0.032;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='fc'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.016' numOctaves='2' seed='25' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23fc)'/%3E%3C/svg%3E");
   background-size: 300px 300px;
 }
 
@@ -63,6 +65,7 @@ body::after {
 
 .zanshin-search-bar {
   overflow: hidden;
+  filter: saturate(0.78);
 }
 
 .zanshin-search-bar::before,
@@ -76,7 +79,7 @@ body::after {
 }
 
 .zanshin-logo-dot-orbit {
-  transform-box: fill-box;
+  transform-box: view-box;
   transform-origin: 32px 32px;
   animation: zanshinLogoOrbit 16s linear infinite;
 }
