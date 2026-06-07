@@ -10,7 +10,6 @@ type Props = {
   onClose: () => void;
   onPurchase: () => void | Promise<void>;
   onRestore: () => void | Promise<void>;
-  onDisableMock?: () => void | Promise<void>;
 };
 
 const includedItems = [
@@ -26,7 +25,6 @@ export function PremiumSheet({
   onClose,
   onPurchase,
   onRestore,
-  onDisableMock,
 }: Props) {
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -93,12 +91,6 @@ export function PremiumSheet({
             </ul>
             <div className="mt-gr-4 border-t border-[color:var(--color-line)] pt-gr-3 text-[12px] text-ink-muted/85">
               <p>{product?.priceLabel ?? copy.premiumPriceNote}</p>
-              <p className="mt-gr-2">{copy.premiumMockNote}</p>
-              {product && (
-                <p className="mt-gr-2 text-[11px] tracking-[0.14em] text-ink-muted/72">
-                  Product ID: {product.id}
-                </p>
-              )}
             </div>
           </div>
 
@@ -127,7 +119,7 @@ export function PremiumSheet({
                 disabled={isBusy}
                 className="rounded-full bg-sumi px-gr-5 py-gr-3 font-mincho text-[15px] tracking-mincho text-washi shadow-paper-soft transition-soft hover:bg-indigo disabled:cursor-default disabled:opacity-60"
               >
-                {isBusy ? copy.premiumLoading : copy.purchaseMock}
+                {isBusy ? copy.premiumLoading : copy.premiumCta}
               </button>
             )}
 
@@ -144,18 +136,6 @@ export function PremiumSheet({
             >
               {copy.later}
             </button>
-
-            {monetization.isPremium && onDisableMock && (
-              <button
-                type="button"
-                onClick={() => {
-                  void onDisableMock();
-                }}
-                className="self-center text-[11px] tracking-[0.16em] text-ink-muted/70 transition-soft hover:text-sumi"
-              >
-                {copy.mockDisablePremium}
-              </button>
-            )}
           </div>
         </div>
       </div>

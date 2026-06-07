@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Note } from "../types/note";
 import type { MonetizationState } from "../types/monetization";
 import { copy } from "../lib/i18n";
+import { ADS_ENABLED, PREMIUM_ENABLED } from "../lib/featureFlags";
 import { NoteCard } from "./NoteCard";
 import { SearchBar } from "./SearchBar";
 import { EmptyState } from "./EmptyState";
@@ -54,9 +55,9 @@ export function NotesList({
 
   const isEmpty = visible.length === 0;
   const isSearching = query.trim().length > 0;
-  const showAdSlot = !isSearching && !isEmpty && visible.length > 1;
+  const showAdSlot = ADS_ENABLED && !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
-    !isSearching && (visible.length > 1 || monetization.isPremium);
+    PREMIUM_ENABLED && !isSearching && (visible.length > 1 || monetization.isPremium);
 
   return (
     <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
