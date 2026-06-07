@@ -12,3 +12,10 @@ yarn-error.log*
 # Capacitor generated native projects (run `npx cap add ios` / `npx cap add android` to regenerate)
 ios
 android
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
