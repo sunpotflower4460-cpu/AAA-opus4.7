@@ -42,6 +42,8 @@ export const copy = {
   bodyPlaceholderEn: "Place the words you wish to leave, quietly.",
   untitled: "名のない余韻",
   untitledEn: "Untitled trace",
+  editNote: "言葉を直す",
+  editNoteEn: "Edit",
 
   // 読み返し
   readNote: "読み返す",
