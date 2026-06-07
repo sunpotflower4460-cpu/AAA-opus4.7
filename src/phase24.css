@@ -1,0 +1,163 @@
+/*
+ * Phase 24 — Subtle Paper Texture Correction
+ *
+ * 色を濃くせず、格子線を消し、繊維感と雲状ムラだけで和紙らしさを出す。
+ * Phase 21/23 の強い質感を、より本物の紙に近い静かな方向へ上書きする。
+ */
+
+:root {
+  --phase24-fiber-opacity: 0.04;
+  --phase24-cloud-a: rgba(92, 70, 42, 0.04);
+  --phase24-cloud-b: rgba(92, 70, 42, 0.034);
+  --phase24-cloud-c: rgba(36, 59, 83, 0.022);
+  --phase24-edge-shadow: rgba(92, 70, 42, 0.07);
+}
+
+body {
+  background-color: var(--paper-base);
+  background-image:
+    radial-gradient(120% 100% at 18% 12%, rgba(251, 246, 234, 0.72) 0%, transparent 55%),
+    linear-gradient(135deg, rgba(251, 246, 234, 0.42) 0%, rgba(243, 234, 215, 0.16) 46%, rgba(232, 220, 196, 0.20) 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  background:
+    radial-gradient(38% 30% at 27% 33%, var(--phase24-cloud-a), transparent 70%),
+    radial-gradient(46% 52% at 73% 21%, var(--phase24-cloud-b), transparent 72%),
+    radial-gradient(55% 40% at 58% 78%, rgba(92, 70, 42, 0.038), transparent 75%),
+    radial-gradient(30% 44% at 12% 67%, var(--phase24-cloud-c), transparent 70%),
+    radial-gradient(42% 36% at 87% 64%, rgba(255, 252, 244, 0.18), transparent 74%);
+  background-size: auto;
+  background-repeat: no-repeat;
+  opacity: 1;
+}
+
+body::after {
+  opacity: var(--phase24-fiber-opacity);
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  background-size: 360px 360px;
+  background-repeat: repeat;
+}
+
+.paper-card,
+.editor-paper,
+.paper-surface,
+.zanshin-paper-slip,
+.zanshin-search-bar,
+.read-mode-paper {
+  clip-path: none;
+  border-color: rgba(251, 246, 234, 0.72);
+  box-shadow:
+    0 1px 2px rgba(92, 70, 42, 0.055),
+    0 4px 12px var(--phase24-edge-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+.paper-card,
+.zanshin-note-card {
+  border-radius: 14px 13px 15px 12px;
+}
+
+.editor-paper {
+  border-radius: 28px 26px 30px 27px;
+}
+
+.read-mode-paper {
+  border-radius: 26px 25px 28px 24px;
+}
+
+.zanshin-paper-slip {
+  border-radius: 22px 20px 24px 21px;
+}
+
+.zanshin-search-bar {
+  border-radius: 9999px;
+}
+
+ul > li .zanshin-note-card,
+.zanshin-note-card:hover,
+.zanshin-note-card:focus-visible {
+  transform: none !important;
+}
+
+.zanshin-note-card,
+.zanshin-paper-slip,
+.zanshin-search-bar,
+.editor-paper,
+.read-mode-paper {
+  background-color: var(--paper-light);
+  background-image:
+    linear-gradient(180deg, rgba(251, 246, 234, 0.28), rgba(232, 220, 196, 0.10)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='fc'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.016' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23fc)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: auto, 300px 300px;
+}
+
+.zanshin-note-card::after,
+.zanshin-paper-slip::after,
+.editor-paper::after,
+.read-mode-paper::after {
+  opacity: 0.14;
+  mix-blend-mode: multiply;
+  background:
+    radial-gradient(48% 38% at 28% 24%, rgba(92, 70, 42, 0.035), transparent 72%),
+    radial-gradient(42% 44% at 78% 72%, rgba(92, 70, 42, 0.028), transparent 74%);
+}
+
+.note-title-input,
+.writing-textarea,
+.read-mode-title,
+.read-mode-body,
+.zanshin-note-card h3,
+.zanshin-note-card p {
+  text-shadow:
+    0 0.45px 0 rgba(255, 255, 255, 0.20),
+    0 0 0.25px rgba(31, 27, 24, 0.08);
+}
+
+.note-title-input::placeholder,
+.writing-textarea::placeholder {
+  color: rgba(31, 27, 24, 0.38);
+  text-shadow: none;
+}
+
+.save-enso-afterglow {
+  color: rgba(92, 66, 32, 0.38);
+  filter: none;
+  mix-blend-mode: multiply;
+}
+
+.save-enso-afterglow circle {
+  stroke-width: 1.2;
+}
+
+.zanshin-compose-button {
+  background: #201d19 !important;
+  box-shadow:
+    0 2px 8px rgba(31, 27, 24, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
+}
+
+.zanshin-list-status {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+@media (max-width: 430px) {
+  :root {
+    --phase24-fiber-opacity: 0.038;
+  }
+
+  .paper-card,
+  .editor-paper,
+  .paper-surface,
+  .zanshin-paper-slip,
+  .zanshin-search-bar,
+  .read-mode-paper {
+    box-shadow:
+      0 1px 2px rgba(92, 70, 42, 0.05),
+      0 3px 10px rgba(92, 70, 42, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.44);
+  }
+}
