@@ -1,0 +1,226 @@
+/*
+ * Phase 23 — Analog Washi Layer
+ *
+ * スクショ確認後の強化レイヤー。
+ * いまの画面は美しいが、まだ少し「和紙風UI」に見えるため、
+ * 紙片・紙束・毛羽立ち・墨の沈み・手仕事のズレを強める。
+ */
+
+:root {
+  --analog-washi-intensity: 1;
+  --analog-fiber-dark: rgba(63, 43, 22, calc(0.072 * var(--analog-washi-intensity)));
+  --analog-fiber-mid: rgba(118, 88, 50, calc(0.052 * var(--analog-washi-intensity)));
+  --analog-fiber-light: rgba(255, 250, 235, calc(0.34 * var(--analog-washi-intensity)));
+  --analog-ink-bleed: rgba(31, 27, 24, calc(0.19 * var(--analog-washi-intensity)));
+}
+
+body {
+  background-color: #eadcc3;
+  background-image:
+    radial-gradient(circle at 11% 6%, rgba(255, 252, 239, 0.62) 0%, transparent 38%),
+    radial-gradient(circle at 78% 96%, rgba(111, 81, 42, 0.11) 0%, transparent 47%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.2), transparent 32%, rgba(119, 87, 46, 0.052) 100%),
+    repeating-linear-gradient(92deg, rgba(92, 67, 37, 0.018) 0 1px, transparent 1px 93px),
+    linear-gradient(180deg, rgba(255, 251, 240, 0.34), rgba(222, 202, 166, 0.24));
+}
+
+body::before {
+  background:
+    linear-gradient(90deg, transparent 0 20%, rgba(38, 30, 22, 0.038) 20.4% 20.8%, transparent 21.2% 50%, rgba(38, 30, 22, 0.03) 50.3% 50.7%, transparent 51.1% 80%, rgba(38, 30, 22, 0.034) 80.4% 80.8%, transparent 81.2% 100%),
+    linear-gradient(0deg, transparent 0 28%, rgba(38, 30, 22, 0.026) 28.3% 28.7%, transparent 29.1% 58%, rgba(38, 30, 22, 0.018) 58.4% 58.8%, transparent 59.2% 100%),
+    radial-gradient(circle at 16% 9%, rgba(255, 255, 255, 0.34), transparent 42%),
+    linear-gradient(180deg, transparent 0%, rgba(96, 68, 35, 0.055) 100%);
+  background-size: 312px 312px, 312px 312px, auto, auto;
+  opacity: 0.68;
+}
+
+body::after {
+  opacity: 0.18;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='760' height='760'><filter id='a'><feTurbulence type='fractalNoise' baseFrequency='0.0065' numOctaves='4' seed='2301'/><feColorMatrix values='0 0 0 0 0.34 0 0 0 0 0.25 0 0 0 0 0.13 0 0 0 0.13 0'/></filter><rect width='100%25' height='100%25' filter='url(%23a)'/></svg>"),
+    repeating-linear-gradient(98deg, transparent 0 22px, var(--analog-fiber-dark) 22px 23px, transparent 23px 154px),
+    repeating-linear-gradient(84deg, transparent 0 48px, var(--analog-fiber-mid) 48px 49px, transparent 49px 220px),
+    repeating-linear-gradient(114deg, transparent 0 72px, var(--analog-fiber-light) 72px 73px, transparent 73px 260px),
+    radial-gradient(circle at 13% 22%, rgba(65, 44, 23, 0.085) 0 0.85px, transparent 1.45px),
+    radial-gradient(circle at 64% 69%, rgba(65, 44, 23, 0.062) 0 0.75px, transparent 1.3px);
+  background-size: 760px 760px, 480px 480px, 620px 620px, 720px 720px, 63px 79px, 91px 107px;
+  mix-blend-mode: multiply;
+}
+
+.zanshin-paper-slip {
+  border-color: rgba(75, 54, 30, 0.105);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 244, 0.72), rgba(236, 222, 191, 0.46)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='160'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='0.035' numOctaves='3' seed='2302'/><feColorMatrix values='0 0 0 0 0.31 0 0 0 0 0.22 0 0 0 0 0.12 0 0 0 0.065 0'/></filter><rect width='100%25' height='100%25' filter='url(%23s)'/></svg>");
+  background-size: auto, 300px 160px;
+  box-shadow:
+    0 18px 38px rgba(45, 33, 22, 0.06),
+    0 2px 9px rgba(75, 54, 30, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    inset 0 -1px 0 rgba(75, 54, 30, 0.04);
+}
+
+ul > li:nth-child(6n + 1) .zanshin-note-card { transform: rotate(-0.18deg); }
+ul > li:nth-child(6n + 2) .zanshin-note-card { transform: rotate(0.12deg); }
+ul > li:nth-child(6n + 3) .zanshin-note-card { transform: rotate(-0.08deg); }
+ul > li:nth-child(6n + 4) .zanshin-note-card { transform: rotate(0.18deg); }
+ul > li:nth-child(6n + 5) .zanshin-note-card { transform: rotate(-0.14deg); }
+ul > li:nth-child(6n) .zanshin-note-card { transform: rotate(0.08deg); }
+
+.zanshin-note-card {
+  border-color: rgba(75, 54, 30, 0.11);
+  background:
+    linear-gradient(180deg, rgba(255, 253, 244, 0.82), rgba(235, 219, 186, 0.56)),
+    repeating-linear-gradient(97deg, transparent 0 26px, rgba(80, 58, 32, 0.035) 26px 27px, transparent 27px 118px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='340' height='220'><filter id='c'><feTurbulence type='fractalNoise' baseFrequency='0.026' numOctaves='3' seed='2303'/><feColorMatrix values='0 0 0 0 0.30 0 0 0 0 0.22 0 0 0 0 0.13 0 0 0 0.075 0'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>");
+  background-size: auto, auto, 340px 220px;
+  box-shadow:
+    0 2px 0 rgba(222, 204, 169, 0.72),
+    0 5px 0 rgba(213, 194, 158, 0.42),
+    0 20px 42px rgba(41, 31, 22, 0.075),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(75, 54, 30, 0.05);
+}
+
+.zanshin-note-card:hover,
+.zanshin-note-card:focus-visible {
+  transform: translateY(-2px) rotate(0deg) !important;
+}
+
+.zanshin-note-card::after {
+  opacity: 0.78;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.28), transparent 16%, transparent 84%, rgba(75,54,30,0.052)),
+    linear-gradient(180deg, rgba(255,255,255,0.34), transparent 12%, transparent 86%, rgba(75,54,30,0.064)),
+    repeating-linear-gradient(88deg, transparent 0 12px, rgba(255,255,255,0.08) 12px 13px, transparent 13px 64px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='180'><filter id='e'><feTurbulence type='fractalNoise' baseFrequency='0.055' numOctaves='2' seed='2304'/><feColorMatrix values='0 0 0 0 0.25 0 0 0 0 0.17 0 0 0 0 0.09 0 0 0 0.055 0'/></filter><rect width='100%25' height='100%25' filter='url(%23e)'/></svg>");
+  background-size: auto, auto, auto, 260px 180px;
+}
+
+.editor-paper,
+.read-mode-paper,
+.zanshin-note-card,
+.zanshin-paper-slip,
+.zanshin-search-bar {
+  clip-path: polygon(0.4% 1.1%, 11% 0.2%, 28% 0.8%, 43% 0.1%, 62% 0.7%, 79% 0.25%, 99.3% 1.0%, 99.8% 18%, 99.2% 37%, 99.9% 58%, 99.4% 76%, 99.7% 98.8%, 84% 99.6%, 67% 99.1%, 51% 99.8%, 33% 99.2%, 17% 99.6%, 0.6% 98.9%, 0.1% 80%, 0.7% 62%, 0.2% 46%, 0.8% 27%, 0.3% 12%);
+}
+
+.editor-paper {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 243, 0.84), rgba(233, 217, 184, 0.56)),
+    repeating-linear-gradient(96deg, transparent 0 34px, rgba(78, 56, 29, 0.038) 34px 35px, transparent 35px 142px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='620'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.014' numOctaves='4' seed='2305'/><feColorMatrix values='0 0 0 0 0.32 0 0 0 0 0.23 0 0 0 0 0.13 0 0 0 0.085 0'/></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+  background-size: auto, auto, 620px 620px;
+  box-shadow:
+    0 2px 0 rgba(221, 201, 163, 0.55),
+    0 26px 58px rgba(41, 31, 22, 0.088),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    inset 0 -1px 0 rgba(75, 54, 30, 0.055),
+    inset 12px 0 28px rgba(255, 255, 255, 0.12),
+    inset -14px 0 22px rgba(75, 54, 30, 0.032);
+}
+
+.note-title-input,
+.writing-textarea,
+.read-mode-title,
+.read-mode-body,
+.zanshin-note-card h3,
+.zanshin-note-card p {
+  text-shadow:
+    0.28px 0 rgba(31, 27, 24, 0.055),
+    -0.22px 0 rgba(31, 27, 24, 0.035),
+    0 0.7px 0 rgba(255, 255, 255, 0.24),
+    0 0 0.5px var(--analog-ink-bleed);
+}
+
+.note-title-input::placeholder,
+.writing-textarea::placeholder {
+  color: rgba(31, 27, 24, 0.35);
+  text-shadow: 0 0 0.65px rgba(31, 27, 24, 0.08);
+}
+
+.read-mode-paper {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 244, 0.80), rgba(235, 220, 190, 0.54)),
+    repeating-linear-gradient(90deg, transparent 0 44px, rgba(75,54,30,0.052) 44px 45px, transparent 45px 96px),
+    repeating-linear-gradient(104deg, transparent 0 45px, rgba(255,255,255,0.16) 45px 46px, transparent 46px 180px),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='520'><filter id='r'><feTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='4' seed='2306'/><feColorMatrix values='0 0 0 0 0.30 0 0 0 0 0.22 0 0 0 0 0.13 0 0 0 0.10 0'/></filter><rect width='100%25' height='100%25' filter='url(%23r)'/></svg>");
+  background-size: auto, auto, auto, 520px 520px;
+}
+
+.read-mode-paper::after {
+  opacity: 0.82;
+}
+
+.zanshin-search-bar {
+  background:
+    linear-gradient(180deg, rgba(255, 253, 244, 0.76), rgba(235, 220, 190, 0.48)),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='90'><filter id='q'><feTurbulence type='fractalNoise' baseFrequency='0.045' numOctaves='2' seed='2307'/><feColorMatrix values='0 0 0 0 0.27 0 0 0 0 0.19 0 0 0 0 0.10 0 0 0 0.058 0'/></filter><rect width='100%25' height='100%25' filter='url(%23q)'/></svg>");
+  background-size: auto, 260px 90px;
+  box-shadow:
+    0 2px 0 rgba(222, 204, 169, 0.48),
+    0 12px 26px rgba(41, 31, 22, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.54),
+    inset 0 -1px 0 rgba(75, 54, 30, 0.04);
+}
+
+.save-enso-afterglow {
+  color: rgba(92, 66, 32, 0.46);
+  filter: blur(0.12px);
+  mix-blend-mode: multiply;
+}
+
+.save-enso-afterglow circle {
+  stroke-width: 1.45;
+}
+
+.zanshin-compose-button {
+  background:
+    radial-gradient(circle at 38% 28%, rgba(255, 255, 255, 0.08), transparent 26%),
+    radial-gradient(circle at 66% 74%, rgba(0, 0, 0, 0.16), transparent 42%),
+    #201d19 !important;
+  box-shadow:
+    0 18px 36px rgba(31, 27, 24, 0.26),
+    0 2px 0 rgba(255, 255, 255, 0.06) inset,
+    0 -8px 18px rgba(0, 0, 0, 0.18) inset !important;
+}
+
+.zanshin-list-status {
+  border-bottom: 1px solid rgba(75, 54, 30, 0.045);
+  padding-bottom: 8px;
+}
+
+@media (max-width: 430px) {
+  :root {
+    --analog-washi-intensity: 0.92;
+  }
+
+  body::after {
+    opacity: 0.145;
+  }
+
+  .zanshin-note-card {
+    box-shadow:
+      0 1px 0 rgba(222, 204, 169, 0.62),
+      0 3px 0 rgba(213, 194, 158, 0.32),
+      0 16px 32px rgba(41, 31, 22, 0.068),
+      inset 0 1px 0 rgba(255, 255, 255, 0.56),
+      inset 0 -1px 0 rgba(75, 54, 30, 0.045);
+  }
+
+  .editor-paper,
+  .read-mode-paper,
+  .zanshin-note-card,
+  .zanshin-paper-slip,
+  .zanshin-search-bar {
+    clip-path: polygon(0.5% 0.8%, 18% 0.25%, 44% 0.6%, 70% 0.2%, 99.2% 0.9%, 99.7% 32%, 99.3% 66%, 99.6% 99.0%, 72% 99.5%, 48% 99.1%, 22% 99.6%, 0.6% 98.9%, 0.2% 66%, 0.7% 33%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ul > li .zanshin-note-card,
+  .zanshin-note-card:hover,
+  .zanshin-note-card:focus-visible {
+    transform: none !important;
+  }
+}
