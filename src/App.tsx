@@ -143,7 +143,7 @@ export default function App() {
   }, []);
 
   const openNote = useCallback((id: string) => {
-    setView({ kind: "editor", id });
+    setView({ kind: "read", id });
   }, []);
 
   const openPremiumSheet = useCallback(() => {
@@ -255,14 +255,14 @@ export default function App() {
       ) : view.kind === "read" ? (
         <ReadMode
           note={currentNote}
-          onBack={() => setView({ kind: "editor", id: currentNote.id })}
+          onBack={() => setView({ kind: "list" })}
+          onEdit={() => setView({ kind: "editor", id: currentNote.id })}
         />
       ) : (
         <NoteEditor
           note={currentNote}
           onChange={(patch) => updateNote(currentNote.id, patch)}
           onBack={() => setView({ kind: "list" })}
-          onRead={() => setView({ kind: "read", id: currentNote.id })}
           onDelete={() => deleteNote(currentNote.id)}
           saveError={saveError}
         />
