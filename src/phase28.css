@@ -1,0 +1,191 @@
+/*
+ * Phase 28 — Sepia Washi Fix
+ *
+ * 目的:
+ * - grayscaleで灰色に寄りすぎた紙ムラを、茶系の濃淡へ戻す
+ * - 地の背景の和紙繊維と雲状ムラを少し強める
+ * - 検索バー右端のテクスチャ見切れをさらに強く防ぐ
+ */
+
+:root {
+  --phase28-paper-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.013' numOctaves='2' seed='28' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --phase28-surface-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='fc'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.016' numOctaves='2' seed='32' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23fc)'/%3E%3C/svg%3E");
+  --phase28-sepia-filter: sepia(0.45) saturate(0.6) brightness(1.05);
+  --phase28-soft-brown: rgba(120, 92, 54, 0.055);
+  --phase28-soft-brown-deep: rgba(92, 70, 42, 0.045);
+}
+
+/* 地の紙: 色味は変えず、繊維と茶系の雲ムラだけを強める。 */
+body {
+  background-color: var(--paper-base) !important;
+  background-image:
+    radial-gradient(118% 92% at 17% 10%, rgba(251, 246, 234, 0.72) 0%, transparent 54%),
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.07), transparent 70%),
+    radial-gradient(70% 60% at 78% 20%, rgba(120, 92, 54, 0.055), transparent 72%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.06), transparent 75%),
+    radial-gradient(45% 60% at 12% 70%, rgba(92, 70, 42, 0.045), transparent 70%),
+    linear-gradient(135deg, rgba(251, 246, 234, 0.34) 0%, rgba(243, 234, 215, 0.10) 48%, rgba(232, 220, 196, 0.18) 100%) !important;
+  background-repeat: no-repeat !important;
+  background-size: auto !important;
+  background-attachment: fixed !important;
+}
+
+body::before {
+  background-image:
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.07), transparent 70%),
+    radial-gradient(70% 60% at 78% 20%, rgba(120, 92, 54, 0.055), transparent 72%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.06), transparent 75%),
+    radial-gradient(45% 60% at 12% 70%, rgba(92, 70, 42, 0.045), transparent 70%) !important;
+  background-repeat: no-repeat !important;
+  background-size: auto !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: multiply !important;
+}
+
+body::after {
+  opacity: 0.07 !important;
+  mix-blend-mode: multiply !important;
+  filter: sepia(0.4) saturate(0.55) brightness(1.04) !important;
+  background-image: var(--phase28-paper-noise) !important;
+  background-size: 340px 340px !important;
+  background-repeat: repeat !important;
+}
+
+/* 紙面: グレーではなく、茶系の濃淡へ。 */
+.paper-card,
+.editor-paper,
+.paper-surface,
+.zanshin-note-card,
+.zanshin-paper-slip,
+.read-mode-paper {
+  position: relative !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  filter: none !important;
+  background-color: var(--paper-light) !important;
+  background-image:
+    linear-gradient(180deg, rgba(251, 246, 234, 0.40), rgba(232, 220, 196, 0.12)),
+    var(--phase28-surface-noise) !important;
+  background-blend-mode: normal, multiply !important;
+  background-size: auto, 300px 300px !important;
+  background-repeat: no-repeat, repeat !important;
+  border-color: rgba(92, 70, 42, 0.075) !important;
+  box-shadow:
+    0 1px 2px rgba(92, 70, 42, 0.05),
+    0 4px 10px rgba(92, 70, 42, 0.058),
+    inset 0 1px 0 rgba(255, 255, 255, 0.44) !important;
+}
+
+.paper-card::before,
+.editor-paper::before,
+.paper-surface::before,
+.zanshin-note-card::before,
+.zanshin-paper-slip::before,
+.read-mode-paper::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.06 !important;
+  mix-blend-mode: multiply !important;
+  filter: var(--phase28-sepia-filter) !important;
+  background-image: var(--phase28-surface-noise) !important;
+  background-size: 300px 300px !important;
+  background-repeat: repeat !important;
+}
+
+.paper-card::after,
+.editor-paper::after,
+.paper-surface::after,
+.zanshin-note-card::after,
+.zanshin-paper-slip::after,
+.read-mode-paper::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.16 !important;
+  mix-blend-mode: multiply !important;
+  filter: none !important;
+  background:
+    radial-gradient(52% 40% at 28% 24%, rgba(120, 92, 54, 0.045), transparent 74%),
+    radial-gradient(44% 48% at 78% 72%, rgba(92, 70, 42, 0.034), transparent 76%) !important;
+}
+
+.paper-card > *,
+.editor-paper > *,
+.paper-surface > *,
+.zanshin-note-card > *,
+.zanshin-paper-slip > *,
+.read-mode-paper > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* 検索バー: 切れを完全に抑えるため、pseudoを内側に固定し、afterは止める。 */
+.zanshin-search-bar {
+  position: relative !important;
+  overflow: hidden !important;
+  isolation: isolate !important;
+  contain: paint !important;
+  clip-path: inset(0 round 9999px) !important;
+  border-radius: 9999px !important;
+  filter: none !important;
+  background-color: var(--paper-light) !important;
+  background-image:
+    linear-gradient(180deg, rgba(251, 246, 234, 0.52), rgba(232, 220, 196, 0.12)),
+    var(--phase28-surface-noise) !important;
+  background-blend-mode: normal, multiply !important;
+  background-size: auto, 300px 300px !important;
+  background-repeat: no-repeat, repeat !important;
+  box-shadow:
+    0 1px 2px rgba(92, 70, 42, 0.05),
+    0 4px 10px rgba(92, 70, 42, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.46) !important;
+}
+
+.zanshin-search-bar::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  opacity: 0.055 !important;
+  mix-blend-mode: multiply !important;
+  filter: var(--phase28-sepia-filter) !important;
+  background-image: var(--phase28-surface-noise) !important;
+  background-size: 300px 300px !important;
+  background-repeat: repeat !important;
+}
+
+.zanshin-search-bar::after {
+  content: none !important;
+  display: none !important;
+}
+
+.zanshin-search-bar > * {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+@media (max-width: 430px) {
+  body::after {
+    opacity: 0.066 !important;
+  }
+
+  .paper-card::before,
+  .editor-paper::before,
+  .paper-surface::before,
+  .zanshin-note-card::before,
+  .zanshin-paper-slip::before,
+  .read-mode-paper::before,
+  .zanshin-search-bar::before {
+    opacity: 0.052 !important;
+  }
+}
