@@ -2,9 +2,9 @@
 
 ## 目的
 
-残心 / Zanshin を App Store 初回リリースへ進める前に、Web build、Capacitor iOS、実機、TestFlight の流れを確認する。
+残心 / Zanshin を App Store 初回リリースへ進める前に、Web build、Capacitor iOS、実機、TestFlight の流れを再現可能な手順で確認する。
 
-このRunbookは、ユーザーがMac上で実行する手順として書く。
+Phase 33 以降、`ios/` は生成物ではなく **native source artifact** として Git 管理する。通常作業で `npx cap add ios` は実行しない。
 
 ---
 
@@ -13,8 +13,10 @@
 - Apple Developer Program に登録済み
 - Xcode がインストール済み
 - Apple ID で Xcode にログイン済み
-- iPhone実機で確認できる
+- CocoaPods が利用可能
+- iPhone 実機で確認できる
 - App Store Connect でアプリ登録できる
+- Node.js 22 以上
 
 ---
 
@@ -22,6 +24,8 @@
 
 初回リリースは以下で固定する。
 
+- iPhoneのみ
+- portraitのみ
 - 無料
 - 広告なし
 - Premiumなし
@@ -34,21 +38,25 @@
 
 ---
 
-## 1. ローカル準備
+## 1. クリーンなローカル準備
 
 ```bash
 git checkout main
 git pull
-npm install
+npm ci
 npm run check
 ```
 
+`npm ci` を使い、`package-lock.json` に固定された Capacitor / Web 依存をそのまま再現する。
+
 `npm run check` は以下をまとめて確認する。
 
-- TypeScript
+- TypeScript（`capacitor.config.ts` を含む）
 - ESLint
 - Vitest
 - Production build
+
+Node.js 20 以前ではなく Node.js 22 以上を使用する。
 
 ---
 
@@ -80,45 +88,41 @@ npm run preview
 - 読み返し縦書きモード
 - 削除確認
 - 削除Undo
+- 保存競合 / 復元UI
 
 ---
 
-## 3. Capacitor パッケージ確認
+## 3. Capacitor iOS 同期
 
-このリポジトリでは Capacitor 設定ファイルは存在するが、環境によっては `@capacitor/*` がローカルに入っていない可能性がある。
+Capacitor 7 の必要パッケージは repository の `package.json` / `package-lock.json` に固定済み。
 
-不足している場合のみ、以下を実行する。
-
-```bash
-npm install -D @capacitor/cli @capacitor/core @capacitor/ios
-```
-
-その後:
+通常は以下だけを実行する。
 
 ```bash
-npm run build
-npx cap sync ios
+npm run cap:sync:ios
 ```
 
-まだ iOS プロジェクトが存在しない場合:
+このスクリプトは Web build 後に `cap sync ios` を実行する。
+
+### 重要
+
+- `ios/` は Git 管理対象。削除して毎回作り直さない。
+- `ios/App/App/public`、生成config、Pods、build成果物は `ios/.gitignore` で除外する。
+- `npx cap add ios` は初期生成済みなので通常不要。
+- native project を意図せず再生成すると Xcode 側設定を失う可能性があるため行わない。
+
+同期後、意図しない native source 差分が出ていないことを確認する。
 
 ```bash
-npx cap add ios
-npx cap sync ios
+git status --short
 ```
-
-注意:
-
-- `ios/` は生成物として `.gitignore` 対象
-- 生成された `ios/` は必要に応じてローカルで管理する
-- App Store提出用のBundle IDは `capacitor.config.ts` の `appId` と整合させる
 
 ---
 
-## 4. Xcode確認
+## 4. Xcodeを開く
 
 ```bash
-npx cap open ios
+npm run cap:open:ios
 ```
 
 Xcodeで確認する項目:
@@ -128,9 +132,12 @@ Xcodeで確認する項目:
 - Version / Build Number
 - Signing Team
 - Deployment Target
-- App Icon
-- Launch Screen
-- Supported Devices
+- App Icon（残心ブランドのアイコンになっていること）
+- Launch Screen（Capacitorデフォルト画像ではないこと）
+- Supported Devices（初回は iPhone のみ）
+- Device Orientation（初回は portrait のみ）
+
+署名Teamなど開発者アカウント固有情報は、実機/TestFlightの前にXcodeで設定する。
 
 ---
 
@@ -150,18 +157,32 @@ iPhone実機で確認する。
 - [ ] お気に入り
 - [ ] 削除確認
 - [ ] 削除Undo
+- [ ] 保存失敗UI
+- [ ] 中断保存 / 復元UI
 
-### Phase 19 / 19b
+### iOS / WKWebView重点項目
 
-- [ ] 既存メモをタップすると縦書き読み返しモードに入る
-- [ ] `言葉を直す` で編集画面へ入れる
-- [ ] 縦書きの横スクロールがiOS WebViewで自然に動く
-- [ ] 長文が重くない
+初回リリースは **iPhone / portrait only**。iPad と landscape は未検証のまま配信対象へ含めない。
+
+- [ ] iPhone portrait の 375 / 390 / 430px 相当で Safe Area が崩れない
+- [ ] キーボード表示中も入力位置が見える
+- [ ] キーボード表示/非表示を繰り返してレイアウトがずれない
+- [ ] 縦書き読み返しの横スクロールが自然に動く
+- [ ] 日本語長文が重くない
 - [ ] 英数字混じりでも破綻しない
+- [ ] background → foreground 復帰後も表示内容が正しい
+- [ ] 入力直後にホームへ戻っても保存される
+- [ ] 長時間background後の復帰でも保存競合を誤処理しない
+- [ ] force terminate → 再起動後も確定済みメモが残る
+- [ ] 中断journalがある場合はユーザー選択UIが出る
+- [ ] アンインストール時はローカルデータも消えることを理解している
+
+### 見た目
+
+- [ ] App Icon が残心ブランドになっている
+- [ ] Launch Screen が残心ブランドになっている
 - [ ] 紙ノイズが汚れに見えない
 - [ ] 保存後の円相余韻が派手すぎない
-- [ ] キーボード表示時に入力欄が使える
-- [ ] Safe Area が崩れない
 
 ---
 
@@ -169,16 +190,18 @@ iPhone実機で確認する。
 
 Xcodeで以下を行う。
 
-1. Product > Archive
-2. Organizer を開く
-3. Distribute App
-4. App Store Connect
-5. Upload
-6. App Store Connect で処理完了を待つ
-7. TestFlight に追加
-8. 自分の端末でTestFlight版を確認
+1. Signing Team を確認
+2. Version / Build Number を確認
+3. Product > Archive
+4. Organizer を開く
+5. Distribute App
+6. App Store Connect
+7. Upload
+8. App Store Connect で処理完了を待つ
+9. TestFlight に追加
+10. 実機でTestFlight版を確認
 
-TestFlight確認では、Web previewと同じ項目を確認する。
+TestFlight版ではローカルXcode実行と同じ保存・復元・Safe Area・キーボード・縦書き項目を再確認する。
 
 ---
 
@@ -215,42 +238,13 @@ Notes are stored locally on the device and are not sent to an external server.
 
 ---
 
-## 9. よくある判断
+## 9. 完了条件
 
-### App内課金は入れる？
-
-初回は入れない。
-
-理由:
-
-- StoreKit未実装
-- 審査リスクを下げる
-- コア体験を先に確認する
-
-### 広告は入れる？
-
-初回は入れない。
-
-理由:
-
-- 静けさを壊しやすい
-- Privacy申告が複雑になる
-- Phase 19の体験確認を優先する
-
-### クラウド同期は入れる？
-
-初回は入れない。
-
-理由:
-
-- アカウント・バックエンド・プライバシー対応が必要になる
-- 残心の最小体験から外れる
-
----
-
-## 完了条件
-
+- [ ] `npm ci` がクリーン環境で成功
 - [ ] `npm run check` 成功
+- [ ] `npm run cap:sync:ios` 成功
+- [ ] sync後に予期しないnative source差分がない
+- [ ] Xcode archive成功
 - [ ] 実機確認完了
 - [ ] TestFlight確認完了
 - [ ] App Store Connect提出情報が揃っている
