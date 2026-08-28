@@ -24,22 +24,31 @@ export class AppErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex min-h-dvh items-center justify-center px-gr-5 text-center">
           <div
-            className="max-w-[420px] rounded-[13px] border border-[color:var(--color-line)] bg-paper px-gr-5 py-gr-6 shadow-paper-soft"
+            className="max-w-[420px] border border-[color:var(--color-line)] bg-paper px-gr-5 py-gr-6 shadow-paper-soft"
+            style={{ borderRadius: "8px 16px 9px 14px" }}
             role="alert"
             aria-live="assertive"
           >
-            <h1 className="font-mincho text-[22px] leading-snug text-sumi">問題が発生しました / Something went wrong</h1>
-            <p className="mt-gr-3 text-[14px] leading-ample text-ink-muted">
-              予期しないエラーが発生しました。再読み込みして、もう一度お試しください。
-              <br />
-              An unexpected error occurred. Please reload and try again.
+            <span
+              aria-hidden="true"
+              className="mx-auto mb-gr-4 block h-px w-gr-5 bg-gradient-to-r from-transparent via-vermilion/45 to-transparent"
+            />
+            <h1 className="font-mincho text-[22px] leading-[1.7] tracking-[0.06em] text-sumi">
+              余白を、もう一度ひらきます。
+            </h1>
+            <p className="mt-gr-3 text-[14px] leading-ample text-ink-muted jp-text-discipline">
+              予期しない問題が起きました。再読み込みすると、残心を開き直せます。
+            </p>
+            <p className="mt-gr-2 text-[11px] leading-ample tracking-[0.08em] text-ink-muted/62">
+              Something unexpected happened. Reload to open Zanshin again.
             </p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-gr-5 rounded-full bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] text-washi transition-soft hover:bg-sumi/92 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sumi focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+              className="mt-gr-5 min-h-[48px] bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] tracking-[0.08em] text-washi transition-soft hover:bg-indigo active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sumi/35 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+              style={{ borderRadius: "7px 12px 8px 10px" }}
             >
-              再読み込み / Reload
+              余白をひらき直す
             </button>
           </div>
         </div>
