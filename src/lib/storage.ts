@@ -25,6 +25,8 @@ export type SaveOptions = {
   expectedNotes?: readonly Note[];
   /** ユーザーが競合を理解した上で、この画面の内容を明示的に優先するときだけ true。 */
   force?: boolean;
+  /** 同じ画面自身の中断 journal だけを安全に更新するための、画面寿命内で安定したID。 */
+  writerId?: string;
 };
 
 export type LoadResult =
@@ -55,6 +57,7 @@ type PendingSaveJournal = {
   baseRaw: string | null;
   nextRaw: string;
   nextNotes: Note[];
+  writerId: string | null;
 };
 
 function isValidDateString(value: unknown): value is string {
@@ -203,11 +206,17 @@ function readPendingSaveJournal(): PendingSaveJournal | null {
     const next = parseNotesRaw(journal.nextRaw);
     if (next.status !== "valid") return null;
 
+    const writerId =
+      typeof journal.writerId === "string" && journal.writerId.trim().length > 0
+        ? journal.writerId
+        : null;
+
     return {
       version: 1,
       baseRaw: journal.baseRaw as string | null,
       nextRaw: journal.nextRaw,
       nextNotes: next.notes,
+      writerId,
     };
   } catch {
     // journal が読めなくても、primary / backup の通常復旧は継続する。
@@ -234,9 +243,38 @@ function repairCompletedPendingSave(journal: PendingSaveJournal): void {
   clearPendingSaveJournal();
 }
 
+function mirrorValidPrimaryForPhase32(raw: string): void {
+  try {
+    const backupRaw = window.localStorage.getItem(BACKUP_KEY);
+    if (backupRaw === raw) return;
+
+    // Phase31 までの BACKUP_KEY は「1世代前」だったため、Phase32 初回ロード時に
+    // その正常な旧版を conflict backup の空きスロットへ可能な範囲で残してから、
+    // BACKUP_KEY を「現在の正常 primary のミラー」へ移行する。
+    if (backupRaw !== null && parseNotesRaw(backupRaw).status === "valid") {
+      const existingConflictBackup = window.localStorage.getItem(CONFLICT_BACKUP_KEY);
+      if (existingConflictBackup === null) {
+        try {
+          window.localStorage.setItem(CONFLICT_BACKUP_KEY, backupRaw);
+        } catch {
+          // 移行用の旧版退避が失敗しても、primary の読み込み自体は妨げない。
+        }
+      }
+    }
+
+    try {
+      window.localStorage.setItem(BACKUP_KEY, raw);
+    } catch {
+      // 正常 primary は読めているため、ミラー更新失敗だけで読み込みエラーにはしない。
+    }
+  } catch {
+    // 補助キーへのアクセス失敗で正常 primary の読み込みを壊さない。
+  }
+}
+
 /**
  * localStorage からメモを読み込む。
- * - 正常データはそのまま返す
+ * - 正常データはそのまま返し、Phase31形式の backup は最新版ミラーへ安全に移行する
  * - save journal の base が現在 primary と一致すれば、中断された next を復元候補として返す
  * - save journal の next が現在 primary と一致すれば保存完了済みとして backup / journal を自己修復する
  * - primary だけ消失して正常な backup が残っていれば復元候補として返す
@@ -290,6 +328,9 @@ export function loadNotes(): LoadResult {
 
     const primary = parseNotesRaw(raw);
     if (primary.status === "valid") {
+      // pending が現在 primary と無関係なら、同時書き込みの可能性があるため journal 自体は触らない。
+      // backup の移行も pending が無いときだけ行い、別画面の中間状態を上書きしない。
+      if (!pendingSave) mirrorValidPrimaryForPhase32(raw);
       return { ok: true, notes: primary.notes };
     }
 
@@ -322,7 +363,8 @@ export function loadNotes(): LoadResult {
  * - 保存対象そのものを検証し、不正構造を新たに永続化しない
  * - expectedNotes が指定されている場合は、現在の primary と一致するときだけ保存する
  * - 別画面の変更を検知した場合は conflict を返し、黙って上書きしない
- * - 既存の中断 journal が別スナップショットを指す場合も競合として守る
+ * - 既存の中断 journal が別画面・別スナップショットを指す場合も競合として守る
+ * - 同じ画面自身の中断 journal は、より新しい編集へ安全に更新できる
  * - 破損 primary は force なしでは上書きせず、raw を退避して conflict とする
  * - force で別画面データを上書きする前は、最も新しい競合候補の専用退避成功を必須にする
  * - journal -> recovery backup -> primary の順に書き、途中中断を次回 loadNotes() で判定可能にする
@@ -362,8 +404,15 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
       if (!options.force) return { ok: false, reason: "conflict" };
     }
 
-    if (!options.force && activePendingSave && activePendingSave.nextRaw !== serialized) {
-      // 別の保存が journal だけ残して中断している。primary が同じでも、その候補を黙って消さない。
+    const sameWriterOwnsPending =
+      Boolean(options.writerId) && activePendingSave?.writerId === options.writerId;
+    if (
+      !options.force &&
+      activePendingSave &&
+      activePendingSave.nextRaw !== serialized &&
+      !sameWriterOwnsPending
+    ) {
+      // 別画面の保存が journal だけ残して中断している。primary が同じでも、その候補を黙って消さない。
       return { ok: false, reason: "conflict" };
     }
 
@@ -392,6 +441,7 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
       version: 1,
       baseRaw: currentRaw,
       nextRaw: serialized,
+      writerId: options.writerId ?? null,
     });
 
     try {
