@@ -81,6 +81,17 @@ The safety gate is released automatically when:
 
 The normal local snapshot is then persisted to the native layer. In the identical case this also allows a valid snapshot recovered from a lower native generation to repair/normalize the native primary without presenting a false conflict.
 
+### 7. Mid-probe local changes cannot leave the app stuck in `checking`
+
+CodeRabbit identified a race where `getNotesPrimaryHealth()` could observe a valid primary but the following `loadNotes()` could observe a different state. The old Phase 42 branch returned through `flagExternalConflict()` without leaving the native `checking` gate, which could suppress conflict actions and edits indefinitely.
+
+The reviewed fix distinguishes the second read result:
+
+- if it contains a recovery candidate, register that candidate and start a fresh native probe so local/native decisions come from a coherent retry,
+- if it contains no usable recovery candidate, keep the safety gate closed but switch to the explicit retryable native-read error UI instead of remaining in `checking`.
+
+This also covers a pending-save journal appearing while the first native read is deferred. Storage events are intentionally ignored while the native gate is open, so the probe itself must detect and re-register that candidate.
+
 ## Regression coverage
 
 Phase 42 adds or updates coverage for:
@@ -93,27 +104,43 @@ Phase 42 adds or updates coverage for:
 - explicit local choice preserves local as canonical and then updates native durability storage,
 - valid local + native read error → editing/saving remains gated and native is not overwritten,
 - Retry after the native error can safely continue once native is confirmed missing,
-- a recovery candidate that becomes a valid local primary still goes through native comparison instead of bypassing it.
+- a recovery candidate that becomes a valid local primary still goes through native comparison instead of bypassing it,
+- a pending-save candidate appearing while the native read is deferred is detected, re-probed, and exits `checking` into an actionable conflict state.
 
 ## Verification
 
-Final clean implementation head before this report:
+Initial clean Phase 42 implementation head:
 
 `712a0c9681622cb7b5caa5221a46a0d070b08eca`
 
-GitHub Actions `Check` run `33172189983` completed successfully with:
+GitHub Actions `Check` run `33172189983` completed successfully with 21 test files / 168 tests.
+
+After CodeRabbit's actionable stuck-gate finding, dedicated review-fix validation run `33172920134` completed successfully before committing source commit:
+
+`d537c23cddc47d96bb8a85a88e50a7966a5a5dc2`
+
+That validation passed:
 
 - `npm ci`,
 - `npm audit --omit=dev --audit-level=high` — 0 production vulnerabilities,
 - TypeScript typecheck,
-- ESLint with no Phase 42 warning remaining,
-- Vitest — **21 test files / 168 tests passed**,
+- ESLint,
+- Vitest — **21 test files / 169 tests passed**,
 - production build,
 - `npx cap sync ios`,
-- committed iOS project drift check,
-- iPhone-only target/orientation guards.
+- committed iOS project drift check.
+
+The temporary validation workflow and patch script were then removed again. The permanent branch contains no Phase 42 patching workflow/script.
 
 The broader `npm ci` audit still reports **12 vulnerabilities** in the dependency/dev-tool graph: 2 low, 1 moderate, 9 high. Phase 42 does not claim those are resolved.
+
+## Review disposition
+
+CodeRabbit's concrete stuck-gate stability finding was accepted and fixed with regression coverage.
+
+CodeRabbit also suggested extracting the broader native recovery state machine from `App.tsx` into a dedicated hook/reducer. That is a maintainability refactor rather than a concrete Phase 42 correctness defect. It is intentionally not mixed into this safety patch because a broad state-machine refactor would substantially increase the review surface and regression risk. It remains a valid follow-up architecture task.
+
+Codex code review and Cursor Bugbot were unavailable for this PR because their respective usage limits were reached; they are not counted as completed reviews.
 
 ## Intentional tradeoff
 
