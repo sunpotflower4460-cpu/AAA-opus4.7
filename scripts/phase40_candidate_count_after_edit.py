@@ -40,7 +40,9 @@ extra = r'''  it("表示中native候補の件数を編集すると候補件数�
     act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
     expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(1));
 
-    act(() => click(findButton(container, copy.back)));
+    const backButton = container.querySelector(`button[aria-label="${copy.back}"]`);
+    if (!(backButton instanceof HTMLButtonElement)) throw new Error("editor back button not found");
+    act(() => click(backButton));
     act(() => click(findButton(container, copy.newNote)));
 
     expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(2));
