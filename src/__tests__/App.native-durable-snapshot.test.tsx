@@ -3,7 +3,11 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
-import { BACKUP_KEY_FOR_TESTING, STORAGE_KEY_FOR_TESTING } from "../lib/storage";
+import {
+  BACKUP_KEY_FOR_TESTING,
+  PENDING_SAVE_KEY_FOR_TESTING,
+  STORAGE_KEY_FOR_TESTING,
+} from "../lib/storage";
 
 const durable = vi.hoisted(() => ({
   available: vi.fn(),
@@ -188,12 +192,156 @@ describe("App native durable snapshot", () => {
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual([]);
   });
 
-  it("既存の正常localStorageは初回起動時にnative耐久層へ移行する", async () => {
+  it("既存の正常localStorageもnative missing確認後にだけ耐久層へ移行する", async () => {
     const existing = [makeNote()];
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
     renderApp();
     await flushPromises();
+
+    expect(durable.read).toHaveBeenCalledTimes(1);
     expect(durable.persist).toHaveBeenCalledWith(existing);
+    expect(durable.read.mock.invocationCallOrder[0]).toBeLessThan(
+      durable.persist.mock.invocationCallOrder[0],
+    );
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+  });
+
+  it("正常localとnative snapshotが同一なら競合にせず安全確認後に通常起動する", async () => {
+    const existing = [makeNote({ title: "同じ正本" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
+    durable.read.mockResolvedValue({ status: "available", notes: existing });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain("同じ正本");
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    expect(durable.persist).toHaveBeenCalledWith(existing);
+  });
+
+  it("正常localと異なるnative snapshotは起動だけで上書きせず別候補として保持する", async () => {
+    const local = [makeNote({ title: "localの正本" })];
+    const native = [
+      makeNote({
+        title: "nativeの別世代",
+        body: "localにはない内容",
+        updatedAt: "2026-08-28T00:05:00.000Z",
+      }),
+    ];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(local);
+    durable.read.mockResolvedValue({ status: "available", notes: native });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain("localの正本");
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(native.length));
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(JSON.stringify(local));
+    expect(durable.persist).not.toHaveBeenCalled();
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    expect(container.textContent).toContain("nativeの別世代");
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(JSON.stringify(local));
+    expect(durable.persist).not.toHaveBeenCalled();
+
+    act(() => click(findButton(container, copy.storageConflictOverwrite)));
+    await flushPromises();
+
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(native);
+    expect(durable.persist).toHaveBeenCalledWith(native);
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
+  });
+
+  it("正常localとnativeが異なる起動競合で保存済みlocalを明示採用できる", async () => {
+    const local = [makeNote({ title: "採用するlocal" })];
+    const native = [makeNote({ title: "採用しないnative" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(local);
+    durable.read.mockResolvedValue({ status: "available", notes: native });
+
+    renderApp();
+    await flushPromises();
+    expect(durable.persist).not.toHaveBeenCalled();
+
+    act(() => click(findButton(container, copy.storageConflictLoad)));
+    await flushPromises();
+
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
+    expect(durable.persist).toHaveBeenCalledWith(local);
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
+  });
+
+  it("正常localがあってもnative読込障害中はlocalでnativeを上書きせずretryまでgateする", async () => {
+    const local = [makeNote({ title: "読めるlocal" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(local);
+    durable.read
+      .mockResolvedValueOnce({ status: "error" })
+      .mockResolvedValue({ status: "missing" });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.nativeRecoveryReadError);
+    expect(durable.persist).not.toHaveBeenCalled();
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(JSON.stringify(local));
+
+    act(() => click(findButton(container, copy.nativeRecoveryRetry)));
+    await flushPromises();
+
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    expect(durable.persist).toHaveBeenCalledWith(local);
+  });
+
+  it("native待機中にvalid primaryへpending候補が追加されてもcheckingに固定せず再probeして競合を解放する", async () => {
+    const existing = [makeNote({ title: "元の保存済み版" })];
+    const pending = [
+      makeNote({
+        title: "native待機中の中断候補",
+        body: "別タブが追加した候補",
+        updatedAt: "2026-08-28T00:10:00.000Z",
+      }),
+    ];
+    const existingRaw = JSON.stringify(existing);
+    const pendingRaw = JSON.stringify(pending);
+    storage._store[STORAGE_KEY_FOR_TESTING] = existingRaw;
+
+    let resolveFirstRead!: (value: { status: "missing" }) => void;
+    durable.read
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirstRead = resolve;
+        }),
+      )
+      .mockResolvedValue({ status: "missing" });
+
+    renderApp();
+    await flushPromises();
+    expect(container.textContent).toContain(copy.nativeRecoveryChecking);
+
+    storage._store[PENDING_SAVE_KEY_FOR_TESTING] = JSON.stringify({
+      version: 1,
+      baseRaw: existingRaw,
+      nextRaw: pendingRaw,
+      writerId: "other-tab",
+    });
+
+    await act(async () => {
+      resolveFirstRead({ status: "missing" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await flushPromises();
+
+    expect(durable.read).toHaveBeenCalledTimes(2);
+    expect(container.textContent).not.toContain(copy.nativeRecoveryChecking);
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain("native待機中の中断候補");
+    expect(hasButton(container, copy.storageConflictLoad)).toBe(true);
+    expect(hasButton(container, copy.storageConflictOverwrite)).toBe(true);
+    expect(durable.persist).not.toHaveBeenCalled();
   });
 
   it("通常autosave成功後は最新snapshotをnative側にも保存する", async () => {
