@@ -30,6 +30,7 @@ type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; 
 type DeletedNote = Note & { deletedAt: string };
 
 const AUTOSAVE_DEBOUNCE_MS = 500;
+const AUTOSAVE_MAX_WAIT_MS = 3_000;
 const UNDO_TIMEOUT_MS = 10_000;
 
 export default function App() {
@@ -62,6 +63,8 @@ export default function App() {
   const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
   // このタブ自身が変更したときだけ lifecycle flush を許可する。
   const notesDirtyRef = useRef(false);
+  // debounce が連続入力で永遠に後ろ倒しにならないよう、dirty 区間の開始時刻を保持する。
+  const dirtySinceRef = useRef<number | null>(null);
   // 最後に正常に読み込んだ / 保存した集合。保存直前の競合検知に使う。
   const baselineNotesRef = useRef<Note[]>(initialLoad.notes);
   const latestNotesRef = useRef(notes);
@@ -80,6 +83,7 @@ export default function App() {
 
   const markNotesDirty = useCallback(() => {
     saveGuardRef.current = false;
+    if (!notesDirtyRef.current) dirtySinceRef.current = Date.now();
     notesDirtyRef.current = true;
     setLastSaveResult(null);
   }, []);
@@ -102,6 +106,7 @@ export default function App() {
 
       if (result.ok) {
         notesDirtyRef.current = false;
+        dirtySinceRef.current = null;
         saveGuardRef.current = false;
         baselineNotesRef.current = snapshot;
         externalConflictRef.current = false;
@@ -131,6 +136,11 @@ export default function App() {
       return undefined;
     }
 
+    const dirtyForMs =
+      dirtySinceRef.current === null ? 0 : Math.max(0, Date.now() - dirtySinceRef.current);
+    const maxWaitRemainingMs = Math.max(0, AUTOSAVE_MAX_WAIT_MS - dirtyForMs);
+    const delayMs = Math.min(AUTOSAVE_DEBOUNCE_MS, maxWaitRemainingMs);
+
     persistTimerRef.current = window.setTimeout(() => {
       persistTimerRef.current = null;
       if (
@@ -143,7 +153,7 @@ export default function App() {
 
       const result = saveNotes(notes, { expectedNotes: baselineNotesRef.current });
       applySaveResult(result, notes);
-    }, AUTOSAVE_DEBOUNCE_MS);
+    }, delayMs);
 
     return clearPersistTimer;
   }, [notes, applySaveResult, clearPersistTimer]);
@@ -196,6 +206,7 @@ export default function App() {
           flagExternalConflict(true);
         } else {
           // この画面が未編集なら、別タブの最新状態へ安全に追従する。
+          dirtySinceRef.current = null;
           baselineNotesRef.current = remote.notes;
           latestNotesRef.current = remote.notes;
           setNotes(remote.notes);
@@ -304,6 +315,7 @@ export default function App() {
     }
 
     notesDirtyRef.current = false;
+    dirtySinceRef.current = null;
     saveGuardRef.current = false;
     externalConflictRef.current = false;
     baselineNotesRef.current = result.notes;
