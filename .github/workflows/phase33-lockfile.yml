@@ -1,19 +1,18 @@
-name: Phase 33 Native Exporter
+name: Phase 33 Native Committer
 
 on:
   push:
     branches: ["bugfix/phase33-capacitor-ios-reproducibility"]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  export:
+  commit-native:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
@@ -95,7 +94,7 @@ jobs:
           npm run check
           npx cap --version
 
-      - name: Create canonical iOS native project
+      - name: Create canonical iPhone native project
         run: |
           rm -rf ios
           npx cap add ios
@@ -117,10 +116,29 @@ jobs:
           App/App/config.xml
           EOF
 
+          python <<'PY'
+          from pathlib import Path
+
+          project = Path('ios/App/App.xcodeproj/project.pbxproj')
+          text = project.read_text()
+          text = text.replace('TARGETED_DEVICE_FAMILY = "1,2";', 'TARGETED_DEVICE_FAMILY = 1;')
+          project.write_text(text)
+
+          info = Path('ios/App/App/Info.plist')
+          text = info.read_text()
+          text = text.replace('''\t<key>UISupportedInterfaceOrientations</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t\t<string>UIInterfaceOrientationLandscapeLeft</string>\n\t\t<string>UIInterfaceOrientationLandscapeRight</string>\n\t</array>\n\t<key>UISupportedInterfaceOrientations~ipad</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t\t<string>UIInterfaceOrientationPortraitUpsideDown</string>\n\t\t<string>UIInterfaceOrientationLandscapeLeft</string>\n\t\t<string>UIInterfaceOrientationLandscapeRight</string>\n\t</array>''','''\t<key>UISupportedInterfaceOrientations</key>\n\t<array>\n\t\t<string>UIInterfaceOrientationPortrait</string>\n\t</array>''')
+          info.write_text(text)
+          PY
+
           test -f ios/App/App.xcodeproj/project.pbxproj
           test -f ios/App/App/Info.plist
           grep -q 'com.zanshin.notes' ios/App/App.xcodeproj/project.pbxproj
+          test "$(grep -c 'TARGETED_DEVICE_FAMILY = 1;' ios/App/App.xcodeproj/project.pbxproj)" -eq 2
+          ! grep -q 'TARGETED_DEVICE_FAMILY = "1,2"' ios/App/App.xcodeproj/project.pbxproj
           grep -q '<string>残心</string>' ios/App/App/Info.plist
+          test "$(grep -c 'UIInterfaceOrientationPortrait' ios/App/App/Info.plist)" -eq 1
+          ! grep -q 'UIInterfaceOrientationLandscape' ios/App/App/Info.plist
+          ! grep -q 'UISupportedInterfaceOrientations~ipad' ios/App/App/Info.plist
 
       - name: Replace Capacitor placeholder native branding
         run: |
@@ -157,19 +175,11 @@ jobs:
           assert Image.open(splash_path).mode == 'RGB'
           PY
 
-      - name: Remove generated native outputs from export
+      - name: Commit native source only
         run: |
-          rm -rf ios/App/App/public
-          rm -f ios/App/App/capacitor.config.json ios/App/App/config.xml
-          rm -rf ios/capacitor-cordova-ios-plugins
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: phase33-final-native-source
-          path: |
-            package.json
-            package-lock.json
-            tsconfig.node.json
-            .gitignore
-            ios
-          if-no-files-found: error
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json tsconfig.node.json .gitignore ios
+          git status --short
+          git commit -m "Phase 33: commit reproducible iPhone native source"
+          git push origin HEAD:bugfix/phase33-capacitor-ios-reproducibility
