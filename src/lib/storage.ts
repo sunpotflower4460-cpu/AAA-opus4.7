@@ -2,7 +2,7 @@ import type { Note } from "../types/note";
 
 export const NOTES_STORAGE_KEY = "zanshin.notes.v1";
 const STORAGE_KEY = NOTES_STORAGE_KEY;
-// 最後に正常保存できた内容の冗長コピー。primary 消失・破損時の第一復旧候補。
+// 保存しようとした最新の正常スナップショット。primary 消失・破損時の第一復旧候補。
 const BACKUP_KEY = "zanshin.notes.backup.v1";
 // 競合解決で「この画面を優先」する直前の、別画面側の正常データ専用退避先。
 const CONFLICT_BACKUP_KEY = "zanshin.notes.conflict.backup.v1";
@@ -171,7 +171,7 @@ function readValidatedBackup(): Note[] | null {
  * - 正常データはそのまま返す
  * - primary だけ消失して正常な backup が残っていれば復元候補として返す
  * - JSON破損 / 不正要素 / 重複ID / 不正日時は元データを退避する
- * - 最後に正常保存できた backup が正常なら復元候補としてマージする
+ * - 最新の正常 backup が利用できれば復元候補としてマージする
  * - 復元候補を表示しても ok:false のまま返し、自動上書きを防ぐ
  */
 export function loadNotes(): LoadResult {
@@ -181,7 +181,7 @@ export function loadNotes(): LoadResult {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw === null) {
       // アプリ自身は保存済み primary を removeItem しない。
-      // backup は最後に正常保存できた内容を複製しているため、primary 消失時の第一候補にする。
+      // backup は保存処理の primary より先に確定するため、primary 消失時の第一候補にする。
       const backupNotes = readValidatedBackup();
       if (backupNotes) {
         if (backupNotes.length === 0) return { ok: true, notes: [] };
@@ -230,7 +230,7 @@ export function loadNotes(): LoadResult {
  * - 別画面の変更を検知した場合は conflict を返し、黙って上書きしない
  * - 破損 primary は force なしでは上書きせず、raw を退避して conflict とする
  * - force で正常な別画面データを上書きする前は conflict backup への退避成功を必須にする
- * - primary 保存成功後、同じ内容を backup へ複製して最新の復旧候補を維持する
+ * - 復旧用 backup を primary より先に書き、backup 更新に失敗した場合は primary を変更しない
  */
 export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult {
   if (typeof window === "undefined") return { ok: false, reason: "unavailable" };
@@ -277,16 +277,15 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
       }
     }
 
-    window.localStorage.setItem(STORAGE_KEY, serialized);
-
-    // primary が確定した後で、最後に正常保存できた内容を冗長コピーする。
-    // ここだけの失敗で「未保存」と誤表示しないよう、primary 成功は成功として扱う。
+    // primary より先に復旧コピーを確定する。
+    // これに失敗した場合は「保存成功なのに復旧コピーだけ古い」状態を作らない。
     try {
       window.localStorage.setItem(BACKUP_KEY, serialized);
-    } catch {
-      // backup は復旧能力を高める冗長コピー。primary 保存成功そのものは取り消せない。
+    } catch (error) {
+      return saveFailureFromError(error);
     }
 
+    window.localStorage.setItem(STORAGE_KEY, serialized);
     return { ok: true };
   } catch (error) {
     return saveFailureFromError(error);
