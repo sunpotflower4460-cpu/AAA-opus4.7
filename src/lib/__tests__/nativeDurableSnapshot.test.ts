@@ -101,23 +101,21 @@ describe("native durable snapshot", () => {
     );
   });
 
-  it("nativeの3世代archiveが別々に埋まっていれば4世代目を捨てず保存を中止する", async () => {
+  it("3世代が埋まっていても4世代目をローリング保存して最新3世代を保つ", async () => {
     const current = [makeNote("current", 3)];
     const backup = [makeNote("backup", 2)];
     const secondary = [makeNote("secondary", 1)];
     const next = [makeNote("next", 4)];
-    const currentRaw = JSON.stringify(current);
-    const backupRaw = JSON.stringify(backup);
-    const secondaryRaw = JSON.stringify(secondary);
-    files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary, currentRaw);
-    files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup, backupRaw);
-    files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.secondaryBackup, secondaryRaw);
+    files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary, JSON.stringify(current));
+    files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup, JSON.stringify(backup));
+    files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.secondaryBackup, JSON.stringify(secondary));
 
-    expect(await persistNativeDurableSnapshot(next)).toBe(false);
-    expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary)).toBe(currentRaw);
-    expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup)).toBe(backupRaw);
-    expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.secondaryBackup)).toBe(secondaryRaw);
-    expect(mocks.writeFile).not.toHaveBeenCalled();
+    expect(await persistNativeDurableSnapshot(next)).toBe(true);
+    expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary)).toBe(JSON.stringify(next));
+    expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup)).toBe(JSON.stringify(current));
+    expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.secondaryBackup)).toBe(
+      JSON.stringify(backup),
+    );
   });
 
   it("既存backupを読めない時は世代を上書きせずnative保存を中止する", async () => {
@@ -139,7 +137,7 @@ describe("native durable snapshot", () => {
     expect(mocks.writeFile).not.toHaveBeenCalled();
   });
 
-  it("secondary backupを読めない時も既存backupを上書きせず保存を中止する", async () => {
+  it("secondaryへの退避書込が失敗したらprimary/backupを進めず保存を中止する", async () => {
     const current = [makeNote("current", 2)];
     const backup = [makeNote("backup", 1)];
     const next = [makeNote("next", 3)];
@@ -147,19 +145,17 @@ describe("native durable snapshot", () => {
     const backupRaw = JSON.stringify(backup);
     files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary, currentRaw);
     files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup, backupRaw);
-    mocks.readFile.mockImplementation(async ({ path }: { path: string }) => {
+    mocks.writeFile.mockImplementation(async ({ path, data }: { path: string; data: string }) => {
       if (path === NATIVE_SNAPSHOT_PATHS_FOR_TESTING.secondaryBackup) {
-        throw { code: "OS-PLUG-FILE-0013" };
+        throw new Error("secondary write failure");
       }
-      const data = files.get(path);
-      if (data === undefined) throw FILE_NOT_FOUND;
-      return { data };
+      files.set(path, data);
+      return { uri: path };
     });
 
     expect(await persistNativeDurableSnapshot(next)).toBe(false);
     expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary)).toBe(currentRaw);
     expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup)).toBe(backupRaw);
-    expect(mocks.writeFile).not.toHaveBeenCalled();
   });
 
   it("同一snapshotならfilesystem書込を行わない", async () => {

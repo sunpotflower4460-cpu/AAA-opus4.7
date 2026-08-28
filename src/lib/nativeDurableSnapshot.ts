@@ -72,9 +72,9 @@ async function writeSnapshotRaw(nextRaw: string): Promise<void> {
     if (current.raw === nextRaw) return;
 
     if (parseValidNotesSnapshot(current.raw) !== null) {
-      // 新しい primary に触る前に、直前の正常世代を確定する。
-      // 既存 backup に別の正常世代がある場合は secondary へ退避し、
-      // 未確認の世代を rotation だけで黙って消さない。
+      // native 層は primary / backup / secondary の「最新3世代ローリング」とする。
+      // recovery/conflict 中の自動保存は App 側で停止しているため、通常保存で最古secondaryを
+      // 永久保存し続ける必要はない。そうしないと4世代目から保存不能になる。
       const existingBackup = await readRaw(BACKUP_PATH);
       if (existingBackup.status === "error") {
         throw new Error("native snapshot backup read failed");
@@ -86,32 +86,9 @@ async function writeSnapshotRaw(nextRaw: string): Promise<void> {
         existingBackup.raw !== nextRaw &&
         parseValidNotesSnapshot(existingBackup.raw) !== null
       ) {
-        const secondaryBackup = await readRaw(SECONDARY_BACKUP_PATH);
-        if (secondaryBackup.status === "error") {
-          throw new Error("native snapshot secondary backup read failed");
-        }
-
-        if (secondaryBackup.status === "ok") {
-          const secondaryIsValid = parseValidNotesSnapshot(secondaryBackup.raw) !== null;
-          const secondaryAlreadyPreservesOldBackup =
-            secondaryIsValid && secondaryBackup.raw === existingBackup.raw;
-          const secondaryCanBeReplaced =
-            !secondaryIsValid ||
-            secondaryBackup.raw === current.raw ||
-            secondaryBackup.raw === nextRaw;
-
-          if (!secondaryAlreadyPreservesOldBackup && !secondaryCanBeReplaced) {
-            // primary / backup / secondary に3つの異なる正常世代がある。
-            // 4つ目への更新でどれかを捨てるより、保存を止めて既存世代を守る。
-            throw new Error("native snapshot recovery archive full");
-          }
-
-          if (!secondaryAlreadyPreservesOldBackup) {
-            await writeRaw(SECONDARY_BACKUP_PATH, existingBackup.raw);
-          }
-        } else {
-          await writeRaw(SECONDARY_BACKUP_PATH, existingBackup.raw);
-        }
+        // backupを更新する前に旧backupをsecondaryへ確定する。
+        // secondary書込が失敗した場合はprimary/backupへ進まず、直前2世代をそのまま守る。
+        await writeRaw(SECONDARY_BACKUP_PATH, existingBackup.raw);
       } else if (
         existingBackup.status === "ok" &&
         parseValidNotesSnapshot(existingBackup.raw) === null
