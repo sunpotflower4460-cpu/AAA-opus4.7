@@ -1,0 +1,390 @@
+/*
+ * Phase 29 — Ma / Shosa Polish
+ *
+ * 既存の和紙・月・円相を増やさず、形・余白・操作の所作で「残心」を深める。
+ * - 一覧のカード感を弱め、紙片としての個体差を作る
+ * - 検索 / ナビ / FAB / モーダルを同じ作法へ揃える
+ * - hover 依存を避け、touch / keyboard / reduced-motion を同等に扱う
+ * - 最終上書きレイヤーとして Phase 28 の !important 指定を安全に収束させる
+ */
+
+:root {
+  --z29-sumi-soft: rgba(31, 27, 24, 0.72);
+  --z29-sumi-faint: rgba(31, 27, 24, 0.075);
+  --z29-indigo-faint: rgba(36, 59, 83, 0.12);
+  --z29-gold-faint: rgba(201, 166, 70, 0.18);
+  --z29-gold-line: rgba(201, 166, 70, 0.34);
+  --z29-paper-edge: rgba(92, 70, 42, 0.09);
+  --z29-paper-shadow: rgba(53, 40, 28, 0.075);
+}
+
+/* ──────────────────────────────────────────────
+ * 1. 「間」の基準線
+ * 書道の罫線ではなく、画面の呼吸を揃える見えない背骨。
+ * ────────────────────────────────────────────── */
+.zanshin-ma-axis {
+  position: fixed;
+  z-index: 0;
+  top: max(env(safe-area-inset-top), 34px);
+  bottom: max(env(safe-area-inset-bottom), 34px);
+  left: max(13px, calc(50vw - 360px + 13px));
+  width: 1px;
+  pointer-events: none;
+  opacity: 0.54;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(31, 27, 24, 0.035) 15%,
+    rgba(31, 27, 24, 0.07) 45%,
+    rgba(201, 166, 70, 0.12) 61%,
+    rgba(31, 27, 24, 0.04) 78%,
+    transparent 100%
+  );
+}
+
+.zanshin-ma-axis::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 61%;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: rgba(201, 166, 70, 0.34);
+  box-shadow: 0 0 10px rgba(201, 166, 70, 0.08);
+}
+
+@media (max-width: 760px) {
+  .zanshin-ma-axis {
+    left: 8px;
+    opacity: 0.3;
+  }
+}
+
+/* ──────────────────────────────────────────────
+ * 2. ホームの序章
+ * ────────────────────────────────────────────── */
+.zanshin-home-header {
+  position: relative;
+}
+
+.zanshin-home-header::after {
+  content: "";
+  display: block;
+  width: 55px;
+  height: 1px;
+  margin: 25px auto 0;
+  background: linear-gradient(90deg, transparent, var(--z29-gold-line), transparent);
+  opacity: 0.72;
+}
+
+.zanshin-app-title-block h1 {
+  text-wrap: balance;
+  text-shadow: 0 0 0.45px rgba(31, 27, 24, 0.16);
+}
+
+/* タグラインを「カード」から、置かれた短冊へ近づける */
+.zanshin-paper-slip {
+  width: min(100%, 286px) !important;
+  padding: 16px 22px 17px !important;
+  border-radius: 4px 10px 5px 8px !important;
+  clip-path: polygon(
+    0.7% 1.8%, 18% 0.5%, 43% 1.2%, 70% 0.35%, 99.1% 1.6%,
+    99.6% 50%, 99% 98.5%, 72% 99.4%, 48% 98.8%, 20% 99.6%,
+    0.5% 98.4%, 0.2% 52%
+  ) !important;
+  box-shadow:
+    0 1px 1px rgba(92, 70, 42, 0.04),
+    0 8px 22px rgba(53, 40, 28, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38) !important;
+}
+
+.zanshin-main-copy {
+  letter-spacing: 0.045em;
+}
+
+/* ──────────────────────────────────────────────
+ * 3. 検索 — 現代的な pill から、細い紙札へ
+ * ────────────────────────────────────────────── */
+.zanshin-search-bar {
+  min-height: 52px !important;
+  border-radius: 7px 14px 8px 12px !important;
+  clip-path: polygon(
+    0.5% 2%, 22% 0.5%, 48% 1.2%, 76% 0.35%, 99.4% 1.6%,
+    99.8% 50%, 99.3% 98.3%, 73% 99.5%, 46% 98.8%, 18% 99.4%,
+    0.4% 98%, 0.1% 49%
+  ) !important;
+  padding-inline: 18px 9px !important;
+  border-color: rgba(92, 70, 42, 0.085) !important;
+  box-shadow:
+    inset 3px 0 0 rgba(36, 59, 83, 0.055),
+    0 1px 2px rgba(92, 70, 42, 0.045),
+    0 6px 16px rgba(92, 70, 42, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+}
+
+.zanshin-search-bar:focus-within {
+  border-color: rgba(36, 59, 83, 0.2) !important;
+  box-shadow:
+    inset 3px 0 0 rgba(36, 59, 83, 0.18),
+    0 0 0 3px rgba(36, 59, 83, 0.045),
+    0 8px 20px rgba(31, 27, 24, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.46) !important;
+}
+
+.zanshin-clear-button {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+}
+
+.zanshin-list-status {
+  position: relative;
+  border-bottom: 0 !important;
+  padding-bottom: 10px;
+}
+
+.zanshin-list-status::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(92, 70, 42, 0.09), rgba(201, 166, 70, 0.12), transparent 78%);
+}
+
+/* ──────────────────────────────────────────────
+ * 4. メモ紙片 — 角丸カードの均一感を消す
+ * ────────────────────────────────────────────── */
+.zanshin-note-card {
+  border-radius: 5px 12px 6px 10px !important;
+  clip-path: polygon(
+    0.45% 1.1%, 14% 0.35%, 34% 0.9%, 57% 0.2%, 81% 0.75%, 99.35% 1.35%,
+    99.72% 22%, 99.25% 53%, 99.7% 79%, 99.35% 98.7%,
+    82% 99.5%, 62% 98.95%, 39% 99.6%, 17% 99.05%, 0.55% 98.5%,
+    0.18% 72%, 0.65% 42%, 0.2% 17%
+  ) !important;
+  border-color: rgba(92, 70, 42, 0.09) !important;
+  box-shadow:
+    0 1px 0 rgba(223, 207, 177, 0.52),
+    0 7px 18px var(--z29-paper-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+  transform-origin: 50% 70%;
+}
+
+.zanshin-note-card__spine {
+  top: 16px !important;
+  bottom: 16px !important;
+  box-shadow: 0 0 0.6px rgba(31, 27, 24, 0.08);
+}
+
+.zanshin-note-card__corner {
+  position: absolute !important;
+  z-index: 2 !important;
+  right: 6px;
+  bottom: 6px;
+  width: 13px;
+  height: 13px;
+  pointer-events: none;
+  opacity: 0.42;
+  background: linear-gradient(135deg, transparent 0 48%, rgba(92, 70, 42, 0.14) 49% 51%, rgba(255, 252, 244, 0.36) 52% 100%);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .zanshin-note-card:hover,
+  .zanshin-note-card:focus-visible {
+    transform: translateY(-2px) rotate(0deg) !important;
+    box-shadow:
+      0 1px 0 rgba(223, 207, 177, 0.58),
+      0 11px 24px rgba(53, 40, 28, 0.09),
+      inset 0 1px 0 rgba(255, 255, 255, 0.46) !important;
+  }
+}
+
+.zanshin-note-card:active {
+  transform: translateY(1px) scale(0.996) rotate(0deg) !important;
+  transition-duration: 90ms !important;
+}
+
+/* ──────────────────────────────────────────────
+ * 5. 画面上部の所作を統一
+ * ────────────────────────────────────────────── */
+.zanshin-screen-bar {
+  min-height: 52px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(92, 70, 42, 0.055);
+}
+
+.zanshin-nav-button,
+.zanshin-secondary-button,
+.zanshin-editor-action {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.zanshin-nav-button {
+  border-radius: 8px !important;
+}
+
+.zanshin-secondary-button {
+  border-radius: 6px 10px 7px 9px !important;
+  backdrop-filter: none;
+}
+
+.zanshin-editor-action {
+  position: relative;
+  border-radius: 9px !important;
+}
+
+.zanshin-editor-action[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(201, 166, 70, 0.7);
+}
+
+/* ──────────────────────────────────────────────
+ * 6. 書く / 読む紙面
+ * ────────────────────────────────────────────── */
+.editor-paper,
+.read-mode-paper {
+  border-radius: 8px 16px 9px 14px !important;
+  clip-path: polygon(
+    0.45% 0.7%, 18% 0.2%, 42% 0.65%, 66% 0.18%, 99.25% 0.8%,
+    99.7% 30%, 99.25% 66%, 99.55% 99.1%, 72% 99.55%, 45% 99.1%,
+    19% 99.55%, 0.55% 98.9%, 0.18% 68%, 0.65% 34%
+  ) !important;
+  border-color: rgba(92, 70, 42, 0.085) !important;
+  box-shadow:
+    0 1px 0 rgba(223, 207, 177, 0.48),
+    0 16px 38px rgba(53, 40, 28, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42) !important;
+}
+
+.note-title-input {
+  font-size: clamp(23px, 5.8vw, 27px);
+  line-height: 1.68;
+  letter-spacing: 0.065em;
+}
+
+.writing-textarea {
+  line-height: 2.05;
+  caret-color: rgba(177, 74, 54, 0.72);
+}
+
+.read-mode-paper {
+  overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity;
+}
+
+.read-mode-title,
+.read-mode-body {
+  scroll-snap-align: start;
+}
+
+.read-mode-divider {
+  background: linear-gradient(to bottom, transparent, rgba(201, 166, 70, 0.28), transparent);
+}
+
+/* ──────────────────────────────────────────────
+ * 7. 「言葉を置く」— 浮遊ボタンではなく小さな硯/印のように
+ * ────────────────────────────────────────────── */
+.zanshin-compose-button {
+  border: 1px solid rgba(255, 248, 230, 0.08) !important;
+  border-radius: 16px 12px 17px 13px !important;
+  background:
+    radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.08), transparent 30%),
+    radial-gradient(circle at 72% 78%, rgba(0, 0, 0, 0.16), transparent 44%),
+    #201d19 !important;
+  box-shadow:
+    0 14px 32px rgba(31, 27, 24, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -7px 16px rgba(0, 0, 0, 0.14) !important;
+  backdrop-filter: none !important;
+}
+
+.zanshin-compose-button::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(201, 166, 70, 0.1);
+  border-radius: 11px 8px 12px 9px;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .zanshin-compose-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow:
+      0 18px 38px rgba(31, 27, 24, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -7px 16px rgba(0, 0, 0, 0.14) !important;
+  }
+}
+
+.zanshin-compose-button:active {
+  transform: translateY(1px) scale(0.97) !important;
+}
+
+/* ──────────────────────────────────────────────
+ * 8. 空状態 / 削除 / Undo — 静かだが操作は明確に
+ * ────────────────────────────────────────────── */
+.zanshin-empty-action {
+  min-height: 46px;
+  border-radius: 6px 11px 7px 10px !important;
+}
+
+.zanshin-delete-dialog {
+  border-radius: 7px 15px 8px 13px !important;
+  clip-path: polygon(0.5% 1%, 28% 0.2%, 62% 0.75%, 99.3% 1.1%, 99.7% 50%, 99.2% 98.8%, 70% 99.5%, 34% 99%, 0.6% 98.4%, 0.2% 48%);
+}
+
+.zanshin-delete-confirm {
+  border-radius: 7px 11px 8px 10px !important;
+  box-shadow: 0 6px 18px rgba(177, 74, 54, 0.13);
+}
+
+/* タッチ端末では hover の浮遊を発生させない */
+@media (hover: none) {
+  .zanshin-note-card:hover,
+  .zanshin-compose-button:hover,
+  .zanshin-empty-action:hover {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .zanshin-home-header::after {
+    margin-top: 21px;
+  }
+
+  .zanshin-paper-slip {
+    width: min(100%, 276px) !important;
+  }
+
+  .zanshin-note-card {
+    border-radius: 4px 10px 5px 9px !important;
+  }
+
+  .editor-paper,
+  .read-mode-paper {
+    border-radius: 7px 13px 8px 12px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zanshin-note-card,
+  .zanshin-compose-button,
+  .zanshin-ma-axis::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
