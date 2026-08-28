@@ -5,6 +5,7 @@ import {
   STORAGE_KEY_FOR_TESTING,
   BACKUP_KEY_FOR_TESTING,
   CONFLICT_BACKUP_KEY_FOR_TESTING,
+  PENDING_SAVE_KEY_FOR_TESTING,
   CORRUPT_BACKUP_KEY_FOR_TESTING,
 } from "../storage";
 import type { Note } from "../../types/note";
@@ -68,6 +69,7 @@ describe("loadNotes", () => {
     if (!result.ok) {
       expect(result.reason).toBe("missing_primary");
       expect(result.recoveredFromBackup).toBe(true);
+      expect(result.recoveryCandidate).toBe(true);
     }
   });
 
@@ -83,6 +85,74 @@ describe("loadNotes", () => {
     expect(result.ok).toBe(true);
     expect(result.notes).toHaveLength(1);
     expect(result.notes[0].id).toBe("test-id-1");
+  });
+
+  it("中断 journal の base が primary と一致すれば next を復元候補として返す", () => {
+    const base = [makeNote({ id: "base" })];
+    const next = [makeNote({ id: "next", title: "保存途中の最新版" })];
+    const baseRaw = JSON.stringify(base);
+    const nextRaw = JSON.stringify(next);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, baseRaw);
+    storage.setItem(
+      PENDING_SAVE_KEY_FOR_TESTING,
+      JSON.stringify({ version: 1, baseRaw, nextRaw }),
+    );
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual(next);
+    if (!result.ok) {
+      expect(result.reason).toBe("interrupted_save");
+      expect(result.recoveredFromPendingSave).toBe(true);
+      expect(result.recoveryCandidate).toBe(true);
+    }
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(baseRaw);
+  });
+
+  it("中断 journal の next が空配列でも削除保存の復元候補として保持する", () => {
+    const baseRaw = JSON.stringify([makeNote({ id: "delete-me" })]);
+    const nextRaw = JSON.stringify([]);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, baseRaw);
+    storage.setItem(
+      PENDING_SAVE_KEY_FOR_TESTING,
+      JSON.stringify({ version: 1, baseRaw, nextRaw }),
+    );
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual([]);
+    if (!result.ok) {
+      expect(result.reason).toBe("interrupted_save");
+      expect(result.recoveryCandidate).toBe(true);
+    }
+  });
+
+  it("journal の next がすでに primary なら完了済みとして backup を修復し journal を消す", () => {
+    const baseRaw = JSON.stringify([makeNote({ id: "base" })]);
+    const next = [makeNote({ id: "completed", title: "確定済み" })];
+    const nextRaw = JSON.stringify(next);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, nextRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, baseRaw);
+    storage.setItem(
+      PENDING_SAVE_KEY_FOR_TESTING,
+      JSON.stringify({ version: 1, baseRaw, nextRaw }),
+    );
+
+    const result = loadNotes();
+
+    expect(result).toEqual({ ok: true, notes: next });
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(nextRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
+  });
+
+  it("不正な journal は正常な primary の読み込みを壊さない", () => {
+    const primary = [makeNote({ id: "primary" })];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(primary));
+    storage.setItem(PENDING_SAVE_KEY_FOR_TESTING, "{ malformed journal");
+
+    expect(loadNotes()).toEqual({ ok: true, notes: primary });
   });
 
   it("JSON破損時は元データを退避する", () => {
@@ -108,7 +178,10 @@ describe("loadNotes", () => {
 
     expect(result.ok).toBe(false);
     expect(result.notes.map((note) => note.id)).toEqual(["from-backup"]);
-    if (!result.ok) expect(result.recoveredFromBackup).toBe(true);
+    if (!result.ok) {
+      expect(result.recoveredFromBackup).toBe(true);
+      expect(result.recoveryCandidate).toBe(true);
+    }
   });
 
   it("配列ではない主データでも正常なバックアップを復元する", () => {
@@ -223,8 +296,9 @@ describe("saveNotes", () => {
     });
   });
 
-  it("正常に保存できた場合は { ok: true } を返す", () => {
+  it("正常に保存できた場合は { ok: true } を返して journal を残さない", () => {
     expect(saveNotes([makeNote()]).ok).toBe(true);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("保存後にloadNotesで同じデータを読み込める", () => {
@@ -246,7 +320,27 @@ describe("saveNotes", () => {
     expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(updated);
   });
 
-  it("復旧 backup の更新に失敗したら primary を変更しない", () => {
+  it("journal の書き込みに失敗したら backup と primary を変更しない", () => {
+    const original = [makeNote({ id: "original" })];
+    const updated = [makeNote({ id: "updated" })];
+    const originalRaw = JSON.stringify(original);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, originalRaw);
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === PENDING_SAVE_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    const result = saveNotes(updated);
+
+    expect(result).toEqual({ ok: false, reason: "quota" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(originalRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBeUndefined();
+  });
+
+  it("復旧 backup の更新に失敗したら primary を変更せず journal に最新版候補を残す", () => {
     const original = [makeNote({ id: "original" })];
     const updated = [makeNote({ id: "updated" })];
     const originalRaw = JSON.stringify(original);
@@ -263,9 +357,15 @@ describe("saveNotes", () => {
 
     expect(result).toEqual({ ok: false, reason: "quota" });
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(originalRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeDefined();
+
+    const recovered = loadNotes();
+    expect(recovered.ok).toBe(false);
+    expect(recovered.notes).toEqual(updated);
+    if (!recovered.ok) expect(recovered.reason).toBe("interrupted_save");
   });
 
-  it("backup 成功後に primary 保存が失敗しても復旧候補として最新編集を残す", () => {
+  it("backup 成功後に primary 保存が失敗しても再起動時に最新版を中断保存候補として返す", () => {
     const original = [makeNote({ id: "original" })];
     const updated = [makeNote({ id: "updated" })];
     const originalRaw = JSON.stringify(original);
@@ -283,6 +383,36 @@ describe("saveNotes", () => {
     expect(result).toEqual({ ok: false, reason: "unavailable" });
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(originalRaw);
     expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(updated);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeDefined();
+
+    const recovered = loadNotes();
+    expect(recovered.ok).toBe(false);
+    expect(recovered.notes).toEqual(updated);
+    if (!recovered.ok) {
+      expect(recovered.reason).toBe("interrupted_save");
+      expect(recovered.recoveryCandidate).toBe(true);
+    }
+  });
+
+  it("空配列の保存が primary で中断しても全削除の意図を復元候補として返す", () => {
+    const originalRaw = JSON.stringify([makeNote({ id: "delete-me" })]);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, originalRaw);
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === STORAGE_KEY_FOR_TESTING) {
+        throw new DOMException("blocked", "SecurityError");
+      }
+      storage._store[key] = value;
+    });
+
+    expect(saveNotes([])).toEqual({ ok: false, reason: "unavailable" });
+    const recovered = loadNotes();
+    expect(recovered.ok).toBe(false);
+    expect(recovered.notes).toEqual([]);
+    if (!recovered.ok) {
+      expect(recovered.reason).toBe("interrupted_save");
+      expect(recovered.recoveryCandidate).toBe(true);
+    }
   });
 
   it("破損した主データでは通常保存で既存の正常バックアップを上書きしない", () => {
@@ -317,6 +447,7 @@ describe("saveNotes", () => {
     expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe(corruptRaw);
     expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("期待していた内容から primary が変わっていれば conflict で保存を止める", () => {
@@ -360,6 +491,62 @@ describe("saveNotes", () => {
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as unknown).toEqual(remote);
   });
 
+  it("別スナップショットの中断 journal が残っていれば primary が同じでも通常保存を止める", () => {
+    const baseline = [makeNote({ id: "shared", title: "最初" })];
+    const interrupted = [
+      makeNote({
+        id: "shared",
+        title: "別画面の中断編集",
+        updatedAt: "2024-01-02T00:00:00.000Z",
+      }),
+    ];
+    const local = [
+      makeNote({
+        id: "shared",
+        title: "こちらの別編集",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+      }),
+    ];
+    const baseRaw = JSON.stringify(baseline);
+    const interruptedRaw = JSON.stringify(interrupted);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, baseRaw);
+    storage.setItem(
+      PENDING_SAVE_KEY_FOR_TESTING,
+      JSON.stringify({ version: 1, baseRaw, nextRaw: interruptedRaw }),
+    );
+
+    const result = saveNotes(local, { expectedNotes: baseline });
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(baseRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toContain(interruptedRaw);
+  });
+
+  it("同じ中断 journal の next は安全な再試行として保存を完了できる", () => {
+    const baseline = [makeNote({ id: "shared", title: "最初" })];
+    const interrupted = [
+      makeNote({
+        id: "shared",
+        title: "再試行する編集",
+        updatedAt: "2024-01-02T00:00:00.000Z",
+      }),
+    ];
+    const baseRaw = JSON.stringify(baseline);
+    const interruptedRaw = JSON.stringify(interrupted);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, baseRaw);
+    storage.setItem(
+      PENDING_SAVE_KEY_FOR_TESTING,
+      JSON.stringify({ version: 1, baseRaw, nextRaw: interruptedRaw }),
+    );
+
+    const result = saveNotes(interrupted, { expectedNotes: baseline });
+
+    expect(result).toEqual({ ok: true });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(interruptedRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(interruptedRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
+  });
+
   it("期待内容と primary が一致していれば通常保存できる", () => {
     const baseline = [makeNote({ id: "shared", title: "最初" })];
     const local = [
@@ -393,6 +580,37 @@ describe("saveNotes", () => {
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
   });
 
+  it("force 保存は中断 journal の next を最優先の競合候補として退避する", () => {
+    const base = [makeNote({ id: "shared", title: "古いprimary" })];
+    const interrupted = [
+      makeNote({
+        id: "shared",
+        title: "別画面の未確定最新版",
+        updatedAt: "2024-01-02T00:00:00.000Z",
+      }),
+    ];
+    const local = [
+      makeNote({
+        id: "shared",
+        title: "この画面を優先",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+      }),
+    ];
+    const baseRaw = JSON.stringify(base);
+    const interruptedRaw = JSON.stringify(interrupted);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, baseRaw);
+    storage.setItem(
+      PENDING_SAVE_KEY_FOR_TESTING,
+      JSON.stringify({ version: 1, baseRaw, nextRaw: interruptedRaw }),
+    );
+
+    const result = saveNotes(local, { force: true });
+
+    expect(result).toEqual({ ok: true });
+    expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(interruptedRaw);
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
+  });
+
   it("force 保存で conflict backup の退避に失敗したら別画面版を上書きしない", () => {
     const remote = [makeNote({ id: "remote", title: "守る別タブ" })];
     const local = [makeNote({ id: "local", title: "この画面" })];
@@ -411,6 +629,7 @@ describe("saveNotes", () => {
     expect(result).toEqual({ ok: false, reason: "quota" });
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
     expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBeUndefined();
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("保存対象そのものが不正なら invalid_data として永続化を拒否する", () => {
