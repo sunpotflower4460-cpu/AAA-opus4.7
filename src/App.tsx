@@ -351,7 +351,6 @@ export default function App() {
     applyCleanRemoteNotes,
     clearPersistTimer,
     flagExternalConflict,
-    initialLoad.loadFailed,
     persistDurableSnapshot,
   ]);
 
