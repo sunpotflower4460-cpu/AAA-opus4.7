@@ -169,6 +169,26 @@ describe("App lifecycle persistence", () => {
     expect(saved[0].body).toBe("連続入力-8");
   });
 
+  it("pagehide が連続しても dirty 内容を重複保存しない", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+    openExistingNoteEditor(container);
+    act(() => changeTextarea(container, "一度だけ確定する本文"));
+    storage.setItem.mockClear();
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+      window.dispatchEvent(new Event("pagehide"));
+    });
+
+    const primaryWrites = storage.setItem.mock.calls.filter(
+      ([key]) => key === STORAGE_KEY_FOR_TESTING,
+    );
+    expect(primaryWrites).toHaveLength(1);
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved[0].body).toBe("一度だけ確定する本文");
+  });
+
   it("未編集の画面は storage event で別タブの最新内容へ追従する", () => {
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
     renderApp();
@@ -205,6 +225,39 @@ describe("App lifecycle persistence", () => {
 
     expect(container.textContent).toContain("復帰時に見つける最新版");
     expect(container.textContent).not.toContain("元のメモ");
+  });
+
+  it("未保存編集がある復帰では remote を勝手に採用せず、その後の保存境界で競合にする", () => {
+    const baseline = [makeNote()];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
+    renderApp();
+    openExistingNoteEditor(container);
+    act(() => changeTextarea(container, "復帰後も守るローカル本文"));
+
+    const remote = [
+      makeNote({
+        title: "suspend中の別画面更新",
+        body: "remote本文",
+        updatedAt: "2026-08-28T00:18:00.000Z",
+      }),
+    ];
+    const remoteRaw = JSON.stringify(remote);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, remoteRaw);
+
+    act(() => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+
+    const textarea = container.querySelector("textarea");
+    expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
+    expect((textarea as HTMLTextAreaElement).value).toBe("復帰後も守るローカル本文");
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
   });
 
   it("storage event が間に合わなくても保存直前比較で別タブ更新を上書きしない", () => {
