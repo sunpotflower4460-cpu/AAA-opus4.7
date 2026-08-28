@@ -14,15 +14,22 @@ export function subscribeToNativeAppState(listener: NativeAppStateListener): () 
   if (!Capacitor.isNativePlatform()) return () => {};
 
   let disposed = false;
-  let removeListener: (() => Promise<void>) | null = null;
+  let removeListener: (() => void) | null = null;
 
   void CapacitorApp.addListener("appStateChange", listener)
     .then((handle) => {
+      const removeSafely = () => {
+        void handle.remove().catch(() => {
+          // Listener cleanup の失敗を unhandled rejection にしない。
+          // effect はすでに破棄済みなので、画面側で復旧操作を要求する必要はない。
+        });
+      };
+
       if (disposed) {
-        void handle.remove();
+        removeSafely();
         return;
       }
-      removeListener = () => handle.remove();
+      removeListener = removeSafely;
     })
     .catch(() => {
       // Native plugin 登録だけが失敗しても、DOM lifecycle の保存境界は残る。
@@ -31,6 +38,6 @@ export function subscribeToNativeAppState(listener: NativeAppStateListener): () 
 
   return () => {
     disposed = true;
-    if (removeListener) void removeListener();
+    removeListener?.();
   };
 }
