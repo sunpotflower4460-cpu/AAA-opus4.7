@@ -76,6 +76,8 @@ export const copy = {
   storageRecoveryTitle: "保存データを確認してください",
   storageConflictRecoveryBody:
     "保存先のデータに問題があるため、自動保存を止めています。この画面に残っている内容を確認し、それを保存し直す場合だけ選んでください。可能な場合は元の問題データも退避します。",
+  storageRecoveryCandidateCount: (count: number) =>
+    `復元候補を${count}件表示しています。`,
   storageConflictLoad: "未保存編集を破棄して読み込む",
   storageConflictOverwrite: "この画面の編集で上書き",
   storageRecoverySave: "この画面の内容で保存し直す",
