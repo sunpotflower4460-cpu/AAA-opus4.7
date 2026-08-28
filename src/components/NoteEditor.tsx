@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
-import type { SaveResult } from "../lib/storage";
+import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
 import { copy } from "../lib/i18n";
 import { useSaveTrace } from "../hooks/useSaveTrace";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
@@ -15,6 +15,8 @@ type Props = {
   saveResult?: SaveResult | null;
   /** conflict の理由に応じた保存停止メッセージ。 */
   conflictMessage?: string;
+  /** quota / unavailable / unknown の一時的な保存失敗を内容変更なしで再試行する。 */
+  onRetrySave?: () => void;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -28,6 +30,7 @@ export function NoteEditor({
   onDelete,
   saveResult = null,
   conflictMessage = copy.saveConflict,
+  onRetrySave,
 }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -118,10 +121,32 @@ export function NoteEditor({
     window.requestAnimationFrame(() => deleteButtonRef.current?.focus());
   }
 
-  const saveErrorMessage =
-    saveResult?.ok === false && saveResult.reason === "conflict"
-      ? conflictMessage
-      : copy.saveError;
+  const retryableSaveError = isRetryableSaveFailure(saveResult);
+  const saveErrorMessage = (() => {
+    if (saveResult?.ok !== false) return copy.saveError;
+    switch (saveResult.reason) {
+      case "conflict":
+        return conflictMessage;
+      case "quota":
+        return copy.saveErrorQuota;
+      case "unavailable":
+        return copy.saveErrorUnavailable;
+      case "invalid_data":
+        return copy.saveErrorInvalidData;
+      default:
+        return copy.saveError;
+    }
+  })();
+
+  function retrySave() {
+    if (!retryableSaveError || !onRetrySave) return;
+    if (savedTimer.current) {
+      window.clearTimeout(savedTimer.current);
+      savedTimer.current = null;
+    }
+    setSaveState("saving");
+    onRetrySave();
+  }
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
@@ -263,9 +288,18 @@ export function NoteEditor({
               </span>
             )}
             {saveState === "error" && (
-              <span className="zanshin-save-status flex items-center gap-gr-2 text-vermilion">
+              <span className="zanshin-save-status flex flex-wrap items-center gap-gr-2 text-vermilion">
                 <span className="font-mincho">{saveErrorMessage}</span>
-              </span>
+                {retryableSaveError && onRetrySave && (
+                  <button
+                    type="button"
+                    onClick={retrySave}
+                    className="min-h-[44px] rounded-full border border-vermilion/30 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-vermilion transition-soft hover:bg-vermilion/5 active:scale-[0.98]"
+                  >
+                    {copy.retrySave}
+                  </button>
+                )}
+                            </span>
             )}
           </span>
         </div>

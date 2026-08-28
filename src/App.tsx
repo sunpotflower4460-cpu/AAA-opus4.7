@@ -448,6 +448,19 @@ export default function App() {
     if (result.ok) setLoadError(false);
   }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
 
+  const retrySaveCurrentNotes = useCallback(() => {
+  clearPersistTimer();
+  // conflict/recovery は専用UIの明示選択でのみ解決する。通常Retryで force しない。
+  if (saveGuardRef.current || externalConflictRef.current) return;
+
+  const snapshot = latestNotesRef.current;
+  const result = saveNotes(snapshot, {
+    expectedNotes: baselineNotesRef.current,
+    writerId: persistenceWriterId,
+  });
+  applySaveResult(result, snapshot);
+}, [applySaveResult, clearPersistTimer, persistenceWriterId]);
+
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
   }, []);
@@ -622,6 +635,7 @@ export default function App() {
           onDelete={() => deleteNote(currentNote.id)}
           saveResult={lastSaveResult}
           conflictMessage={canLoadStoredNotes ? copy.saveConflict : copy.saveRecovery}
+          onRetrySave={externalConflict ? undefined : retrySaveCurrentNotes}
         />
       )}
     </AppShell>
