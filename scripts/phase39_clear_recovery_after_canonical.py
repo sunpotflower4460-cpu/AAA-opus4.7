@@ -26,8 +26,17 @@ extra = r'''  it("local復元確認中にprimaryが正常化したら候補と�
     expect(container.querySelector('[data-testid="native-recovery-checking"]')).not.toBeNull();
     expect(container.textContent).toContain("復旧候補と同じ正本");
 
+    // probe本体はqueueMicrotaskで開始される。resolver生成前にresolveするとテストだけが
+    // 永久pendingになるため、実際にnative readが始まったことを確認してから競合を再現する。
+    await flushPromises();
+    expect(durable.read).toHaveBeenCalledTimes(1);
+    expect(resolveNative).toBeDefined();
+
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(candidate);
-    act(() => resolveNative?.({ status: "missing" }));
+    await act(async () => {
+      resolveNative?.({ status: "missing" });
+      await Promise.resolve();
+    });
     await flushPromises();
 
     expect(container.querySelector('[data-testid="native-recovery-checking"]')).toBeNull();
