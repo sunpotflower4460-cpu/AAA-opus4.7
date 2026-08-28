@@ -419,7 +419,12 @@ export default function App() {
             notesSnapshotMatches(nativeResult.notes, currentStoredRecoveryCandidate)) ||
           (current.ok && notesSnapshotMatches(nativeResult.notes, current.notes));
 
-        if (!duplicatesKnownCandidate) {
+        if (
+          !duplicatesKnownCandidate &&
+          nativeRecoveryAlternativeRef.current === null
+        ) {
+          // 一度提示した native 候補は、後続 probe で自動置換しない。
+          // conflict 中にその候補をユーザーが編集していても非同期 read で失わないため。
           nativeRecoveryAlternativeRef.current = nativeResult.notes;
           setNativeRecoveryAlternativeCount(nativeResult.notes.length);
         }

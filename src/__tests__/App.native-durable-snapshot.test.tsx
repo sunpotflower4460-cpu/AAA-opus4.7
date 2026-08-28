@@ -586,6 +586,61 @@ describe("App native durable snapshot", () => {
     expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(localTwo);
   });
 
+  it("表示中native候補を編集後に再probeされても自動上書きしない", async () => {
+    const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
+    renderApp();
+    await flushPromises();
+
+    act(() => click(findButton(container, "同じメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    let textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    const initialTextarea = textarea;
+    act(() => {
+      setter?.call(initialTextarea, "screen dirty");
+      initialTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const localOne = [makeNote({ id: "shared", title: "同じメモ", body: "local one" })];
+    const nativeOne = [makeNote({ id: "shared", title: "同じメモ", body: "native one" })];
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localOne);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeOne });
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    await flushPromises();
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    expect(textarea.value).toBe("native one");
+    const nativeTextarea = textarea;
+    act(() => {
+      setter?.call(nativeTextarea, "native edited by user");
+      nativeTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+
+    const localTwo = [makeNote({ id: "shared", title: "同じメモ", body: "local two" })];
+    const nativeTwo = [makeNote({ id: "shared", title: "同じメモ", body: "native two from probe" })];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localTwo);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeTwo });
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+    await flushPromises();
+    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+
+    act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
+    expect(container.querySelector("textarea")?.value).toBe("screen dirty");
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+  });
+
   it("dirty三者競合でnative読込失敗中は候補を保持したままforce確定を出さない", async () => {
     const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
