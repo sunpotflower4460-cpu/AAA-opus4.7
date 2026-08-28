@@ -378,7 +378,7 @@ describe("App lifecycle persistence", () => {
     act(() => click(findButton(container, copy.storageConflictOverwrite)));
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
-    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBeUndefined();
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(remoteRaw);
     expect(container.textContent).toContain(copy.storageConflictTitle);
     expect(container.textContent).toContain(copy.saveError);
   });
