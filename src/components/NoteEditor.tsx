@@ -13,13 +13,22 @@ type Props = {
   onDelete: () => void;
   /** App が実際に行った直近の保存結果。UIの保存表示を推測タイマーにしない。 */
   saveResult?: SaveResult | null;
+  /** conflict の理由に応じた保存停止メッセージ。 */
+  conflictMessage?: string;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const SAVED_FEEDBACK_VISIBLE_MS = 1200;
 
-export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null }: Props) {
+export function NoteEditor({
+  note,
+  onChange,
+  onBack,
+  onDelete,
+  saveResult = null,
+  conflictMessage = copy.saveConflict,
+}: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -111,7 +120,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null
 
   const saveErrorMessage =
     saveResult?.ok === false && saveResult.reason === "conflict"
-      ? copy.saveConflict
+      ? conflictMessage
       : copy.saveError;
 
   return (
