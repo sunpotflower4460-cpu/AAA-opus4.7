@@ -60,7 +60,6 @@ export function NoteEditor({
     }
 
     if (!saveResult.ok) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSaveState("error");
       return;
     }
