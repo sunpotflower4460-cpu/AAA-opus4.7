@@ -1,3 +1,4 @@
+import { useId, useRef } from "react";
 import { copy } from "../lib/i18n";
 
 type Props = {
@@ -6,10 +7,22 @@ type Props = {
 };
 
 export function SearchBar({ value, onChange }: Props) {
+  const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const hasValue = value.trim().length > 0;
 
   return (
-    <label className="zanshin-search-bar paper-surface transition-soft">
+    <div
+      className="zanshin-search-bar paper-surface transition-soft"
+      onClick={(event) => {
+        const target = event.target as Element;
+        if (target.closest("button")) return;
+        inputRef.current?.focus();
+      }}
+    >
+      <label htmlFor={inputId} className="sr-only">
+        {copy.searchPlaceholder}
+      </label>
       <svg
         width="17"
         height="17"
@@ -33,23 +46,21 @@ export function SearchBar({ value, onChange }: Props) {
         />
       </svg>
       <input
+        ref={inputRef}
+        id={inputId}
         type="search"
         inputMode="search"
         autoComplete="off"
         spellCheck={false}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         placeholder={copy.searchPlaceholder}
-        aria-label={copy.searchPlaceholder}
-        className="min-w-0 flex-1 bg-transparent text-[15px] text-sumi outline-none placeholder:text-ink-muted/68 jp-text-discipline"
+        className="zanshin-search-input min-w-0 flex-1 bg-transparent text-[15px] text-sumi outline-none placeholder:text-ink-muted/68 jp-text-discipline"
       />
       {hasValue && (
         <button
           type="button"
-          onClick={(event) => {
-            event.preventDefault();
-            onChange("");
-          }}
+          onClick={() => onChange("")}
           aria-label={copy.clearSearch}
           className="zanshin-clear-button"
         >
@@ -63,7 +74,7 @@ export function SearchBar({ value, onChange }: Props) {
           </svg>
         </button>
       )}
-    </label>
+    </div>
   );
 }
 
