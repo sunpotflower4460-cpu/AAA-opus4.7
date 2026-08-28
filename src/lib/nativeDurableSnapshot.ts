@@ -16,6 +16,11 @@ type NativeReadResult =
   | { status: "missing" }
   | { status: "error" };
 
+export type NativeDurableSnapshotReadResult =
+  | { status: "available"; notes: Note[] }
+  | { status: "missing" }
+  | { status: "error" };
+
 export function isNativeDurableSnapshotAvailable(): boolean {
   return Capacitor.isNativePlatform();
 }
@@ -113,23 +118,38 @@ export function persistNativeDurableSnapshot(notes: readonly Note[]): Promise<bo
   );
 }
 
-/** localStorage 消失/破損時の復元候補。primary が壊れていれば1世代前へフォールバックする。 */
-export async function readNativeDurableSnapshot(): Promise<Note[] | null> {
-  if (!isNativeDurableSnapshotAvailable()) return null;
+/**
+ * localStorage 消失/破損時の native 復元候補を読む。
+ * `missing` と I/O 失敗を区別し、読み取り不能を「新規インストール」と誤認させない。
+ */
+export async function readNativeDurableSnapshot(): Promise<NativeDurableSnapshotReadResult> {
+  if (!isNativeDurableSnapshotAvailable()) return { status: "missing" };
 
   await writeChain.catch(() => {});
 
   const primary = await readRaw(PRIMARY_PATH);
   if (primary.status === "ok") {
     const parsedPrimary = parseValidNotesSnapshot(primary.raw);
-    if (parsedPrimary !== null) return parsedPrimary;
+    if (parsedPrimary !== null) return { status: "available", notes: parsedPrimary };
   }
 
-  // primaryが不存在・破損・一時的に読込不能のいずれでも、backupは独立に読める可能性がある。
-  // ここは読み取り専用の復旧候補取得なので、primaryへ書き戻すことはしない。
+  // primary が missing / corrupt / read error の場合でも backup は独立に読める可能性がある。
+  // ただし両方から正常候補を得られなければ、read error / corrupt の痕跡は error として保持する。
   const backup = await readRaw(BACKUP_PATH);
-  if (backup.status !== "ok") return null;
-  return parseValidNotesSnapshot(backup.raw);
+  if (backup.status === "ok") {
+    const parsedBackup = parseValidNotesSnapshot(backup.raw);
+    if (parsedBackup !== null) return { status: "available", notes: parsedBackup };
+    return { status: "error" };
+  }
+
+  if (primary.status === "error" || backup.status === "error") {
+    return { status: "error" };
+  }
+
+  // primary が読めたが構造破損していたのに backup が無い場合も、fresh install ではない。
+  if (primary.status === "ok") return { status: "error" };
+
+  return { status: "missing" };
 }
 
 export function resetNativeDurableSnapshotQueueForTesting(): void {

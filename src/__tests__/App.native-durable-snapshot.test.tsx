@@ -57,6 +57,12 @@ function findButton(container: HTMLElement, text: string): HTMLButtonElement {
   return button;
 }
 
+function hasButton(container: HTMLElement, text: string): boolean {
+  return Array.from(container.querySelectorAll("button")).some((candidate) =>
+    candidate.textContent?.includes(text),
+  );
+}
+
 async function flushPromises() {
   await act(async () => {
     await Promise.resolve();
@@ -75,7 +81,7 @@ describe("App native durable snapshot", () => {
     durable.read.mockReset();
     durable.persist.mockReset();
     durable.available.mockReturnValue(true);
-    durable.read.mockResolvedValue(null);
+    durable.read.mockResolvedValue({ status: "missing" });
     durable.persist.mockResolvedValue(true);
     storage = mockLocalStorage();
     Object.defineProperty(window, "localStorage", { value: storage, configurable: true });
@@ -96,7 +102,7 @@ describe("App native durable snapshot", () => {
 
   it("localStorage primary消失時はnative snapshotを画面に復元候補として表示し自動上書きしない", async () => {
     const recovered = [makeNote({ title: "nativeから救出" })];
-    durable.read.mockResolvedValue(recovered);
+    durable.read.mockResolvedValue({ status: "available", notes: recovered });
     renderApp();
     await flushPromises();
 
@@ -110,6 +116,76 @@ describe("App native durable snapshot", () => {
 
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(recovered);
     expect(durable.persist).toHaveBeenCalledWith(recovered);
+  });
+
+  it("native復旧読込が遅くても確認完了前の新規編集とautosaveを開始しない", async () => {
+    const recovered = [makeNote({ title: "遅れて見つかったnative" })];
+    let resolveRead!: (value: { status: "available"; notes: Note[] }) => void;
+    durable.read.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRead = resolve;
+      }),
+    );
+
+    renderApp();
+    expect(container.textContent).toContain(copy.nativeRecoveryChecking);
+
+    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => vi.advanceTimersByTime(1_000));
+    await flushPromises();
+
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+    expect(container.querySelector("textarea")).toBeNull();
+    expect(durable.persist).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveRead({ status: "available", notes: recovered });
+      await Promise.resolve();
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain("遅れて見つかったnative");
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+  });
+
+  it("native読込障害はfresh install扱いせず編集を止め、retryでmissing確認後に解放する", async () => {
+    durable.read
+      .mockResolvedValueOnce({ status: "error" })
+      .mockResolvedValue({ status: "missing" });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.nativeRecoveryReadError);
+    expect(hasButton(container, copy.nativeRecoveryRetry)).toBe(true);
+    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => vi.advanceTimersByTime(1_000));
+    await flushPromises();
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+    expect(container.querySelector("textarea")).toBeNull();
+
+    act(() => click(findButton(container, copy.nativeRecoveryRetry)));
+    await flushPromises();
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+
+    act(() => click(findButton(container, copy.emptyAction)));
+    expect(container.querySelector("textarea")).not.toBeNull();
+    act(() => vi.advanceTimersByTime(500));
+    await flushPromises();
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeDefined();
+  });
+
+  it("native側の空配列も意図的な全削除状態として明示復旧候補にする", async () => {
+    durable.read.mockResolvedValue({ status: "available", notes: [] });
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+    act(() => click(findButton(container, copy.storageRecoverySave)));
+    await flushPromises();
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual([]);
   });
 
   it("既存の正常localStorageは初回起動時にnative耐久層へ移行する", async () => {
@@ -213,5 +289,27 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     expect(container.querySelector('[data-testid="native-backup-failure"]')).toBeNull();
+  });
+
+  it("native予備保存Retryは編集開始時に即座に無効化しinert buttonを残さない", async () => {
+    const existing = [makeNote()];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
+    durable.persist.mockResolvedValueOnce(false).mockResolvedValue(true);
+    renderApp();
+    await flushPromises();
+    expect(hasButton(container, copy.nativeBackupRetry)).toBe(true);
+
+    act(() => click(findButton(container, "元のメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    act(() => {
+      setter?.call(textarea, "dirtyにする");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    expect(container.querySelector('[data-testid="native-backup-failure"]')).not.toBeNull();
+    expect(hasButton(container, copy.nativeBackupRetry)).toBe(false);
   });
 });

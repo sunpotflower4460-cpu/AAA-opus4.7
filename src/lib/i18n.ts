@@ -75,6 +75,10 @@ export const copy = {
   nativeBackupError:
     "メモ本体は保存されていますが、端末内の予備保存を更新できませんでした。",
   nativeBackupRetry: "予備保存をもう一度作る",
+  nativeRecoveryChecking: "端末内の復元データを確認しています…",
+  nativeRecoveryReadError:
+    "端末内の復元データを確認できませんでした。上書きを防ぐため、編集と保存を止めています。",
+  nativeRecoveryRetry: "もう一度確認する",
   saveConflict: "別の変更と重なったため、保存を止めています",
   saveConflictEn: "Saving paused because another change was detected",
   saveRecovery: "復元内容を確認するまで、保存を止めています",
