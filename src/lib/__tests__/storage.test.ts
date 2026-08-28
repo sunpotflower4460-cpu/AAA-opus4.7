@@ -253,6 +253,29 @@ describe("saveNotes", () => {
     expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(validBackup);
   });
 
+  it("空文字の primary を正常な空状態と誤認せず conflict で止めて退避する", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, "");
+
+    const result = saveNotes([makeNote()], { expectedNotes: [] });
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe("");
+    expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe("");
+  });
+
+  it("force 保存で破損 primary を上書きする場合も元 raw を退避する", () => {
+    const corruptRaw = "{ broken before force";
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+
+    const result = saveNotes([makeNote({ id: "forced" })], { force: true });
+
+    expect(result).toEqual({ ok: true });
+    expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe(corruptRaw);
+    expect((JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[])[0].id).toBe(
+      "forced",
+    );
+  });
+
   it("期待していた内容から primary が変わっていれば conflict で保存を止める", () => {
     const baseline = [makeNote({ id: "shared", title: "最初" })];
     const remote = [
