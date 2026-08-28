@@ -1,0 +1,36 @@
+name: Phase 40 Native Rolling Window
+
+on:
+  push:
+    branches: ["bugfix/phase40-dirty-three-way-recovery"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Apply native rolling window hardening
+        run: python scripts/phase40_native_rolling_window.py
+      - name: Validate native rolling window hardening
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+          npm run check
+          npx cap sync ios
+          git diff --exit-code -- ios
+          git diff --check
+      - name: Commit source and regressions
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/nativeDurableSnapshot.ts src/lib/__tests__/nativeDurableSnapshot.test.ts
+          git commit -m "Phase 40: roll native recovery snapshots safely"
+          git push origin HEAD:bugfix/phase40-dirty-three-way-recovery
