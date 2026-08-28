@@ -20,15 +20,12 @@ import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
 
 type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; id: string };
-
-/** 削除後のUndoキュー。deletedAt で管理し、将来のゴミ箱機能へ拡張しやすくする。 */
 type DeletedNote = Note & { deletedAt: string };
 
 const AUTOSAVE_DEBOUNCE_MS = 500;
 const UNDO_TIMEOUT_MS = 10_000;
 
 export default function App() {
-  // 初回ロード結果を一度だけ取得（loadNotes はマウント時に一度だけ呼ぶ）
   const [initialLoad] = useState(() => {
     const result = loadNotes();
     return {
@@ -46,27 +43,21 @@ export default function App() {
   );
   const [isPremiumSheetOpen, setIsPremiumSheetOpen] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<SaveResult | null>(null);
-
-  /** 削除Undo: 最後に削除したノートと自動削除タイマー */
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
-  const undoTimerRef = useRef<number | null>(null);
-
-  /** 初回ロードがデータ破損だった場合の警告表示 */
   const [loadError, setLoadError] = useState<boolean>(initialLoad.loadFailed);
 
-  /**
-   * 破損ロード時は、ユーザーが明示的に編集するまで保存を禁止する。
-   * 一度スキップしただけで解除せず、データ確認中のリロード/終了でも元データを守る。
-   */
-  const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
+  const undoTimerRef = useRef<number | null>(null);
+  const persistTimerRef = useRef<number | null>(null);
 
-  /**
-   * このタブ自身が変更したときだけ lifecycle flush を許可する。
-   * 開いただけの古いタブが pagehide で新しい別タブの内容を上書きする事故を防ぐ。
-   */
+  // 破損復旧中は、ユーザー自身の明示的な編集が入るまで保存禁止を維持する。
+  const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
+  // このタブ自身が変更したときだけ lifecycle flush を許可する。
   const notesDirtyRef = useRef(false);
   const latestNotesRef = useRef(notes);
-  latestNotesRef.current = notes;
+
+  useEffect(() => {
+    latestNotesRef.current = notes;
+  }, [notes]);
 
   const markNotesDirty = useCallback(() => {
     saveGuardRef.current = false;
@@ -74,17 +65,16 @@ export default function App() {
     setLastSaveResult(null);
   }, []);
 
-  const persistTimer = useRef<number | null>(null);
   useEffect(() => {
-    if (persistTimer.current) {
-      window.clearTimeout(persistTimer.current);
-      persistTimer.current = null;
+    if (persistTimerRef.current) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
     }
 
     if (saveGuardRef.current || !notesDirtyRef.current) return undefined;
 
-    persistTimer.current = window.setTimeout(() => {
-      persistTimer.current = null;
+    persistTimerRef.current = window.setTimeout(() => {
+      persistTimerRef.current = null;
       if (saveGuardRef.current || !notesDirtyRef.current) return;
 
       const result = saveNotes(notes);
@@ -93,9 +83,9 @@ export default function App() {
     }, AUTOSAVE_DEBOUNCE_MS);
 
     return () => {
-      if (persistTimer.current) {
-        window.clearTimeout(persistTimer.current);
-        persistTimer.current = null;
+      if (persistTimerRef.current) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
       }
     };
   }, [notes]);
@@ -127,9 +117,7 @@ export default function App() {
   useEffect(() => {
     const syncMonetization = () => setMonetization(loadMonetizationState());
     window.addEventListener("storage", syncMonetization);
-    return () => {
-      window.removeEventListener("storage", syncMonetization);
-    };
+    return () => window.removeEventListener("storage", syncMonetization);
   }, []);
 
   useEffect(() => {
@@ -152,6 +140,7 @@ export default function App() {
       isFavorite: false,
       locale: "ja",
     };
+
     setNotes((prev) => [note, ...prev]);
     setView({ kind: "editor", id: note.id });
   }, [markNotesDirty]);
@@ -176,8 +165,6 @@ export default function App() {
         return;
       }
 
-      // State updater の中でタイマーや別 setState を作らない。
-      // React StrictMode の updater 二重評価でも副作用が重複しないようにする。
       if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
       const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
 
@@ -234,8 +221,7 @@ export default function App() {
   const handleRestore = useCallback(async () => {
     setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
     try {
-      const next = await restorePurchasesMock();
-      setMonetization(next);
+      setMonetization(await restorePurchasesMock());
     } catch (error) {
       console.error("Purchase restore failed", error);
       setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
@@ -249,13 +235,10 @@ export default function App() {
 
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
-      // 開いていたノートが削除された場合に一覧へ戻す（意図的な setState in effect）
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setView({ kind: "list" });
     }
   }, [view, currentNote]);
-
-  const saveError = lastSaveResult?.ok === false;
 
   return (
     <AppShell>
@@ -336,7 +319,7 @@ export default function App() {
           onChange={(patch) => updateNote(currentNote.id, patch)}
           onBack={() => setView({ kind: "list" })}
           onDelete={() => deleteNote(currentNote.id)}
-          saveError={saveError}
+          saveResult={lastSaveResult}
         />
       )}
     </AppShell>
