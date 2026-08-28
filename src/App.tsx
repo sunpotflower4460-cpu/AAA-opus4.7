@@ -26,6 +26,7 @@ import { nowIso } from "./lib/date";
 import { createId } from "./lib/id";
 import { copy } from "./lib/i18n";
 import { getSaveFailureMessage } from "./lib/saveFailureUi";
+import { subscribeToNativeAppState } from "./lib/nativeAppLifecycle";
 import { AppShell } from "./components/AppShell";
 import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
@@ -288,6 +289,18 @@ export default function App() {
       window.removeEventListener("pageshow", refreshCleanNotesFromStorage);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
+  }, [flushPendingNotes, refreshCleanNotesFromStorage]);
+
+  useEffect(() => {
+    // WKWebView の DOM lifecycle だけに依存せず、iOS native 側の active/inactive も保存境界にする。
+    // DOM と native の両方が発火しても、dirty/no-op guard により二重保存は安全に抑止される。
+    return subscribeToNativeAppState(({ isActive }) => {
+      if (isActive) {
+        refreshCleanNotesFromStorage();
+      } else {
+        flushPendingNotes();
+      }
+    });
   }, [flushPendingNotes, refreshCleanNotesFromStorage]);
 
   useEffect(() => {
