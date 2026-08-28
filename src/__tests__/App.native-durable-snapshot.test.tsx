@@ -326,6 +326,9 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     expect(container.textContent).toContain(copy.nativeRecoveryReadError);
+    expect(container.textContent).not.toContain(
+      "データの読み込みに問題がありました。メモが復元できない可能性があります。",
+    );
     expect(container.querySelector('[data-testid="native-recovery-error"]')).not.toBeNull();
     act(() => click(findButton(container, copy.emptyAction)));
     act(() => vi.advanceTimersByTime(1_000));

@@ -93,7 +93,9 @@ export default function App() {
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
   // 復元候補がある場合は、汎用エラーと二重表示せず recovery banner 側で案内する。
   const [loadError, setLoadError] = useState<boolean>(
-    initialLoad.loadFailed && !initialLoad.recoveryPending,
+    initialLoad.loadFailed &&
+      !initialLoad.recoveryPending &&
+      !nativeRecoveryInitiallyRequired,
   );
   const [externalConflict, setExternalConflict] = useState(initialLoad.recoveryPending);
   const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(
