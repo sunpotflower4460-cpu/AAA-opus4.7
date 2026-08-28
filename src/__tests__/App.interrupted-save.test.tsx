@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import {
   BACKUP_KEY_FOR_TESTING,
+  CONFLICT_BACKUP_KEY_FOR_TESTING,
   PENDING_SAVE_KEY_FOR_TESTING,
   STORAGE_KEY_FOR_TESTING,
 } from "../lib/storage";
@@ -90,7 +91,7 @@ describe("App interrupted-save recovery", () => {
     });
   }
 
-  it("再起動時に古いprimaryより中断journalの最新版を先に表示して明示確定できる", () => {
+  it("再起動時に中断最新版を表示し、保存済み版との二択を出した上で最新版を明示確定できる", () => {
     const base = [makeNote()];
     const next = [
       makeNote({
@@ -112,17 +113,52 @@ describe("App interrupted-save recovery", () => {
 
     expect(container.textContent).toContain("保存途中だった最新版");
     expect(container.textContent).not.toContain("保存前のメモ");
-    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain(copy.storageConflictLoad);
+    expect(container.textContent).toContain(copy.storageConflictOverwrite);
 
-    act(() => click(findButton(container, copy.storageRecoverySave)));
+    act(() => click(findButton(container, copy.storageConflictOverwrite)));
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(nextRaw);
     expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(nextRaw);
+    expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(baseRaw);
     expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
-    expect(container.textContent).not.toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
   });
 
-  it("全削除の保存が中断して next が空配列でも、古いメモを復活させず復旧確認を出す", () => {
+  it("中断候補ではなく保存済みprimaryを選ぶと、候補を退避してからprimaryへ戻せる", () => {
+    const base = [makeNote()];
+    const next = [
+      makeNote({
+        title: "採用しない中断候補",
+        body: "候補としては残す",
+        updatedAt: "2026-08-28T00:06:00.000Z",
+      }),
+    ];
+    const baseRaw = JSON.stringify(base);
+    const nextRaw = JSON.stringify(next);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, baseRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, nextRaw);
+    storage.setItem(
+      PENDING_SAVE_KEY_FOR_TESTING,
+      JSON.stringify({ version: 1, baseRaw, nextRaw }),
+    );
+
+    renderApp();
+    expect(container.textContent).toContain("採用しない中断候補");
+
+    act(() => click(findButton(container, copy.storageConflictLoad)));
+
+    expect(container.textContent).toContain("保存前のメモ");
+    expect(container.textContent).not.toContain("採用しない中断候補");
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(baseRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(baseRaw);
+    expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(nextRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
+  });
+
+  it("全削除の保存が中断して next が空配列でも、古いメモを勝手に復活させず二択を出す", () => {
     const baseRaw = JSON.stringify([makeNote({ id: "delete-me" })]);
     const nextRaw = JSON.stringify([]);
     storage.setItem(STORAGE_KEY_FOR_TESTING, baseRaw);
@@ -135,14 +171,16 @@ describe("App interrupted-save recovery", () => {
     renderApp();
 
     expect(container.textContent).not.toContain("保存前のメモ");
-    expect(container.textContent).toContain(copy.storageRecoveryTitle);
-    expect(container.textContent).toContain(copy.storageRecoverySave);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain(copy.storageConflictLoad);
+    expect(container.textContent).toContain(copy.storageConflictOverwrite);
 
-    act(() => click(findButton(container, copy.storageRecoverySave)));
+    act(() => click(findButton(container, copy.storageConflictOverwrite)));
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(nextRaw);
     expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(nextRaw);
+    expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(baseRaw);
     expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
-    expect(container.textContent).not.toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
   });
 });
