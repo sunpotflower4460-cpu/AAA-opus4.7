@@ -117,6 +117,25 @@ describe("loadNotes", () => {
     expect(result.notes[0].id).toBe("valid");
   });
 
+  it("バックアップ領域だけ読めなくても主データから救えた正常要素を返す", () => {
+    const valid = makeNote({ id: "survivor" });
+    const invalid = { id: 123, title: "bad" };
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([valid, invalid]));
+
+    storage.getItem.mockImplementation((key: string) => {
+      if (key === BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("blocked", "SecurityError");
+      }
+      return storage._store[key] ?? null;
+    });
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("invalid_structure");
+    expect(result.notes.map((note) => note.id)).toEqual(["survivor"]);
+  });
+
   it("重複IDは不正構造とし、updatedAt が新しい方だけを復元候補にする", () => {
     const oldNote = makeNote({
       id: "duplicate",
