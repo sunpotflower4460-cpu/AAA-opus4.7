@@ -282,11 +282,16 @@ export default function App() {
         setScreenRecoveryCandidateCount(screenSnapshot.length);
       }
 
-      localRecoveryCandidateRef.current = remoteSnapshot;
-      if (recoveryCandidateSourceRef.current === "local") {
-        latestNotesRef.current = remoteSnapshot;
-        setNotes(remoteSnapshot);
-        setRecoveryCandidateCount(remoteSnapshot.length);
+      // 一度ユーザーへ提示した local 候補は、その後の storage event で自動置換しない。
+      // 候補を表示中にユーザーが編集していても、別タブの新しい recovery で上書きしないため。
+      // 新しい remote 世代自体は保存層に残り、force 確定時の conflict archive で保全される。
+      if (localRecoveryCandidateRef.current === null) {
+        localRecoveryCandidateRef.current = remoteSnapshot;
+        if (recoveryCandidateSourceRef.current === "local") {
+          latestNotesRef.current = remoteSnapshot;
+          setNotes(remoteSnapshot);
+          setRecoveryCandidateCount(remoteSnapshot.length);
+        }
       }
 
       if (!isNativeDurableSnapshotAvailable()) return;
@@ -389,18 +394,12 @@ export default function App() {
     // probe中に正常primaryが戻っても screen を自動破棄せず、保存先版は既存のload actionで選択可能にする。
     if (screenRecoveryCandidate !== null && localRecoveryCandidate !== null) {
       const current = loadNotes();
-      let latestLocalCandidate = localRecoveryCandidate;
+      const latestLocalCandidate = localRecoveryCandidate;
+      const currentStoredRecoveryCandidate =
+        !current.ok && hasRecoveryCandidate(current) ? current.notes : null;
 
-      if (!current.ok && hasRecoveryCandidate(current)) {
-        latestLocalCandidate = current.notes;
-        localRecoveryCandidateRef.current = current.notes;
-        if (recoveryCandidateSourceRef.current === "local") {
-          latestNotesRef.current = current.notes;
-          setNotes(current.notes);
-          setRecoveryCandidateCount(current.notes.length);
-        }
-      }
-
+      // probe 中に保存層の recovery 世代が変わっても、すでに提示済みの local 候補を
+      // 自動置換しない。active local 候補へのユーザー編集を非同期 probe で失わないため。
       setCanLoadStoredNotes(canChooseStoredPrimary(current));
 
       if (primaryHealth === "unavailable" || nativeResult.status === "error") {
@@ -416,6 +415,8 @@ export default function App() {
         const duplicatesKnownCandidate =
           notesSnapshotMatches(nativeResult.notes, screenRecoveryCandidate) ||
           notesSnapshotMatches(nativeResult.notes, latestLocalCandidate) ||
+          (currentStoredRecoveryCandidate !== null &&
+            notesSnapshotMatches(nativeResult.notes, currentStoredRecoveryCandidate)) ||
           (current.ok && notesSnapshotMatches(nativeResult.notes, current.notes));
 
         if (!duplicatesKnownCandidate) {

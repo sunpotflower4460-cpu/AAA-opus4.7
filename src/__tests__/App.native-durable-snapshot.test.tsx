@@ -532,6 +532,60 @@ describe("App native durable snapshot", () => {
     );
   });
 
+  it("表示中local候補を編集後に別remote recoveryが来ても自動上書きしない", async () => {
+    const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
+    renderApp();
+    await flushPromises();
+
+    act(() => click(findButton(container, "同じメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    let textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    const initialTextarea = textarea;
+    act(() => {
+      setter?.call(initialTextarea, "screen dirty");
+      initialTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const localOne = [makeNote({ id: "shared", title: "同じメモ", body: "local one" })];
+    const nativeCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "native" })];
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localOne);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeCandidate });
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    await flushPromises();
+
+    act(() => click(findButton(container, copy.dirtyRecoveryShowLocal)));
+    textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    expect(textarea.value).toBe("local one");
+    const localTextarea = textarea;
+    act(() => {
+      setter?.call(localTextarea, "local edited by user");
+      localTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+
+    const localTwo = [makeNote({ id: "shared", title: "同じメモ", body: "local two from remote" })];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localTwo);
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+    await flushPromises();
+    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+
+    act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
+    expect(container.querySelector("textarea")?.value).toBe("screen dirty");
+    act(() => click(findButton(container, copy.dirtyRecoveryShowLocal)));
+    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(localTwo);
+  });
+
   it("dirty三者競合でnative読込失敗中は候補を保持したままforce確定を出さない", async () => {
     const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
