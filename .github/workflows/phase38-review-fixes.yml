@@ -18,7 +18,9 @@ jobs:
           node-version: "22"
           cache: "npm"
       - name: Apply review fixes
-        run: python scripts/phase38_review_fixes.py
+        run: |
+          python scripts/phase38_review_fixes.py
+          python scripts/phase38_review_lint_fix.py
       - name: Validate review fixes
         run: |
           npm ci
