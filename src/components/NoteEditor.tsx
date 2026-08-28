@@ -60,12 +60,13 @@ export function NoteEditor({
     }
 
     if (!saveResult.ok) {
+      // 保存結果は外部ストレージI/Oの結果なので、このeffect内で状態へ反映する。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSaveState("error");
       return;
     }
 
     // 実際の saveNotes 成功後にだけ「保存済み」へ遷移する。
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveState("saved");
     savedTimer.current = window.setTimeout(() => {
       setSaveState("idle");
