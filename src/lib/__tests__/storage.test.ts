@@ -5,6 +5,7 @@ import {
   STORAGE_KEY_FOR_TESTING,
   BACKUP_KEY_FOR_TESTING,
   CONFLICT_BACKUP_KEY_FOR_TESTING,
+  RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING,
   PENDING_SAVE_KEY_FOR_TESTING,
   CORRUPT_BACKUP_KEY_FOR_TESTING,
 } from "../storage";
@@ -612,6 +613,45 @@ describe("saveNotes", () => {
     expect(result).toEqual({ ok: true });
     expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(interruptedRaw);
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
+  });
+
+  it("force 保存は BACKUP_KEY だけに残る別世代の正常復元候補も専用退避してから上書きする", () => {
+    const hiddenRecovery = [makeNote({ id: "hidden-recovery", title: "見えていない復元候補" })];
+    const forced = [makeNote({ id: "forced", title: "この画面を確定" })];
+    const corruptRaw = "{ broken primary before force";
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(hiddenRecovery));
+
+    const result = saveNotes(forced, { force: true });
+
+    expect(result).toEqual({ ok: true });
+    expect(JSON.parse(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(hiddenRecovery);
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+    expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe(corruptRaw);
+  });
+
+  it("force 保存で hidden recovery backup の退避に失敗したら元候補とprimaryを上書きしない", () => {
+    const hiddenRecovery = [makeNote({ id: "hidden-recovery", title: "守る復元候補" })];
+    const forced = [makeNote({ id: "forced", title: "この画面" })];
+    const hiddenRaw = JSON.stringify(hiddenRecovery);
+    const corruptRaw = "{ broken primary before failed force";
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, hiddenRaw);
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    const result = saveNotes(forced, { force: true });
+
+    expect(result).toEqual({ ok: false, reason: "quota" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(hiddenRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("force 保存で conflict backup の退避に失敗したら別画面版を上書きしない", () => {

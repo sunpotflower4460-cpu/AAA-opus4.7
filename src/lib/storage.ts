@@ -8,6 +8,8 @@ const BACKUP_KEY = "zanshin.notes.backup.v1";
 const CONFLICT_BACKUP_KEY = "zanshin.notes.conflict.backup.v1";
 // pending候補と現在primaryの両方を退避する必要がある稀な競合で、primary側を残す第二退避先。
 const SECONDARY_CONFLICT_BACKUP_KEY = "zanshin.notes.conflict.secondary.backup.v1";
+// force-save 直前の通常 recovery backup が current/pending と別世代なら、見えていない候補として別退避する。
+const RECOVERY_CONFLICT_BACKUP_KEY = "zanshin.notes.recovery.conflict.backup.v1";
 // localStorage は複数キーを原子的に更新できないため、base -> next を記録して中断保存を判定する。
 const PENDING_SAVE_KEY = "zanshin.notes.pending.v1";
 const CORRUPT_BACKUP_KEY = "zanshin.notes.corrupt.backup";
@@ -542,6 +544,15 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
         currentRaw !== serialized
           ? currentRaw
           : null;
+      const existingRecoveryBackupRaw = window.localStorage.getItem(BACKUP_KEY);
+      const recoveryBackupCandidateRaw =
+        existingRecoveryBackupRaw !== null &&
+        parseNotesRaw(existingRecoveryBackupRaw).status === "valid" &&
+        existingRecoveryBackupRaw !== serialized &&
+        existingRecoveryBackupRaw !== pendingCandidateRaw &&
+        existingRecoveryBackupRaw !== currentCandidateRaw
+          ? existingRecoveryBackupRaw
+          : null;
 
       // pending の next が未採用なら最優先 conflict backup に残す。
       if (pendingCandidateRaw !== null) {
@@ -559,6 +570,16 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
             : CONFLICT_BACKUP_KEY;
         try {
           window.localStorage.setItem(currentBackupKey, currentCandidateRaw);
+        } catch (error) {
+          return saveFailureFromError(error);
+        }
+      }
+
+      // primary が壊れている/消えている時は BACKUP_KEY が唯一の正常候補になり得る。
+      // force-save で BACKUP_KEY を新版へ更新する前に、別世代なら専用退避へ確定する。
+      if (recoveryBackupCandidateRaw !== null) {
+        try {
+          window.localStorage.setItem(RECOVERY_CONFLICT_BACKUP_KEY, recoveryBackupCandidateRaw);
         } catch (error) {
           return saveFailureFromError(error);
         }
@@ -599,5 +620,6 @@ export const STORAGE_KEY_FOR_TESTING = STORAGE_KEY;
 export const BACKUP_KEY_FOR_TESTING = BACKUP_KEY;
 export const CONFLICT_BACKUP_KEY_FOR_TESTING = CONFLICT_BACKUP_KEY;
 export const SECONDARY_CONFLICT_BACKUP_KEY_FOR_TESTING = SECONDARY_CONFLICT_BACKUP_KEY;
+export const RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING = RECOVERY_CONFLICT_BACKUP_KEY;
 export const PENDING_SAVE_KEY_FOR_TESTING = PENDING_SAVE_KEY;
 export const CORRUPT_BACKUP_KEY_FOR_TESTING = CORRUPT_BACKUP_KEY;
