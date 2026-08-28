@@ -23,6 +23,7 @@ jobs:
         run: |
           python scripts/phase38_patch.py
           python scripts/phase38_fix_render_refs.py
+          python scripts/phase38_fix_native_web_skip.py
       - name: Validate implementation
         run: |
           npm audit --omit=dev --audit-level=high
