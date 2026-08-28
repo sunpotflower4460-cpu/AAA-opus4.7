@@ -70,7 +70,9 @@ export default function App() {
   }, [notes]);
 
   useEffect(() => {
-    const flush = () => { saveNotes(notes); };
+    const flush = () => {
+      saveNotes(notes);
+    };
     window.addEventListener("beforeunload", flush);
     window.addEventListener("pagehide", flush);
     return () => {
@@ -84,6 +86,12 @@ export default function App() {
     window.addEventListener("storage", syncMonetization);
     return () => {
       window.removeEventListener("storage", syncMonetization);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
     };
   }, []);
 
@@ -124,6 +132,7 @@ export default function App() {
         const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
         setLastDeleted(deleted);
         undoTimerRef.current = window.setTimeout(() => {
+          undoTimerRef.current = null;
           setLastDeleted(null);
         }, UNDO_TIMEOUT_MS);
       }
@@ -133,7 +142,10 @@ export default function App() {
   }, []);
 
   const undoDelete = useCallback(() => {
-    if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+    if (undoTimerRef.current) {
+      window.clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
     setLastDeleted((deleted) => {
       if (!deleted) return null;
       const { deletedAt: _, ...note } = deleted;
@@ -198,7 +210,8 @@ export default function App() {
         <div
           role="alert"
           aria-live="assertive"
-          className="fixed inset-x-gr-4 top-gr-3 z-30 flex items-center justify-between gap-gr-3 rounded-[13px] border border-vermilion/30 bg-paper px-gr-4 py-gr-3 text-[12px] leading-ample text-vermilion shadow-paper-hover animate-fadeIn"
+          className="fixed inset-x-gr-4 top-gr-3 z-30 flex items-center justify-between gap-gr-3 border border-vermilion/30 bg-paper px-gr-4 py-gr-2 text-[12px] leading-ample text-vermilion shadow-paper-hover animate-fadeIn"
+          style={{ borderRadius: "7px 13px 8px 11px" }}
         >
           <span className="font-mincho jp-text-discipline">
             データの読み込みに問題がありました。メモが復元できない可能性があります。
@@ -206,7 +219,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setLoadError(false)}
-            className="shrink-0 text-ink-muted/70 transition-soft hover:text-sumi"
+            className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[8px] text-ink-muted/70 transition-soft hover:bg-vermilion/5 hover:text-sumi active:scale-[0.96]"
             aria-label="閉じる"
           >
             ✕
@@ -218,13 +231,15 @@ export default function App() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-gr-4 bottom-[max(env(safe-area-inset-bottom),89px)] z-30 flex items-center justify-between gap-gr-3 rounded-[13px] border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-3 text-[13px] shadow-paper-hover animate-softUp"
+          className="fixed inset-x-gr-4 bottom-[max(env(safe-area-inset-bottom),89px)] z-30 flex items-center justify-between gap-gr-3 border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-2 text-[13px] shadow-paper-hover animate-softUp"
+          style={{ borderRadius: "7px 13px 8px 11px" }}
         >
           <span className="font-mincho text-sumi/88 jp-text-discipline">{copy.undoDeleteMessage}</span>
           <button
             type="button"
             onClick={undoDelete}
-            className="shrink-0 rounded-full border border-[color:var(--color-line)] px-gr-3 py-gr-2 font-mincho text-[12px] tracking-mincho text-sumi transition-soft hover:bg-washi"
+            className="min-h-[44px] shrink-0 border border-[color:var(--color-line)] px-gr-3 py-gr-2 font-mincho text-[12px] tracking-mincho text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+            style={{ borderRadius: "6px 10px 7px 9px" }}
           >
             {copy.undoDelete}
           </button>
