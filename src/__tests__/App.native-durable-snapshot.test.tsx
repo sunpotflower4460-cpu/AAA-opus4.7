@@ -202,6 +202,20 @@ describe("App native durable snapshot", () => {
     expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
   });
 
+  it("正常localとnative snapshotが同一なら競合にせず安全確認後に通常起動する", async () => {
+    const existing = [makeNote({ title: "同じ正本" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
+    durable.read.mockResolvedValue({ status: "available", notes: existing });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain("同じ正本");
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    expect(durable.persist).toHaveBeenCalledWith(existing);
+  });
+
   it("正常localと異なるnative snapshotは起動だけで上書きせず別候補として保持する", async () => {
     const local = [makeNote({ title: "localの正本" })];
     const native = [
