@@ -27,7 +27,7 @@ export type LoadResult =
   | {
       ok: false;
       notes: Note[];
-      reason: "corrupt" | "invalid_structure" | "unavailable";
+      reason: "corrupt" | "invalid_structure" | "missing_primary" | "unavailable";
       corruptBackupKey?: string;
       recoveredFromBackup?: boolean;
     };
@@ -159,6 +159,7 @@ function readValidatedBackup(): Note[] | null {
 /**
  * localStorage からメモを読み込む。
  * - 正常データはそのまま返す
+ * - primary だけ消失して正常な非空 backup が残っていれば復元候補として返す
  * - JSON破損 / 不正要素 / 重複ID / 不正日時は元データを退避する
  * - 直前バックアップが正常なら復元候補としてマージする
  * - 復元候補を表示しても ok:false のまま返し、自動上書きを防ぐ
@@ -168,7 +169,21 @@ export function loadNotes(): LoadResult {
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ok: true, notes: [] };
+    if (raw === null) {
+      // アプリ自身は保存済み primary を removeItem しない。
+      // そのため backup だけ残っている状態は「初回起動」ではなく、
+      // primary 消失・部分クリア等の異常系として復元可能性を優先する。
+      const backupNotes = readValidatedBackup();
+      if (backupNotes && backupNotes.length > 0) {
+        return {
+          ok: false,
+          notes: backupNotes,
+          reason: "missing_primary",
+          recoveredFromBackup: true,
+        };
+      }
+      return { ok: true, notes: [] };
+    }
 
     const primary = parseNotesRaw(raw);
     if (primary.status === "valid") {
