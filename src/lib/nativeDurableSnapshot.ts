@@ -5,6 +5,7 @@ import { parseValidNotesSnapshot } from "./storage";
 
 const PRIMARY_PATH = "zanshin/notes.snapshot.v1.json";
 const BACKUP_PATH = "zanshin/notes.snapshot.backup.v1.json";
+const SECONDARY_BACKUP_PATH = "zanshin/notes.snapshot.backup.secondary.v1.json";
 const CORRUPT_PATH = "zanshin/notes.snapshot.corrupt.v1.json";
 const DIRECTORY = Directory.LibraryNoCloud;
 const FILE_NOT_FOUND_CODE = "OS-PLUG-FILE-0008";
@@ -72,7 +73,59 @@ async function writeSnapshotRaw(nextRaw: string): Promise<void> {
 
     if (parseValidNotesSnapshot(current.raw) !== null) {
       // 新しい primary に触る前に、直前の正常世代を確定する。
-      // ここが失敗した場合は current primary を残し、新版へ進まない。
+      // 既存 backup に別の正常世代がある場合は secondary へ退避し、
+      // 未確認の世代を rotation だけで黙って消さない。
+      const existingBackup = await readRaw(BACKUP_PATH);
+      if (existingBackup.status === "error") {
+        throw new Error("native snapshot backup read failed");
+      }
+
+      if (
+        existingBackup.status === "ok" &&
+        existingBackup.raw !== current.raw &&
+        existingBackup.raw !== nextRaw &&
+        parseValidNotesSnapshot(existingBackup.raw) !== null
+      ) {
+        const secondaryBackup = await readRaw(SECONDARY_BACKUP_PATH);
+        if (secondaryBackup.status === "error") {
+          throw new Error("native snapshot secondary backup read failed");
+        }
+
+        if (secondaryBackup.status === "ok") {
+          const secondaryIsValid = parseValidNotesSnapshot(secondaryBackup.raw) !== null;
+          const secondaryAlreadyPreservesOldBackup =
+            secondaryIsValid && secondaryBackup.raw === existingBackup.raw;
+          const secondaryCanBeReplaced =
+            !secondaryIsValid ||
+            secondaryBackup.raw === current.raw ||
+            secondaryBackup.raw === nextRaw;
+
+          if (!secondaryAlreadyPreservesOldBackup && !secondaryCanBeReplaced) {
+            // primary / backup / secondary に3つの異なる正常世代がある。
+            // 4つ目への更新でどれかを捨てるより、保存を止めて既存世代を守る。
+            throw new Error("native snapshot recovery archive full");
+          }
+
+          if (!secondaryAlreadyPreservesOldBackup) {
+            await writeRaw(SECONDARY_BACKUP_PATH, existingBackup.raw);
+          }
+        } else {
+          await writeRaw(SECONDARY_BACKUP_PATH, existingBackup.raw);
+        }
+      } else if (
+        existingBackup.status === "ok" &&
+        parseValidNotesSnapshot(existingBackup.raw) === null
+      ) {
+        // 壊れた backup は診断余地だけ best-effort で残し、正常 current の確定を優先する。
+        try {
+          await writeRaw(CORRUPT_PATH, existingBackup.raw);
+        } catch {
+          // best effort
+        }
+      }
+
+      // secondary 退避が必要なら完了した後で初めて backup を更新する。
+      // ここが失敗した場合も current primary はまだ旧正本のまま残る。
       await writeRaw(BACKUP_PATH, current.raw);
     } else {
       // 破損した native snapshot も診断・救済余地を残すが、退避失敗は新版保存を妨げない。
@@ -159,5 +212,6 @@ export function resetNativeDurableSnapshotQueueForTesting(): void {
 export const NATIVE_SNAPSHOT_PATHS_FOR_TESTING = {
   primary: PRIMARY_PATH,
   backup: BACKUP_PATH,
+  secondaryBackup: SECONDARY_BACKUP_PATH,
   corrupt: CORRUPT_PATH,
 } as const;
