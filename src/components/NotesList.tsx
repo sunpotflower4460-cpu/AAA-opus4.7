@@ -65,12 +65,12 @@ export function NotesList({
     PREMIUM_ENABLED && !isSearching && (visible.length > 1 || monetization.isPremium);
 
   return (
-    <div className="flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
-      <header className="pt-gr-3">
+    <div className="zanshin-home flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
+      <header className="zanshin-home-header pt-gr-3">
         <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-3 text-center">
           <div className="zanshin-app-title-block flex flex-col items-center gap-gr-2">
-            <ZanshinMark size={30} className="text-sumi/82" />
-            <h1 className="font-mincho text-[24px] leading-none tracking-[0.18em] text-sumi">
+            <ZanshinMark size={32} className="text-sumi/82" />
+            <h1 className="font-mincho text-[26px] leading-none tracking-[0.2em] text-sumi">
               {copy.appName}
             </h1>
             <p className="english-subcopy text-[9px] tracking-[0.24em] opacity-80">
