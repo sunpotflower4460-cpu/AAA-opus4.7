@@ -86,9 +86,10 @@ describe("App corrupt recovery conflict", () => {
     container.remove();
   });
 
-  it("破損復旧中は成立しない『保存先を読み込む』選択肢を表示しない", () => {
-    const corruptRaw = "{ broken primary";
-    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+  function renderRecovery(primaryRaw?: string) {
+    if (primaryRaw !== undefined) {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, primaryRaw);
+    }
     storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
 
     root = createRoot(container);
@@ -99,15 +100,48 @@ describe("App corrupt recovery conflict", () => {
         </StrictMode>,
       );
     });
+  }
+
+  it("復元候補がある起動直後から明示保存アクションを表示し、編集を要求しない", () => {
+    renderRecovery("{ broken primary");
+
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).toContain("復元候補を1件表示しています");
+    expect(findButton(container, copy.storageConflictLoad)).toBeNull();
+    expect(findButton(container, copy.storageRecoverySave)).not.toBeNull();
+
+    act(() => click(findButton(container, copy.storageRecoverySave)));
+
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved).toHaveLength(1);
+    expect(saved[0].id).toBe("recovered-note");
+    expect(container.textContent).not.toContain(copy.storageRecoveryTitle);
+  });
+
+  it("primary が消失して backup だけ残った場合も同じ復元導線を表示する", () => {
+    renderRecovery();
+
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).toContain("復元されたメモ");
+    expect(findButton(container, copy.storageRecoverySave)).not.toBeNull();
+  });
+
+  it("復元確定前に編集しても自動保存せず、エディタへ保存停止理由を表示する", () => {
+    const corruptRaw = "{ broken primary";
+    renderRecovery(corruptRaw);
 
     act(() => click(findButton(container, "復元されたメモ")));
     act(() => click(findButton(container, copy.editNote)));
     act(() => changeTextarea(container, "復元内容へ追記"));
+
+    expect(container.textContent).toContain(copy.saveRecovery);
+    expect(container.textContent).not.toContain(copy.saving);
+
     act(() => window.dispatchEvent(new Event("pagehide")));
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
     expect(container.textContent).toContain(copy.storageConflictRecoveryBody);
     expect(findButton(container, copy.storageConflictLoad)).toBeNull();
-    expect(findButton(container, copy.storageConflictOverwrite)).not.toBeNull();
+    expect(findButton(container, copy.storageRecoverySave)).not.toBeNull();
   });
 });
