@@ -42,7 +42,7 @@ function mockLocalStorage() {
 describe("App lifecycle persistence", () => {
   let storage: ReturnType<typeof mockLocalStorage>;
   let container: HTMLDivElement;
-  let root: Root;
+  let root: Root | null = null;
 
   beforeEach(() => {
     storage = mockLocalStorage();
@@ -54,16 +54,23 @@ describe("App lifecycle persistence", () => {
 
     container = document.createElement("div");
     document.body.appendChild(container);
+    root = null;
   });
 
   afterEach(() => {
-    act(() => root?.unmount());
+    if (root) {
+      act(() => {
+        root?.unmount();
+      });
+    }
     container.remove();
   });
 
   function renderApp() {
     root = createRoot(container);
-    act(() => root.render(<App />));
+    act(() => {
+      root?.render(<App />);
+    });
   }
 
   it("開いただけの古いタブは pagehide で外部の新しい内容を上書きしない", () => {
@@ -78,7 +85,9 @@ describe("App lifecycle persistence", () => {
     ]);
     storage.setItem(STORAGE_KEY_FOR_TESTING, newerExternal);
 
-    act(() => window.dispatchEvent(new Event("pagehide")));
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(newerExternal);
   });
@@ -88,7 +97,9 @@ describe("App lifecycle persistence", () => {
     storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
     renderApp();
 
-    act(() => window.dispatchEvent(new Event("pagehide")));
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
   });
