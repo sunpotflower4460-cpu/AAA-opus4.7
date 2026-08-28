@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
+import type { SaveResult } from "../lib/storage";
 import { copy } from "../lib/i18n";
 import { useSaveTrace } from "../hooks/useSaveTrace";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
@@ -10,42 +11,56 @@ type Props = {
   onChange: (patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => void;
   onBack: () => void;
   onDelete: () => void;
-  /** 最後の自動保存が失敗した場合に true。保存失敗をUIに反映する。 */
-  saveError?: boolean;
+  /** App が実際に行った直近の保存結果。UIの保存表示を推測タイマーにしない。 */
+  saveResult?: SaveResult | null;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-// App 側の autosave debounce (500ms) より後に「保存済み」を出す。
-// 実保存より先に成功表示を出さないための UX ガード。
-const SAVE_FEEDBACK_DELAY_MS = 650;
 const SAVED_FEEDBACK_VISIBLE_MS = 1200;
 
-export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false }: Props) {
+export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
 
-  const savingTimer = useRef<number | null>(null);
   const savedTimer = useRef<number | null>(null);
 
   function markDirty() {
+    if (savedTimer.current) {
+      window.clearTimeout(savedTimer.current);
+      savedTimer.current = null;
+    }
     setSaveState("saving");
-    if (savingTimer.current) window.clearTimeout(savingTimer.current);
-    if (savedTimer.current) window.clearTimeout(savedTimer.current);
-    savingTimer.current = window.setTimeout(() => {
-      setSaveState("saved");
-      savedTimer.current = window.setTimeout(
-        () => setSaveState("idle"),
-        SAVED_FEEDBACK_VISIBLE_MS,
-      );
-    }, SAVE_FEEDBACK_DELAY_MS);
   }
 
   useEffect(() => {
+    if (saveState !== "saving" || !saveResult) return;
+
+    if (savedTimer.current) {
+      window.clearTimeout(savedTimer.current);
+      savedTimer.current = null;
+    }
+
+    if (!saveResult.ok) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSaveState("error");
+      return;
+    }
+
+    // 実際の saveNotes 成功後にだけ「保存済み」へ遷移する。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSaveState("saved");
+    savedTimer.current = window.setTimeout(() => {
+      setSaveState("idle");
+      savedTimer.current = null;
+    }, SAVED_FEEDBACK_VISIBLE_MS);
+  }, [saveResult, saveState]);
+
+  useEffect(() => {
     return () => {
-      if (savingTimer.current) window.clearTimeout(savingTimer.current);
       if (savedTimer.current) window.clearTimeout(savedTimer.current);
     };
   }, []);
@@ -53,11 +68,12 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
   // 新規作成時は本文にフォーカス。
   // 別のノートを開いたとき（id が変わったとき）にだけ走らせたいので、
   // title / body は依存に含めない（編集中の毎入力で再フォーカスさせないため）。
-  // 同時に、前のノートで出ていた「保存中／保存しました」表示を引き継がないように
-  // ステータスとタイマーをリセットする。
+  // 同時に、前のノートで出ていた保存状態を引き継がないようリセットする。
   useEffect(() => {
-    if (savingTimer.current) window.clearTimeout(savingTimer.current);
-    if (savedTimer.current) window.clearTimeout(savedTimer.current);
+    if (savedTimer.current) {
+      window.clearTimeout(savedTimer.current);
+      savedTimer.current = null;
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveState("idle");
     setConfirmingDelete(false);
@@ -67,17 +83,24 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
 
-  function handleTitle(e: React.ChangeEvent<HTMLInputElement>) {
-    onChange({ title: e.target.value });
+  function handleTitle(event: React.ChangeEvent<HTMLInputElement>) {
+    onChange({ title: event.target.value });
     markDirty();
   }
-  function handleBody(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    onChange({ body: e.target.value });
+
+  function handleBody(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    onChange({ body: event.target.value });
     markDirty();
   }
+
   function toggleFavorite() {
     onChange({ isFavorite: !note.isFavorite });
     markDirty();
+  }
+
+  function cancelDeleteConfirmation() {
+    setConfirmingDelete(false);
+    window.requestAnimationFrame(() => deleteButtonRef.current?.focus());
   }
 
   return (
@@ -138,6 +161,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
           </button>
 
           <button
+            ref={deleteButtonRef}
             type="button"
             onClick={() => setConfirmingDelete(true)}
             aria-label={copy.deleteNote}
@@ -170,7 +194,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
 
       <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
-          <SaveAfterglow active={saveState === "saved" && !saveError} token={note.updatedAt} />
+          <SaveAfterglow active={saveState === "saved"} token={note.updatedAt} />
 
           <div className="mb-gr-5 self-start">
             <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
@@ -210,7 +234,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
                 <span className="font-mincho">{copy.saving}</span>
               </span>
             )}
-            {saveState === "saved" && !saveError && (
+            {saveState === "saved" && (
               <span
                 key={`saved-${note.updatedAt}`}
                 className="zanshin-save-status zanshin-save-status--saved flex items-center gap-gr-2"
@@ -218,7 +242,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
                 <span className="font-mincho">{copy.saved}</span>
               </span>
             )}
-            {(saveState === "error" || (saveState === "saved" && saveError)) && (
+            {saveState === "error" && (
               <span className="zanshin-save-status flex items-center gap-gr-2 text-vermilion">
                 <span className="font-mincho">{copy.saveError}</span>
               </span>
@@ -229,7 +253,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
 
       {confirmingDelete && (
         <DeleteConfirm
-          onCancel={() => setConfirmingDelete(false)}
+          onCancel={cancelDeleteConfirmation}
           onConfirm={() => {
             setConfirmingDelete(false);
             onDelete();
@@ -249,6 +273,15 @@ function DeleteConfirm({
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {
@@ -288,7 +321,7 @@ function DeleteConfirm({
           p-gr-5 shadow-paper-hover border border-[color:var(--color-line)]
           animate-softUp
         "
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <h2
           id="zanshin-delete-title"
@@ -309,7 +342,7 @@ function DeleteConfirm({
             type="button"
             onClick={onCancel}
             className="
-              rounded-full px-gr-4 py-gr-2 font-mincho text-[14px]
+              min-h-[44px] rounded-full px-gr-4 py-gr-2 font-mincho text-[14px]
               text-ink-muted transition-soft hover:text-sumi hover:bg-paper/60
             "
           >
@@ -320,7 +353,7 @@ function DeleteConfirm({
             type="button"
             onClick={onConfirm}
             className="
-              zanshin-delete-confirm rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
+              zanshin-delete-confirm min-h-[44px] rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
               text-washi shadow-paper-soft transition-soft
               hover:bg-vermilion/90 active:scale-[0.98]
             "
