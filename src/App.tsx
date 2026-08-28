@@ -9,7 +9,7 @@ import {
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
 import { loadNotes, NOTES_STORAGE_KEY, saveNotes } from "./lib/storage";
-import type { SaveResult } from "./lib/storage";
+import type { LoadResult, SaveResult } from "./lib/storage";
 import {
   REMOVE_ADS_PRODUCT,
   loadMonetizationState,
@@ -37,10 +37,14 @@ function notesSnapshotMatches(left: readonly Note[], right: readonly Note[]): bo
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function hasRecoveryCandidate(result: LoadResult): boolean {
+  return !result.ok && result.recoveryCandidate === true;
+}
+
 export default function App() {
   const [initialLoad] = useState(() => {
     const result = loadNotes();
-    const recoveryPending = !result.ok && result.notes.length > 0;
+    const recoveryPending = hasRecoveryCandidate(result);
     return {
       notes: result.notes,
       loadFailed: !result.ok,
@@ -117,8 +121,8 @@ export default function App() {
       setCanLoadStoredNotes(storedReadable);
       setRecoveryCandidateCount(storedReadable ? 0 : visibleRecoveryCount);
       setLastSaveResult({ ok: false, reason: "conflict" });
-      // 復元候補をすでに画面へ出せている場合は、同じ内容の汎用エラーを重ねない。
-      if (alsoReportLoadError) setLoadError(visibleRecoveryCount === 0);
+      // 状態が回復した後に古い汎用エラーが残らないよう、毎回現在状態へ揃える。
+      setLoadError(alsoReportLoadError && visibleRecoveryCount === 0);
     },
     [clearPersistTimer],
   );
@@ -145,8 +149,8 @@ export default function App() {
 
     const remote = loadNotes();
     if (!remote.ok) {
-      if (remote.notes.length > 0) {
-        // この画面が clean なら、古い表示より復元候補を先に見せてから確定判断を求める。
+      if (hasRecoveryCandidate(remote)) {
+        // 空配列を含む中断保存も候補になり得るため、件数ではなく明示フラグで判定する。
         applyCleanRemoteNotes(remote.notes);
         flagExternalConflict(false, false, remote.notes.length);
       } else {
@@ -171,6 +175,7 @@ export default function App() {
         setExternalConflict(false);
         setCanLoadStoredNotes(true);
         setRecoveryCandidateCount(0);
+        setLoadError(false);
         return;
       }
 
@@ -178,8 +183,12 @@ export default function App() {
         // storage event が届く前に保存直前比較で競合した場合も、
         // 現在の保存先が読み込み可能かをここで判定する。
         const stored = loadNotes();
-        // ここはローカル dirty 状態なので、復元候補を勝手に画面へ適用しない。
-        flagExternalConflict(stored.ok, !stored.ok);
+        const storedHasRecoveryCandidate = hasRecoveryCandidate(stored);
+        // ここはローカル dirty 状態なので、remote の復元候補を勝手に画面へ適用しない。
+        flagExternalConflict(
+          stored.ok,
+          !stored.ok && !storedHasRecoveryCandidate,
+        );
       }
     },
     [flagExternalConflict],
@@ -268,12 +277,13 @@ export default function App() {
           !externalConflictRef.current;
 
         if (!remote.ok) {
-          if (locallyClean && remote.notes.length > 0) {
+          const remoteHasRecoveryCandidate = hasRecoveryCandidate(remote);
+          if (locallyClean && remoteHasRecoveryCandidate) {
             applyCleanRemoteNotes(remote.notes);
             flagExternalConflict(false, false, remote.notes.length);
           } else {
             // dirty 中はローカル内容を守り、remote の復元候補を勝手に適用しない。
-            flagExternalConflict(false, true);
+            flagExternalConflict(false, !remoteHasRecoveryCandidate);
           }
         } else if (!locallyClean) {
           // ローカル未保存編集がある間は、外部変更を勝手に採用も上書きもしない。
@@ -373,7 +383,7 @@ export default function App() {
     const result = loadNotes();
     if (!result.ok) {
       setCanLoadStoredNotes(false);
-      setLoadError(true);
+      setLoadError(!hasRecoveryCandidate(result));
       return;
     }
 
