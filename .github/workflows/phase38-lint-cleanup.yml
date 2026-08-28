@@ -1,0 +1,36 @@
+name: Phase 38 Lint Cleanup
+
+on:
+  push:
+    branches: ["bugfix/phase38-native-durable-snapshot"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Apply cleanup
+        run: python scripts/phase38_remove_lint_warning.py
+      - name: Validate cleanup
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+          npm run check
+          npx cap sync ios
+          git diff --exit-code -- ios
+          git diff --check
+      - name: Commit source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx
+          git commit -m "Phase 38: remove final lint warning"
+          git push origin HEAD:bugfix/phase38-native-durable-snapshot
