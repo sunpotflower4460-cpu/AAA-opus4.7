@@ -212,7 +212,10 @@ export default function App() {
     }
 
     applyCleanRemoteNotes(remote.notes);
-  }, [applyCleanRemoteNotes, flagExternalConflict]);
+    // 正常な保存先を正式採用したら、native復旧層も同じ正本へ追従させる。
+    // recovery candidate は上の !remote.ok 分岐なので、未確定候補をここで保存することはない。
+    persistDurableSnapshot(remote.notes);
+  }, [applyCleanRemoteNotes, flagExternalConflict, persistDurableSnapshot]);
 
   const applySaveResult = useCallback(
     (result: SaveResult, snapshot: Note[]) => {
@@ -414,6 +417,7 @@ export default function App() {
         } else {
           // この画面が未編集なら、別タブの最新状態へ安全に追従する。
           applyCleanRemoteNotes(remote.notes);
+          persistDurableSnapshot(remote.notes);
         }
       }
 
@@ -425,7 +429,7 @@ export default function App() {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [applyCleanRemoteNotes, flagExternalConflict]);
+  }, [applyCleanRemoteNotes, flagExternalConflict, persistDurableSnapshot]);
 
   useEffect(() => {
     return () => {
@@ -532,7 +536,9 @@ export default function App() {
     setCanLoadStoredNotes(true);
     setRecoveryCandidateCount(0);
     setLoadError(false);
-  }, [clearPersistTimer]);
+    // ユーザーが保存済み版を正本として明示採用したので、古いnative候補を残さない。
+    persistDurableSnapshot(result.notes);
+  }, [clearPersistTimer, persistDurableSnapshot]);
 
   const forceSaveCurrentNotes = useCallback(() => {
     clearPersistTimer();

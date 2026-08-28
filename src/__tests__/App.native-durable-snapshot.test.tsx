@@ -144,6 +144,61 @@ describe("App native durable snapshot", () => {
     expect(durable.persist).toHaveBeenCalledWith(latest);
   });
 
+  it("clean状態で正常な外部保存版へ追従したらnative耐久層も同じ正本へ更新する", async () => {
+    const existing = [makeNote()];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
+    renderApp();
+    await flushPromises();
+    durable.persist.mockClear();
+
+    const remote = [makeNote({ title: "外部の正本", updatedAt: "2026-08-28T00:01:00.000Z" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(remote);
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: JSON.stringify(remote) }),
+      );
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain("外部の正本");
+    expect(durable.persist).toHaveBeenCalledWith(remote);
+  });
+
+  it("競合で保存済み版を明示採用したら捨てたlocal版をnative復元候補に残さない", async () => {
+    const existing = [makeNote()];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
+    renderApp();
+    await flushPromises();
+    durable.persist.mockClear();
+
+    act(() => click(findButton(container, "元のメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    act(() => {
+      setter?.call(textarea, "捨てる未保存編集");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const remote = [makeNote({ title: "採用する保存済み版", updatedAt: "2026-08-28T00:02:00.000Z" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(remote);
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: JSON.stringify(remote) }),
+      );
+    });
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(durable.persist).not.toHaveBeenCalled();
+
+    act(() => click(findButton(container, copy.storageConflictLoad)));
+    await flushPromises();
+
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(remote);
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
+    expect(durable.persist).toHaveBeenCalledWith(remote);
+  });
+
   it("native予備保存失敗を非致命warningとして表示し、retry成功で消す", async () => {
     const existing = [makeNote()];
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
