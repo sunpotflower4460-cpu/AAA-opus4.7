@@ -25,6 +25,8 @@ import {
   resetNativeDurableSnapshotQueueForTesting,
 } from "../nativeDurableSnapshot";
 
+const FILE_NOT_FOUND = { code: "OS-PLUG-FILE-0008" };
+
 function makeNote(title: string, minute = 0): Note {
   return {
     id: "one",
@@ -49,7 +51,7 @@ describe("native durable snapshot", () => {
     mocks.isNativePlatform.mockReturnValue(true);
     mocks.readFile.mockImplementation(async ({ path }: { path: string }) => {
       const data = files.get(path);
-      if (data === undefined) throw new Error("not found");
+      if (data === undefined) throw FILE_NOT_FOUND;
       return { data };
     });
     mocks.writeFile.mockImplementation(async ({ path, data }: { path: string; data: string }) => {
@@ -96,6 +98,40 @@ describe("native durable snapshot", () => {
     files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary, "{broken");
     files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup, JSON.stringify(backup));
     expect(await readNativeDurableSnapshot()).toEqual(backup);
+  });
+
+  it("primary読込が一時失敗しても正常backupは読み取り専用の復元候補として返す", async () => {
+    const backup = [makeNote("backup")];
+    files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup, JSON.stringify(backup));
+    mocks.readFile.mockImplementation(async ({ path }: { path: string }) => {
+      if (path === NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary) {
+        throw { code: "OS-PLUG-FILE-0013" };
+      }
+      const data = files.get(path);
+      if (data === undefined) throw FILE_NOT_FOUND;
+      return { data };
+    });
+
+    expect(await readNativeDurableSnapshot()).toEqual(backup);
+    expect(mocks.writeFile).not.toHaveBeenCalled();
+  });
+
+  it("primary読込が不存在以外の理由で失敗したら既存世代へ触れず保存を中止する", async () => {
+    const next = [makeNote("新版")];
+    mocks.readFile.mockRejectedValue({ code: "OS-PLUG-FILE-0013" });
+
+    expect(await persistNativeDurableSnapshot(next)).toBe(false);
+    expect(mocks.writeFile).not.toHaveBeenCalled();
+    expect(files.size).toBe(0);
+  });
+
+  it("不存在コードは初回保存として扱いprimaryを書ける", async () => {
+    const notes = [makeNote("初回")];
+    mocks.readFile.mockRejectedValue(FILE_NOT_FOUND);
+
+    expect(await persistNativeDurableSnapshot(notes)).toBe(true);
+    expect(mocks.writeFile).toHaveBeenCalledTimes(1);
+    expect(files.get(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary)).toBe(JSON.stringify(notes));
   });
 
   it("新版primary書込失敗時も旧世代backupを残して失敗を返す", async () => {
