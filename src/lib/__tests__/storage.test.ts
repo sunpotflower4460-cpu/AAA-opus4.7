@@ -4,6 +4,7 @@ import {
   saveNotes,
   STORAGE_KEY_FOR_TESTING,
   BACKUP_KEY_FOR_TESTING,
+  CONFLICT_BACKUP_KEY_FOR_TESTING,
   CORRUPT_BACKUP_KEY_FOR_TESTING,
 } from "../storage";
 import type { Note } from "../../types/note";
@@ -98,7 +99,7 @@ describe("loadNotes", () => {
     expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe(corruptData);
   });
 
-  it("主データが壊れていても正常な直前バックアップから復元する", () => {
+  it("主データが壊れていても正常なバックアップから復元する", () => {
     const backup = [makeNote({ id: "from-backup", title: "復元" })];
     storage.setItem(STORAGE_KEY_FOR_TESTING, "{ broken");
     storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(backup));
@@ -233,23 +234,65 @@ describe("saveNotes", () => {
     expect(loaded.notes[0].id).toBe("save-test");
   });
 
-  it("保存前に正常な直前データをバックアップする", () => {
+  it("保存成功時は primary と同じ最新内容を復旧 backup に残す", () => {
     const original = [makeNote({ id: "original" })];
+    const updated = [makeNote({ id: "updated" })];
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(original));
 
-    saveNotes([makeNote({ id: "updated" })]);
+    const result = saveNotes(updated);
 
-    const backup = JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[];
-    expect(backup[0].id).toBe("original");
+    expect(result).toEqual({ ok: true });
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(updated);
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(updated);
   });
 
-  it("破損した主データで既存の正常バックアップを上書きしない", () => {
+  it("復旧 backup の更新に失敗したら primary を変更しない", () => {
+    const original = [makeNote({ id: "original" })];
+    const updated = [makeNote({ id: "updated" })];
+    const originalRaw = JSON.stringify(original);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, originalRaw);
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    const result = saveNotes(updated);
+
+    expect(result).toEqual({ ok: false, reason: "quota" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(originalRaw);
+  });
+
+  it("backup 成功後に primary 保存が失敗しても復旧候補として最新編集を残す", () => {
+    const original = [makeNote({ id: "original" })];
+    const updated = [makeNote({ id: "updated" })];
+    const originalRaw = JSON.stringify(original);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, originalRaw);
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === STORAGE_KEY_FOR_TESTING) {
+        throw new DOMException("blocked", "SecurityError");
+      }
+      storage._store[key] = value;
+    });
+
+    const result = saveNotes(updated);
+
+    expect(result).toEqual({ ok: false, reason: "unavailable" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(originalRaw);
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(updated);
+  });
+
+  it("破損した主データでは通常保存で既存の正常バックアップを上書きしない", () => {
     const validBackup = JSON.stringify([makeNote({ id: "safe-backup" })]);
     storage.setItem(BACKUP_KEY_FOR_TESTING, validBackup);
     storage.setItem(STORAGE_KEY_FOR_TESTING, "{ broken primary");
 
-    saveNotes([makeNote({ id: "recovered-and-edited" })]);
+    const result = saveNotes([makeNote({ id: "recovered-and-edited" })]);
 
+    expect(result).toEqual({ ok: false, reason: "conflict" });
     expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(validBackup);
   });
 
@@ -265,15 +308,15 @@ describe("saveNotes", () => {
 
   it("force 保存で破損 primary を上書きする場合も元 raw を退避する", () => {
     const corruptRaw = "{ broken before force";
+    const forced = [makeNote({ id: "forced" })];
     storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
 
-    const result = saveNotes([makeNote({ id: "forced" })], { force: true });
+    const result = saveNotes(forced, { force: true });
 
     expect(result).toEqual({ ok: true });
     expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe(corruptRaw);
-    expect((JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[])[0].id).toBe(
-      "forced",
-    );
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
   });
 
   it("期待していた内容から primary が変わっていれば conflict で保存を止める", () => {
@@ -298,6 +341,7 @@ describe("saveNotes", () => {
 
     expect(result).toEqual({ ok: false, reason: "conflict" });
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(remote);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("未知の将来フィールドだけが変わっていても conflict として検知する", () => {
@@ -330,10 +374,11 @@ describe("saveNotes", () => {
     const result = saveNotes(local, { expectedNotes: baseline });
 
     expect(result).toEqual({ ok: true });
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(local);
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
   });
 
-  it("force 保存は競合した現在内容をバックアップしてから明示的に上書きする", () => {
+  it("force 保存は別画面版を conflict backup に残し、復旧 backup と primary をローカル版へ揃える", () => {
     const remote = [makeNote({ id: "remote", title: "別タブ" })];
     const local = [makeNote({ id: "local", title: "この画面" })];
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
@@ -341,8 +386,31 @@ describe("saveNotes", () => {
     const result = saveNotes(local, { force: true });
 
     expect(result).toEqual({ ok: true });
-    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(remote);
+    expect(JSON.parse(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(
+      remote,
+    );
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(local);
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
+  });
+
+  it("force 保存で conflict backup の退避に失敗したら別画面版を上書きしない", () => {
+    const remote = [makeNote({ id: "remote", title: "守る別タブ" })];
+    const local = [makeNote({ id: "local", title: "この画面" })];
+    const remoteRaw = JSON.stringify(remote);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, remoteRaw);
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === CONFLICT_BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    const result = saveNotes(local, { force: true });
+
+    expect(result).toEqual({ ok: false, reason: "quota" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("保存対象そのものが不正なら invalid_data として永続化を拒否する", () => {
