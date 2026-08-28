@@ -187,6 +187,26 @@ describe("App lifecycle persistence", () => {
     expect(container.textContent).not.toContain("元のメモ");
   });
 
+  it("suspend中に storage event を取りこぼしても pageshow 復帰時に未編集画面を最新化する", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+
+    const remote = [
+      makeNote({
+        title: "復帰時に見つける最新版",
+        updatedAt: "2026-08-28T00:17:00.000Z",
+      }),
+    ];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
+
+    act(() => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+
+    expect(container.textContent).toContain("復帰時に見つける最新版");
+    expect(container.textContent).not.toContain("元のメモ");
+  });
+
   it("storage event が間に合わなくても保存直前比較で別タブ更新を上書きしない", () => {
     const baseline = [makeNote()];
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
