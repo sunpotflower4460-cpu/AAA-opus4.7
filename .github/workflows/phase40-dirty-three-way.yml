@@ -19,6 +19,8 @@ jobs:
           cache: "npm"
       - name: Apply dirty three-way recovery hardening
         run: python scripts/phase40_dirty_three_way_validate.py
+      - name: Show failing regression area
+        run: nl -ba src/__tests__/App.native-durable-snapshot.test.tsx | sed -n '478,494p'
       - name: Validate dirty three-way recovery hardening
         run: |
           npm ci
