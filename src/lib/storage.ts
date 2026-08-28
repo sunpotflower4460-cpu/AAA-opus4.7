@@ -2,7 +2,10 @@ import type { Note } from "../types/note";
 
 export const NOTES_STORAGE_KEY = "zanshin.notes.v1";
 const STORAGE_KEY = NOTES_STORAGE_KEY;
+// 最後に正常保存できた内容の冗長コピー。primary 消失・破損時の第一復旧候補。
 const BACKUP_KEY = "zanshin.notes.backup.v1";
+// 競合解決で「この画面を優先」する直前の、別画面側の正常データ専用退避先。
+const CONFLICT_BACKUP_KEY = "zanshin.notes.conflict.backup.v1";
 const CORRUPT_BACKUP_KEY = "zanshin.notes.corrupt.backup";
 
 export type SaveResult =
@@ -135,18 +138,25 @@ function isQuotaError(error: unknown): boolean {
   return error.name === "QuotaExceededError" || error.name === "NS_ERROR_DOM_QUOTA_REACHED";
 }
 
+function saveFailureFromError(error: unknown): SaveResult {
+  if (isQuotaError(error)) return { ok: false, reason: "quota" };
+  if (error instanceof DOMException) return { ok: false, reason: "unavailable" };
+  return { ok: false, reason: "unknown" };
+}
+
 function preserveCorruptRaw(raw: string): void {
   try {
     window.localStorage.setItem(CORRUPT_BACKUP_KEY, raw);
   } catch {
-    // 退避失敗は復旧処理そのものを止めない
+    // 退避失敗は復旧処理そのものを止めない。
+    // UIでは「可能な場合は退避」と表現し、成功を断定しない。
   }
 }
 
 function readValidatedBackup(): Note[] | null {
   try {
     const backupRaw = window.localStorage.getItem(BACKUP_KEY);
-    if (!backupRaw) return null;
+    if (backupRaw === null) return null;
 
     const backup = parseNotesRaw(backupRaw);
     return backup.status === "valid" ? backup.notes : null;
@@ -159,9 +169,9 @@ function readValidatedBackup(): Note[] | null {
 /**
  * localStorage からメモを読み込む。
  * - 正常データはそのまま返す
- * - primary だけ消失して正常な非空 backup が残っていれば復元候補として返す
+ * - primary だけ消失して正常な backup が残っていれば復元候補として返す
  * - JSON破損 / 不正要素 / 重複ID / 不正日時は元データを退避する
- * - 直前バックアップが正常なら復元候補としてマージする
+ * - 最後に正常保存できた backup が正常なら復元候補としてマージする
  * - 復元候補を表示しても ok:false のまま返し、自動上書きを防ぐ
  */
 export function loadNotes(): LoadResult {
@@ -171,10 +181,10 @@ export function loadNotes(): LoadResult {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw === null) {
       // アプリ自身は保存済み primary を removeItem しない。
-      // そのため backup だけ残っている状態は「初回起動」ではなく、
-      // primary 消失・部分クリア等の異常系として復元可能性を優先する。
+      // backup は最後に正常保存できた内容を複製しているため、primary 消失時の第一候補にする。
       const backupNotes = readValidatedBackup();
-      if (backupNotes && backupNotes.length > 0) {
+      if (backupNotes) {
+        if (backupNotes.length === 0) return { ok: true, notes: [] };
         return {
           ok: false,
           notes: backupNotes,
@@ -218,9 +228,9 @@ export function loadNotes(): LoadResult {
  * - 保存対象そのものを検証し、不正構造を新たに永続化しない
  * - expectedNotes が指定されている場合は、現在の primary と一致するときだけ保存する
  * - 別画面の変更を検知した場合は conflict を返し、黙って上書きしない
- * - 保存直前に破損 primary が見えた場合も raw を退避してから判断する
- * - 保存前に「正常と検証できた」直前データだけをバックアップする
- * - force はユーザーが競合を理解して明示的に上書きするときだけ使用する
+ * - 破損 primary は force なしでは上書きせず、raw を退避して conflict とする
+ * - force で正常な別画面データを上書きする前は conflict backup への退避成功を必須にする
+ * - primary 保存成功後、同じ内容を backup へ複製して最新の復旧候補を維持する
  */
 export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult {
   if (typeof window === "undefined") return { ok: false, reason: "unavailable" };
@@ -243,10 +253,10 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
         ? parseNotesRaw(currentRaw)
         : ({ status: "valid", notes: [] } satisfies ParsedNotesResult);
 
-    // loadNotes() を経由せず直接 saveNotes() が呼ばれた場合でも、
-    // 破損・不正構造の primary を黙って消さない。
     if (currentRaw !== null && currentParsed.status !== "valid") {
       preserveCorruptRaw(currentRaw);
+      // 破損状態を通常保存で黙って置換しない。復元内容を確認した force のみ許可する。
+      if (!options.force) return { ok: false, reason: "conflict" };
     }
 
     if (!options.force && options.expectedNotes) {
@@ -258,24 +268,32 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
       }
     }
 
-    // 直前の正常 primary は、force 上書き時も先にバックアップへ残す。
-    try {
-      if (currentRaw !== null && currentParsed.status === "valid") {
-        window.localStorage.setItem(BACKUP_KEY, currentRaw);
+    // 正常な別画面データを明示上書きする場合、その版を保存できなければ上書き自体を中止する。
+    if (options.force && currentRaw !== null && currentParsed.status === "valid") {
+      try {
+        window.localStorage.setItem(CONFLICT_BACKUP_KEY, currentRaw);
+      } catch (error) {
+        return saveFailureFromError(error);
       }
-    } catch {
-      // バックアップ失敗は主データ保存を妨げない
     }
 
     window.localStorage.setItem(STORAGE_KEY, serialized);
+
+    // primary が確定した後で、最後に正常保存できた内容を冗長コピーする。
+    // ここだけの失敗で「未保存」と誤表示しないよう、primary 成功は成功として扱う。
+    try {
+      window.localStorage.setItem(BACKUP_KEY, serialized);
+    } catch {
+      // backup は復旧能力を高める冗長コピー。primary 保存成功そのものは取り消せない。
+    }
+
     return { ok: true };
   } catch (error) {
-    if (isQuotaError(error)) return { ok: false, reason: "quota" };
-    if (error instanceof DOMException) return { ok: false, reason: "unavailable" };
-    return { ok: false, reason: "unknown" };
+    return saveFailureFromError(error);
   }
 }
 
 export const STORAGE_KEY_FOR_TESTING = STORAGE_KEY;
 export const BACKUP_KEY_FOR_TESTING = BACKUP_KEY;
+export const CONFLICT_BACKUP_KEY_FOR_TESTING = CONFLICT_BACKUP_KEY;
 export const CORRUPT_BACKUP_KEY_FOR_TESTING = CORRUPT_BACKUP_KEY;
