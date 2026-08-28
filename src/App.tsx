@@ -466,7 +466,7 @@ export default function App() {
               style={{ borderRadius: "7px 13px 8px 11px" }}
             >
               <span className="font-mincho jp-text-discipline">
-                "データの読み込みに問題がありました。メモが復元できない可能性があります。"
+                データの読み込みに問題がありました。メモが復元できない可能性があります。
               </span>
               <button
                 type="button"
