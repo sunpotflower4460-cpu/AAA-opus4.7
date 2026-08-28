@@ -519,7 +519,10 @@ describe("saveNotes", () => {
 
     expect(result).toEqual({ ok: false, reason: "conflict" });
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(baseRaw);
-    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toContain(interruptedRaw);
+    const journal = JSON.parse(storage._store[PENDING_SAVE_KEY_FOR_TESTING]) as {
+      nextRaw: string;
+    };
+    expect(journal.nextRaw).toBe(interruptedRaw);
   });
 
   it("同じ中断 journal の next は安全な再試行として保存を完了できる", () => {
