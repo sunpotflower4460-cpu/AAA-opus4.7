@@ -19,8 +19,9 @@ export function RestorePurchaseButton({
       }}
       disabled={disabled}
       className={[
+        "inline-flex min-h-[44px] items-center justify-center rounded-[8px] px-gr-3",
         "font-mincho text-[13px] tracking-mincho text-ink-muted transition-soft",
-        "hover:text-sumi disabled:cursor-default disabled:opacity-50",
+        "hover:bg-paper/55 hover:text-sumi active:scale-[0.98] disabled:cursor-default disabled:opacity-50",
         className ?? "",
       ].join(" ")}
     >
