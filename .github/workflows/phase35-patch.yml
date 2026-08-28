@@ -1,0 +1,438 @@
+name: Phase 35 Global Save Failure Patcher
+
+on:
+  push:
+    branches: ["bugfix/phase35-global-save-failure"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Apply app-level save failure UI and tests
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match for {old!r}, found {count}")
+              file.write_text(text.replace(old, new, 1))
+
+          def replace_region(path: str, start: str, end: str, replacement: str):
+              file = Path(path)
+              text = file.read_text()
+              start_index = text.find(start)
+              if start_index < 0:
+                  raise SystemExit(f"{path}: start anchor not found: {start!r}")
+              end_index = text.find(end, start_index)
+              if end_index < 0:
+                  raise SystemExit(f"{path}: end anchor not found: {end!r}")
+              file.write_text(text[:start_index] + replacement + text[end_index:])
+
+          # App: shared classifier/message helper, clean Phase 34 indentation, and app-level failure banner.
+          replace_once(
+              "src/App.tsx",
+              'import { loadNotes, NOTES_STORAGE_KEY, saveNotes } from "./lib/storage";',
+              '''import {
+            isRetryableSaveFailure,
+            loadNotes,
+            NOTES_STORAGE_KEY,
+            saveNotes,
+          } from "./lib/storage";''',
+          )
+          replace_once(
+              "src/App.tsx",
+              'import { copy } from "./lib/i18n";\n',
+              'import { copy } from "./lib/i18n";\nimport { getSaveFailureMessage } from "./lib/saveFailureUi";\n',
+          )
+
+          retry_block = '''  const retrySaveCurrentNotes = useCallback(() => {
+            clearPersistTimer();
+            // conflict/recovery は専用UIの明示選択でのみ解決する。通常Retryで force しない。
+            if (saveGuardRef.current || externalConflictRef.current) return;
+
+            const snapshot = latestNotesRef.current;
+            const result = saveNotes(snapshot, {
+              expectedNotes: baselineNotesRef.current,
+              writerId: persistenceWriterId,
+            });
+            applySaveResult(result, snapshot);
+          }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
+
+'''
+          replace_region(
+              "src/App.tsx",
+              "  const retrySaveCurrentNotes = useCallback(() => {",
+              "  const openNote = useCallback",
+              retry_block,
+          )
+
+          replace_once(
+              "src/App.tsx",
+              '''  }, [view, notes]);
+
+          useEffect(() => {''',
+              '''  }, [view, notes]);
+
+          const globalSaveFailureMessage = getSaveFailureMessage(lastSaveResult);
+          const showGlobalSaveFailure =
+            globalSaveFailureMessage !== null && (view.kind !== "editor" || !currentNote);
+          const canRetryGlobalSave =
+            showGlobalSaveFailure &&
+            !externalConflict &&
+            isRetryableSaveFailure(lastSaveResult);
+
+          useEffect(() => {''',
+          )
+          replace_once(
+              "src/App.tsx",
+              "      {(loadError || externalConflict) && (",
+              "      {(loadError || externalConflict || showGlobalSaveFailure) && (",
+          )
+
+          global_banner = '''
+
+                    {showGlobalSaveFailure && globalSaveFailureMessage && (
+                      <div
+                        data-testid="global-save-failure"
+                        role="alert"
+                        aria-live="assertive"
+                        className="pointer-events-auto flex flex-wrap items-center justify-between gap-gr-3 border border-vermilion/30 bg-paper px-gr-4 py-gr-3 text-vermilion shadow-paper-hover animate-fadeIn"
+                        style={{ borderRadius: "7px 13px 8px 11px" }}
+                      >
+                        <span className="font-mincho text-[12px] leading-ample jp-text-discipline">
+                          {globalSaveFailureMessage}
+                        </span>
+                        {canRetryGlobalSave && (
+                          <button
+                            type="button"
+                            onClick={retrySaveCurrentNotes}
+                            className="min-h-[44px] shrink-0 rounded-full border border-vermilion/30 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-vermilion transition-soft hover:bg-vermilion/5 active:scale-[0.98]"
+                          >
+                            {copy.retrySave}
+                          </button>
+                        )}
+                      </div>
+                    )}
+          '''
+          replace_once(
+              "src/App.tsx",
+              '''        </div>
+              )}
+
+              {lastDeleted && (''',
+              global_banner + '''        </div>
+              )}
+
+              {lastDeleted && (''',
+          )
+
+          # NoteEditor: reuse the same message mapping and clean malformed indentation from Phase 34.
+          replace_once(
+              "src/components/NoteEditor.tsx",
+              'import { copy } from "../lib/i18n";\n',
+              'import { copy } from "../lib/i18n";\nimport { getSaveFailureMessage } from "../lib/saveFailureUi";\n',
+          )
+          replace_region(
+              "src/components/NoteEditor.tsx",
+              "  const saveErrorMessage = (() => {",
+              "  function retrySave() {",
+              '''  const saveErrorMessage =
+            saveResult?.ok === false && saveResult.reason === "conflict"
+              ? conflictMessage
+              : getSaveFailureMessage(saveResult) ?? copy.saveError;
+
+          ''',
+          )
+          replace_once(
+              "src/components/NoteEditor.tsx",
+              "                )}\n                            </span>",
+              "                )}\n              </span>",
+          )
+          PY
+
+          cat > src/lib/saveFailureUi.ts <<'EOF'
+          import { copy } from "./i18n";
+          import type { SaveResult } from "./storage";
+
+          /**
+           * conflict は専用の競合UIで扱うため null を返す。
+           * それ以外の保存失敗は、表示場所に依存しない共通メッセージへ正規化する。
+           */
+          export function getSaveFailureMessage(
+            result: SaveResult | null | undefined,
+          ): string | null {
+            if (!result || result.ok) return null;
+
+            switch (result.reason) {
+              case "conflict":
+                return null;
+              case "quota":
+                return copy.saveErrorQuota;
+              case "unavailable":
+                return copy.saveErrorUnavailable;
+              case "invalid_data":
+                return copy.saveErrorInvalidData;
+              case "unknown":
+              default:
+                return copy.saveError;
+            }
+          }
+          EOF
+
+          cat > src/lib/__tests__/saveFailureUi.test.ts <<'EOF'
+          import { describe, expect, it } from "vitest";
+          import { copy } from "../i18n";
+          import { getSaveFailureMessage } from "../saveFailureUi";
+
+          describe("getSaveFailureMessage", () => {
+            it("非競合の保存失敗を理由別メッセージへ正規化する", () => {
+              expect(getSaveFailureMessage({ ok: false, reason: "quota" })).toBe(copy.saveErrorQuota);
+              expect(getSaveFailureMessage({ ok: false, reason: "unavailable" })).toBe(copy.saveErrorUnavailable);
+              expect(getSaveFailureMessage({ ok: false, reason: "invalid_data" })).toBe(copy.saveErrorInvalidData);
+              expect(getSaveFailureMessage({ ok: false, reason: "unknown" })).toBe(copy.saveError);
+            });
+
+            it("成功・未実行・競合は汎用保存失敗バナーへ出さない", () => {
+              expect(getSaveFailureMessage({ ok: true })).toBeNull();
+              expect(getSaveFailureMessage(null)).toBeNull();
+              expect(getSaveFailureMessage({ ok: false, reason: "conflict" })).toBeNull();
+            });
+          });
+          EOF
+
+          cat > src/__tests__/App.global-save-failure.test.tsx <<'EOF'
+          import { StrictMode, act } from "react";
+          import { createRoot, type Root } from "react-dom/client";
+          import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+          import App from "../App";
+          import {
+            PENDING_SAVE_KEY_FOR_TESTING,
+            STORAGE_KEY_FOR_TESTING,
+          } from "../lib/storage";
+          import { copy } from "../lib/i18n";
+          import type { Note } from "../types/note";
+
+          (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+          function makeNote(overrides: Partial<Note> = {}): Note {
+            return {
+              id: "note-1",
+              title: "元のメモ",
+              body: "本文",
+              createdAt: "2026-08-28T00:00:00.000Z",
+              updatedAt: "2026-08-28T00:00:00.000Z",
+              isFavorite: false,
+              locale: "ja",
+              ...overrides,
+            };
+          }
+
+          function mockLocalStorage() {
+            const store: Record<string, string> = {};
+            return {
+              getItem: vi.fn((key: string) => store[key] ?? null),
+              setItem: vi.fn((key: string, value: string) => {
+                store[key] = value;
+              }),
+              removeItem: vi.fn((key: string) => {
+                delete store[key];
+              }),
+              clear: vi.fn(() => {
+                Object.keys(store).forEach((key) => delete store[key]);
+              }),
+              get _store() {
+                return store;
+              },
+            };
+          }
+
+          function click(element: Element) {
+            element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+          }
+
+          function findButton(container: HTMLElement, text: string): HTMLButtonElement {
+            const button = Array.from(container.querySelectorAll("button")).find((candidate) =>
+              candidate.textContent?.includes(text),
+            );
+            if (!(button instanceof HTMLButtonElement)) throw new Error(`Button not found: ${text}`);
+            return button;
+          }
+
+          function findButtonByAriaLabel(container: HTMLElement, label: string): HTMLButtonElement {
+            const button = Array.from(container.querySelectorAll("button")).find(
+              (candidate) => candidate.getAttribute("aria-label") === label,
+            );
+            if (!(button instanceof HTMLButtonElement)) {
+              throw new Error(`Button with aria-label not found: ${label}`);
+            }
+            return button;
+          }
+
+          function retryButtonCount(container: HTMLElement): number {
+            return Array.from(container.querySelectorAll("button")).filter((candidate) =>
+              candidate.textContent?.includes(copy.retrySave),
+            ).length;
+          }
+
+          function openExistingNoteEditor(container: HTMLElement) {
+            act(() => click(findButton(container, "元のメモ")));
+            act(() => click(findButton(container, copy.editNote)));
+          }
+
+          function deleteCurrentNote(container: HTMLElement) {
+            act(() => click(findButtonByAriaLabel(container, copy.deleteNote)));
+            act(() => click(findButton(container, copy.confirmDelete)));
+          }
+
+          function changeTextarea(container: HTMLElement, value: string) {
+            const textarea = container.querySelector("textarea");
+            if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+            const valueSetter = Object.getOwnPropertyDescriptor(
+              HTMLTextAreaElement.prototype,
+              "value",
+            )?.set;
+            valueSetter?.call(textarea, value);
+            textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+
+          describe("App global save failure", () => {
+            let storage: ReturnType<typeof mockLocalStorage>;
+            let container: HTMLDivElement;
+            let root: Root | null = null;
+
+            beforeEach(() => {
+              vi.useFakeTimers();
+              storage = mockLocalStorage();
+              Object.defineProperty(window, "localStorage", {
+                value: storage,
+                writable: true,
+                configurable: true,
+              });
+              container = document.createElement("div");
+              document.body.appendChild(container);
+              storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+              root = createRoot(container);
+              act(() => {
+                root?.render(
+                  <StrictMode>
+                    <App />
+                  </StrictMode>,
+                );
+              });
+              openExistingNoteEditor(container);
+            });
+
+            afterEach(() => {
+              if (root) act(() => root?.unmount());
+              container.remove();
+              vi.useRealTimers();
+            });
+
+            function failPendingWrites(errorFactory: () => unknown) {
+              storage.setItem.mockImplementation((key: string, value: string) => {
+                if (key === PENDING_SAVE_KEY_FOR_TESTING) throw errorFactory();
+                storage._store[key] = value;
+              });
+            }
+
+            function restoreWrites() {
+              storage.setItem.mockImplementation((key: string, value: string) => {
+                storage._store[key] = value;
+              });
+            }
+
+            it("削除後に一覧へ戻って保存失敗してもエラーとRetryを見失わない", () => {
+              failPendingWrites(() => new DOMException("quota", "QuotaExceededError"));
+              deleteCurrentNote(container);
+              act(() => vi.advanceTimersByTime(500));
+
+              expect(container.querySelector('[data-testid="global-save-failure"]')).not.toBeNull();
+              expect(container.textContent).toContain(copy.saveErrorQuota);
+              expect(retryButtonCount(container)).toBe(1);
+              expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING])).toHaveLength(1);
+
+              restoreWrites();
+              act(() => click(findButton(container, copy.retrySave)));
+
+              expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING])).toEqual([]);
+              expect(container.querySelector('[data-testid="global-save-failure"]')).toBeNull();
+            });
+
+            it("一覧のRetry直前にremoteが変わったら削除状態で上書きせず競合へ移行する", () => {
+              failPendingWrites(() => new DOMException("quota", "QuotaExceededError"));
+              deleteCurrentNote(container);
+              act(() => vi.advanceTimersByTime(500));
+              restoreWrites();
+
+              const remoteRaw = JSON.stringify([
+                makeNote({
+                  title: "別タブ最新版",
+                  body: "remote本文",
+                  updatedAt: "2026-08-28T00:30:00.000Z",
+                }),
+              ]);
+              storage.setItem(STORAGE_KEY_FOR_TESTING, remoteRaw);
+
+              act(() => click(findButton(container, copy.retrySave)));
+
+              expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
+              expect(container.textContent).toContain(copy.storageConflictTitle);
+              expect(container.querySelector('[data-testid="global-save-failure"]')).toBeNull();
+              expect(retryButtonCount(container)).toBe(0);
+            });
+
+            it("Editor内の保存失敗は既存Retryだけを表示しグローバル表示を重複させない", () => {
+              failPendingWrites(() => new DOMException("quota", "QuotaExceededError"));
+              act(() => changeTextarea(container, "未保存本文"));
+              act(() => vi.advanceTimersByTime(500));
+
+              expect(container.querySelector('[data-testid="global-save-failure"]')).toBeNull();
+              expect(retryButtonCount(container)).toBe(1);
+            });
+
+            it("Editorで失敗した後に戻っても同じ未保存エラーを一覧で継続表示する", () => {
+              failPendingWrites(() => new DOMException("quota", "QuotaExceededError"));
+              act(() => changeTextarea(container, "未保存のまま戻る本文"));
+              act(() => vi.advanceTimersByTime(500));
+              expect(retryButtonCount(container)).toBe(1);
+
+              act(() => click(findButton(container, copy.back)));
+
+              expect(container.querySelector('[data-testid="global-save-failure"]')).not.toBeNull();
+              expect(container.textContent).toContain(copy.saveErrorQuota);
+              expect(retryButtonCount(container)).toBe(1);
+            });
+          });
+          EOF
+
+      - name: Validate implementation
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+          npm run check
+          npx cap sync ios
+          git diff --exit-code -- ios
+
+      - name: Commit source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git status --short
+          git commit -m "Phase 35: keep save failure recovery visible across views"
+          git push origin HEAD:bugfix/phase35-global-save-failure
