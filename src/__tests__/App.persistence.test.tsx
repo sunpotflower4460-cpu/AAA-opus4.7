@@ -107,6 +107,7 @@ describe("App lifecycle persistence", () => {
       });
     }
     container.remove();
+    vi.useRealTimers();
   });
 
   function renderApp() {
@@ -149,6 +150,23 @@ describe("App lifecycle persistence", () => {
     });
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
+  });
+
+  it("500ms未満で入力し続けても最大待機時間で途中保存する", () => {
+    vi.useFakeTimers();
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+    openExistingNoteEditor(container);
+
+    for (let index = 1; index <= 8; index += 1) {
+      act(() => changeTextarea(container, `連続入力-${index}`));
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+    }
+
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved[0].body).toBe("連続入力-8");
   });
 
   it("未編集の画面は storage event で別タブの最新内容へ追従する", () => {
