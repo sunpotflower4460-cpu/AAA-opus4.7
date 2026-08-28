@@ -52,6 +52,8 @@ export default function App() {
       recoveredCount: recoveryPending ? result.notes.length : 0,
     };
   });
+  // 同じ画面自身の中断保存だけを継続更新できるよう、mount寿命内で固定したIDを使う。
+  const [persistenceWriterId] = useState(() => createId());
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
   const [view, setView] = useState<View>({ kind: "list" });
@@ -220,12 +222,15 @@ export default function App() {
         return;
       }
 
-      const result = saveNotes(notes, { expectedNotes: baselineNotesRef.current });
+      const result = saveNotes(notes, {
+        expectedNotes: baselineNotesRef.current,
+        writerId: persistenceWriterId,
+      });
       applySaveResult(result, notes);
     }, delayMs);
 
     return clearPersistTimer;
-  }, [notes, applySaveResult, clearPersistTimer]);
+  }, [notes, applySaveResult, clearPersistTimer, persistenceWriterId]);
 
   const flushPendingNotes = useCallback(() => {
     if (
@@ -237,9 +242,12 @@ export default function App() {
     }
 
     const snapshot = latestNotesRef.current;
-    const result = saveNotes(snapshot, { expectedNotes: baselineNotesRef.current });
+    const result = saveNotes(snapshot, {
+      expectedNotes: baselineNotesRef.current,
+      writerId: persistenceWriterId,
+    });
     applySaveResult(result, snapshot);
-  }, [applySaveResult]);
+  }, [applySaveResult, persistenceWriterId]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -413,10 +421,13 @@ export default function App() {
   const forceSaveCurrentNotes = useCallback(() => {
     clearPersistTimer();
     const snapshot = latestNotesRef.current;
-    const result = saveNotes(snapshot, { force: true });
+    const result = saveNotes(snapshot, {
+      force: true,
+      writerId: persistenceWriterId,
+    });
     applySaveResult(result, snapshot);
     if (result.ok) setLoadError(false);
-  }, [applySaveResult, clearPersistTimer]);
+  }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
 
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
