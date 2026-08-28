@@ -1,0 +1,27 @@
+/*
+ * Phase 30 — Data / Search / A11y Hardening
+ *
+ * バグ修正に伴う最小の表示補正だけを置く。
+ * type=search のブラウザ標準装飾が独自の検索/clear UIと二重表示されないようにする。
+ */
+
+.zanshin-search-input {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.zanshin-search-input::-webkit-search-decoration,
+.zanshin-search-input::-webkit-search-cancel-button,
+.zanshin-search-input::-webkit-search-results-button,
+.zanshin-search-input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+.zanshin-search-input::-ms-clear,
+.zanshin-search-input::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
+}
