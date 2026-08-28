@@ -549,7 +549,10 @@ describe("App native durable snapshot", () => {
       initialTextarea.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    const localOne = [makeNote({ id: "shared", title: "同じメモ", body: "local one" })];
+    const localOne = [
+      makeNote({ id: "shared", title: "同じメモ", body: "local one" }),
+      makeNote({ id: "local-extra", title: "local extra", body: "second" }),
+    ];
     const nativeCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "native" })];
     delete storage._store[STORAGE_KEY_FOR_TESTING];
     storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localOne);
@@ -578,6 +581,7 @@ describe("App native durable snapshot", () => {
     expect(container.querySelector("textarea")?.value).toBe("local edited by user");
     await flushPromises();
     expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+    expect(container.textContent).toContain(copy.storageRecoveryCandidateCount(2));
 
     act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
     expect(container.querySelector("textarea")?.value).toBe("screen dirty");

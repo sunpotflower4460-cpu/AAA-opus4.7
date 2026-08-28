@@ -743,13 +743,14 @@ export default function App() {
           } else if (notesDirtyRef.current && remoteHasRecoveryCandidate) {
             // dirty screen / remote recovery / native を別候補として捕捉する。
             // screen を remote で置換せず、native safety probe が完了するまで解決操作も止める。
-            const screenCount =
-              screenRecoveryCandidateRef.current?.length ?? latestNotesRef.current.length;
+            // 件数表示は現在ユーザーが見ている候補に合わせる。
+            // 3-way開始後にlocal/nativeへ切り替えていても、screen件数へ巻き戻さない。
+            const visibleCandidateCount = latestNotesRef.current.length;
             registerDirtyRecoveryCandidate(remote.notes);
             flagExternalConflict(
               canChooseStoredPrimary(remote),
               false,
-              screenCount,
+              visibleCandidateCount,
             );
           } else {
             // recovery candidate が無い通常競合でも dirty screen は守る。
