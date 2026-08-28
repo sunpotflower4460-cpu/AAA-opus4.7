@@ -58,13 +58,27 @@ native 起動時に次の条件を満たす場合だけ native snapshot を画�
 
 正常な既存 localStorage がある初回 Phase 38 起動では、その baseline を native durable layer へ移行する。
 
-### 5. Web runtime の完全スキップ
+### 5. canonical adoption と native snapshot の同期
+
+localStorage に存在する正常データをアプリが「正本」として正式採用した経路でも、native durable snapshot を同じ内容へ追従させる。
+
+対象:
+
+- clean 状態で `storage` event により別タブの正常版へ追従した場合
+- `pageshow` / foreground reconciliation などで正常な保存先を再読込した場合
+- conflict UI でユーザーが「保存されている方」を明示採用した場合
+
+一方、missing / invalid primary から見つかった recovery candidate は未確定なので、この同期経路には入れない。
+
+この区別により、ユーザーが競合解決で捨てた古い local 版が native snapshot に残り、その後 Web Storage が消失した際に復元候補として再浮上する「捨てたデータの復活」を防ぐ。
+
+### 6. Web runtime の完全スキップ
 
 `Capacitor.isNativePlatform()` を共通 availability gate にした。
 
 通常 Web runtime では native Filesystem read/write だけでなく、その Promise callback による React state update 自体を開始しない。これにより Web 動作への不要な非同期副作用とテスト時の `act()` warning 再発を防ぐ。
 
-### 6. native backup failure UI
+### 7. native backup failure UI
 
 localStorage 本体が成功して native 予備保存だけ失敗した場合は、メモ本体の保存成功を否定せず、端末内予備保存のみ失敗したことを明示する。
 
@@ -99,6 +113,8 @@ Phase 38 では次を追加・更新した。
 - primary read failure 時も valid backup を read-only recovery candidate として取得可能
 - localStorage primary health 判定
 - native recovery の App integration
+- clean な正常外部版を採用した際の native canonical sync
+- conflict で保存済み版を明示採用した際の native canonical sync
 - native backup failure / safe retry UI
 
 ## 検証中に捕捉した問題
@@ -109,6 +125,7 @@ Phase 38 の実装中に以下を検出し、そのまま green 扱いせず修�
 2. async serialization test が任意の1 microtask待機に依存していた不安定テスト
 3. native Promise が通常 Web test に state update を持ち込み `act()` warning を再発させる問題
 4. Filesystem read error をすべて missing とみなすことで、既存 native primary を保護せず上書きし得る耐久性バグ
+5. conflict / external update で正常な保存済み版を正式採用しても native snapshot が追従せず、後の localStorage 消失時に捨てた古い版が復元候補として再浮上し得るデータ復活バグ
 
 ## Phase 38 後も残る事項
 
