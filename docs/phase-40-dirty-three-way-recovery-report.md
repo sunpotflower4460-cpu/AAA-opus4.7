@@ -14,11 +14,11 @@ The safety rule is that these candidates must never be silently merged or silent
 
 ### 1. Screen / local / native candidates are independent
 
-`App.tsx` now models recovery candidates as three independent sources:
+`App.tsx` models recovery candidates as three independent sources:
 
-- `screen` — the dirty, unsaved contents that were visible when the conflict was detected
+- `screen` — dirty, unsaved contents visible when the conflict was detected
 - `local` — the recovery candidate found in localStorage
-- `native` — the alternative candidate found in the Capacitor Filesystem snapshot
+- `native` — an alternative candidate found in the Capacitor Filesystem snapshot
 
 Each source has its own ref. Switching the visible candidate changes only the displayed snapshot and active source; candidates are not automatically merged.
 
@@ -33,9 +33,9 @@ If a normal primary appears while the native probe is still running, the dirty s
 While native recovery is being checked, or when the native snapshot cannot be read safely:
 
 - autosave remains stopped,
-- editing that could make the unresolved state harder to reason about is gated where applicable,
+- destructive resolution remains gated,
 - force-overwrite is not offered,
-- the recovery candidates already captured remain available,
+- recovery candidates already captured remain available,
 - the user can retry the native safety check.
 
 A native I/O problem is never treated as an empty/fresh installation.
@@ -44,22 +44,26 @@ A native I/O problem is never treated as an empty/fresh installation.
 
 Once a local or native recovery candidate has been presented, a later storage event or native probe does not silently replace that candidate.
 
-This matters because a user may switch to a recovery candidate and edit it before deciding which version to commit. Without this rule, a later asynchronous event could erase those edits while the conflict banner was still visible.
+A user may switch to a recovery candidate and edit it before deciding which version to commit. Without this rule, a later asynchronous event could erase those edits while the conflict banner was still visible.
 
-Regression coverage now verifies both:
+Regression coverage verifies both:
 
 - edited local candidate survives later remote recovery events and probes,
 - edited native candidate survives later native probe results.
 
-Newer remote data is not destroyed by this UI stability rule; it remains in the persistence layer and the existing forced-save preservation path protects competing stored versions before overwrite.
+Newer remote data is not destroyed by this UI stability rule; it remains in the persistence layer, and forced-save preservation protects competing stored versions before overwrite.
 
-### 5. Recovery count follows the visible candidate
+### 5. Recovery counts follow the visible and edited candidate
 
-The recovery banner count is now derived from the snapshot currently visible to the user. A later storage event no longer resets the displayed count to the original dirty-screen count after the user has switched to a local or native candidate.
+The recovery banner count follows the snapshot currently visible to the user. A later storage event no longer resets the displayed count to the original dirty-screen count after the user switches to a local or native candidate.
+
+The count also stays synchronized when the active candidate itself is edited so that notes are added or removed. Screen, local, and native candidate refs and their visible count state are updated together.
+
+A dedicated regression changes a displayed native candidate from one note to two notes and verifies that the notice changes from 1 to 2 rather than retaining stale UI state.
 
 ### 6. Native snapshots keep a bounded latest-three rolling window
 
-The native Filesystem persistence layer now maintains:
+The native Filesystem persistence layer maintains:
 
 - primary — newest successfully committed native snapshot
 - backup — previous native snapshot
@@ -77,7 +81,7 @@ The three files are a bounded rolling recovery window, not permanent version his
 
 ### 7. Secondary native backup is an actual recovery source
 
-The secondary backup is now included in `readNativeDurableSnapshot()`.
+The secondary backup is included in `readNativeDurableSnapshot()`.
 
 Read order is:
 
@@ -85,7 +89,7 @@ Read order is:
 2. backup
 3. secondary backup
 
-If primary or backup is missing, corrupt, or experiences an I/O error but a later recovery source is valid, the valid snapshot can still be returned. Only when all three sources are truly missing is the result `missing`. If no valid candidate exists and any source is unreadable or malformed, the result is `error` rather than a false fresh-install state.
+If an earlier source is missing, corrupt, or unreadable but a later recovery source is valid, the valid snapshot can still be surfaced as a recovery candidate. Only when all three sources are truly missing is the result `missing`. If no valid candidate exists and any source is unreadable or malformed, the result is `error` rather than a false fresh-install state.
 
 ### 8. Native rotation failure ordering is covered
 
@@ -100,25 +104,40 @@ Regression tests cover:
 - returning `error` instead of `missing` when secondary cannot be read,
 - returning `missing` only when all native snapshot files are absent.
 
+### 9. Recovery copy does not claim a native candidate that does not exist
+
+The common dirty-conflict notice now describes only the candidates that are guaranteed to exist at that point: the unsaved screen and the local recovery candidate.
+
+Native-specific wording is rendered separately only when a native alternative is actually available. A regression test ensures the common notice does not contain an on-device/native claim while the native-specific notice still does.
+
+This closes the CodeRabbit functional-correctness finding where a `missing` native result could previously leave misleading copy on screen.
+
 ## Verification
 
-Final clean branch head before this report:
+Verified implementation head before this report refresh:
 
-`1d2c2de0bfb4cf79b44d9486b6744e4bfbbd3d40`
+`41f06b77ba4253227582af6302a785aeca6e265d`
 
-GitHub Actions `Check` run `33167765150` completed successfully with:
+GitHub Actions `Check` run `33169447963` completed successfully with:
 
 - `npm ci`
 - `npm audit --omit=dev --audit-level=high` — 0 production vulnerabilities
 - TypeScript typecheck
 - ESLint
-- Vitest — 20 files, 161 tests passed
+- Vitest — 21 files, 163 tests passed
 - production build
 - `npx cap sync ios`
 - committed iOS project drift check
 - iPhone-only target/orientation guards in the workflow
 
 `npm ci` still reports 12 vulnerabilities in the broader dependency/dev-tool graph (2 low, 1 moderate, 9 high). Phase 40 does not claim those are resolved; the production high-severity audit remains clean.
+
+CodeRabbit raised two functional-correctness findings during review:
+
+1. stale candidate count after editing a displayed recovery candidate,
+2. common copy claiming a native candidate even when native recovery was missing.
+
+Both were fixed, regression-covered, replied to, and their review threads were resolved before merge.
 
 ## Known limits / follow-up
 
