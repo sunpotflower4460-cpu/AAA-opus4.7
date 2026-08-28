@@ -1,32 +1,31 @@
-name: Phase 33 Lockfile Generator
+name: Phase 33 Native Finalizer
 
 on:
   push:
     branches: ["bugfix/phase33-capacitor-ios-reproducibility"]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  generate:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: "npm"
 
-      - name: Promote Capacitor 7 to reproducible project dependencies
+      - name: Pin Capacitor and native scripts
         run: |
           node <<'NODE'
           const fs = require('node:fs');
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           delete pkg.peerDependencies;
           delete pkg.peerDependenciesMeta;
+          delete pkg.scripts['cap:add:ios'];
           pkg.dependencies = {
             ...pkg.dependencies,
             '@capacitor/core': '7.6.8',
@@ -38,32 +37,179 @@ jobs:
           };
           pkg.scripts = {
             ...pkg.scripts,
-            'cap:add:ios': 'npm run build && cap add ios',
             'cap:sync:ios': 'npm run build && cap sync ios',
             'cap:open:ios': 'cap open ios',
           };
+          pkg.engines = { node: '>=22' };
           fs.writeFileSync('package.json', `${JSON.stringify(pkg, null, 2)}\n`);
           NODE
+
+          cat > tsconfig.node.json <<'EOF'
+          {
+            "compilerOptions": {
+              "target": "ES2022",
+              "lib": ["ES2023"],
+              "module": "ESNext",
+              "skipLibCheck": true,
+              "moduleResolution": "bundler",
+              "allowSyntheticDefaultImports": true,
+              "strict": true,
+              "noEmit": true
+            },
+            "include": ["vite.config.ts", "capacitor.config.ts"]
+          }
+          EOF
+
+          cat > .gitignore <<'EOF'
+          node_modules
+          dist
+          dist-ssr
+          *.local
+          .vite
+          .DS_Store
+          *.tsbuildinfo
+          npm-debug.log*
+          yarn-debug.log*
+          yarn-error.log*
+
+          # Capacitor native projects are source artifacts and are version-controlled.
+          # Platform-generated build/web/config outputs are ignored inside ios/.gitignore.
+          android
+
+          # wrangler files
+          .wrangler
+          .dev.vars*
+          !.dev.vars.example
+          .env*
+          !.env.example
+          EOF
+
           npm install --package-lock-only --ignore-scripts
 
-      - name: Verify generated dependency graph
+      - name: Verify dependency graph and web application
         run: |
           npm ci
+          npm audit --omit=dev --audit-level=high
+          npm run check
           npx cap --version
 
-      - name: Verify reproducible iOS scaffold and sync
+      - name: Create canonical iOS native project
         run: |
-          npm run build
+          rm -rf ios
           npx cap add ios
           npx cap sync ios
+
+          cat > ios/.gitignore <<'EOF'
+          App/build
+          App/Pods
+          App/output
+          App/App/public
+          DerivedData
+          xcuserdata
+
+          # Cordova plugins for Capacitor
+          capacitor-cordova-ios-plugins
+
+          # Generated config files
+          App/App/capacitor.config.json
+          App/App/config.xml
+          EOF
+
           test -f ios/App/App.xcodeproj/project.pbxproj
           test -f ios/App/App/Info.plist
+          grep -q 'com.zanshin.notes' ios/App/App.xcodeproj/project.pbxproj
+          grep -q '<string>残心</string>' ios/App/App/Info.plist
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: phase33-capacitor-artifacts
-          path: |
-            package.json
-            package-lock.json
-            ios
-          if-no-files-found: error
+      - name: Replace Capacitor placeholder native branding
+        run: |
+          python -m pip install --disable-pip-version-check pillow
+          python <<'PY'
+          from PIL import Image, ImageDraw
+          from pathlib import Path
+          import shutil
+
+          bg = '#F7F1E5'
+          ink = '#1F1B18'
+          gold = '#C9A646'
+
+          def mark(size: int, radius: int, width: int, dot_x: int, dot_y: int, dot_r: int):
+              image = Image.new('RGB', (size, size), bg)
+              draw = ImageDraw.Draw(image)
+              cx = cy = size // 2
+              box = (cx - radius, cy - radius, cx + radius, cy + radius)
+              draw.arc(box, start=12, end=340, fill=ink, width=width)
+              draw.ellipse((dot_x-dot_r, dot_y-dot_r, dot_x+dot_r, dot_y+dot_r), fill=gold)
+              return image
+
+          icon_path = Path('ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png')
+          mark(1024, 320, 36, 736, 320, 38).save(icon_path, optimize=True)
+
+          splash_path = Path('ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png')
+          splash = mark(2732, 300, 30, 1575, 1186, 35)
+          splash.save(splash_path, optimize=True)
+          shutil.copyfile(splash_path, splash_path.with_name('splash-2732x2732-1.png'))
+          shutil.copyfile(splash_path, splash_path.with_name('splash-2732x2732-2.png'))
+
+          icon = Image.open(icon_path)
+          assert icon.size == (1024, 1024)
+          assert icon.mode == 'RGB'
+          splash_check = Image.open(splash_path)
+          assert splash_check.size == (2732, 2732)
+          assert splash_check.mode == 'RGB'
+          PY
+
+      - name: Harden standard CI against native drift
+        run: |
+          cat > .github/workflows/check.yml <<'EOF'
+          name: Check
+
+          on:
+            push:
+              branches: ["**"]
+            pull_request:
+              branches: ["**"]
+
+          permissions:
+            contents: read
+
+          jobs:
+            check:
+              runs-on: ubuntu-latest
+
+              steps:
+                - uses: actions/checkout@v7
+                  with:
+                    persist-credentials: false
+
+                - name: Setup Node.js
+                  uses: actions/setup-node@v7
+                  with:
+                    node-version: "22"
+                    cache: "npm"
+
+                - name: Install dependencies
+                  run: npm ci
+
+                - name: Audit production dependencies
+                  run: npm audit --omit=dev --audit-level=high
+
+                - name: Run check (typecheck + lint + test + build)
+                  run: npm run check
+
+                - name: Verify committed iOS project stays in sync
+                  run: |
+                    npx cap sync ios
+                    test -f ios/App/App.xcodeproj/project.pbxproj
+                    test -f ios/App/App/Info.plist
+                    git diff --exit-code -- ios
+          EOF
+
+      - name: Commit native source and remove temporary workflow
+        run: |
+          rm .github/workflows/phase33-lockfile.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git status --short
+          git commit -m "Phase 33: commit reproducible iOS native source"
+          git push origin HEAD:bugfix/phase33-capacitor-ios-reproducibility
