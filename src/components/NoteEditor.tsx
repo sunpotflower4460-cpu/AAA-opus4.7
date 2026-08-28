@@ -16,13 +16,17 @@ type Props = {
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+// App 側の autosave debounce (500ms) より後に「保存済み」を出す。
+// 実保存より先に成功表示を出さないための UX ガード。
+const SAVE_FEEDBACK_DELAY_MS = 650;
+const SAVED_FEEDBACK_VISIBLE_MS = 1200;
+
 export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
 
-  // 自動保存ステータス: 入力後すぐ "saving"、少し経って "saved"、さらに経って消える
   const savingTimer = useRef<number | null>(null);
   const savedTimer = useRef<number | null>(null);
 
@@ -32,8 +36,11 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
     if (savedTimer.current) window.clearTimeout(savedTimer.current);
     savingTimer.current = window.setTimeout(() => {
       setSaveState("saved");
-      savedTimer.current = window.setTimeout(() => setSaveState("idle"), 1100);
-    }, 320);
+      savedTimer.current = window.setTimeout(
+        () => setSaveState("idle"),
+        SAVED_FEEDBACK_VISIBLE_MS,
+      );
+    }, SAVE_FEEDBACK_DELAY_MS);
   }
 
   useEffect(() => {
@@ -51,7 +58,6 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
   useEffect(() => {
     if (savingTimer.current) window.clearTimeout(savingTimer.current);
     if (savedTimer.current) window.clearTimeout(savedTimer.current);
-    // ノート切り替え時に保存ステータスをリセット（意図的な setState in effect）
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveState("idle");
     setConfirmingDelete(false);
@@ -76,14 +82,13 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
-      {/* 上部バー */}
-      <header className="flex items-center justify-between gap-gr-4">
+      <header className="zanshin-screen-bar flex items-center justify-between gap-gr-4">
         <button
           type="button"
           onClick={onBack}
           aria-label={copy.back}
           className="
-            -ml-gr-2 flex items-center gap-gr-2 rounded-full
+            zanshin-nav-button -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
             transition-soft hover:text-sumi hover:bg-paper/60
           "
@@ -114,7 +119,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
             aria-pressed={note.isFavorite}
             title={note.isFavorite ? copy.favoriteOff : copy.favoriteOn}
             className={[
-              "flex h-[44px] w-[44px] items-center justify-center rounded-full",
+              "zanshin-editor-action flex h-[44px] w-[44px] items-center justify-center rounded-full",
               "transition-soft active:scale-95",
               note.isFavorite
                 ? "text-gold hover:bg-gold/10"
@@ -138,7 +143,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
             aria-label={copy.deleteNote}
             title={copy.deleteNote}
             className="
-              flex h-[44px] w-[44px] items-center justify-center rounded-full
+              zanshin-editor-action flex h-[44px] w-[44px] items-center justify-center rounded-full
               text-ink-muted transition-soft
               hover:text-vermilion hover:bg-vermilion/5
               active:scale-95
@@ -163,7 +168,6 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
         </div>
       </header>
 
-      {/* エディタ本体 — 一枚の和紙に向かう場所 */}
       <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
           <SaveAfterglow active={saveState === "saved" && !saveError} token={note.updatedAt} />
@@ -182,7 +186,6 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
             className="note-title-input jp-writing-surface"
           />
 
-          {/* タイトルと本文の間 — 短い金の余韻 */}
           <div
             aria-hidden="true"
             className="mt-gr-4 h-px w-gr-4 bg-gradient-to-r from-transparent via-gold/22 to-transparent"
@@ -199,7 +202,6 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
           />
         </div>
 
-        {/* 状態行 — 小さく、静かに */}
         <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/62">
           <span aria-live="polite" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
             {saveState === "saving" && (
@@ -225,7 +227,6 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveError = false
         </div>
       </main>
 
-      {/* 削除確認 */}
       {confirmingDelete && (
         <DeleteConfirm
           onCancel={() => setConfirmingDelete(false)}
@@ -246,17 +247,44 @@ function DeleteConfirm({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+
+    const first = cancelRef.current;
+    const last = confirmRef.current;
+    if (!first || !last) return;
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="zanshin-delete-title"
+      aria-describedby="zanshin-delete-description"
       className="fixed inset-0 z-20 flex items-end justify-center bg-sumi/35 backdrop-blur-[2px] px-gr-4 pb-gr-5 sm:items-center animate-fadeIn"
       onClick={onCancel}
+      onKeyDown={handleKeyDown}
     >
       <div
         className="
-          w-full max-w-[420px] rounded-[13px] bg-paper
+          zanshin-delete-dialog w-full max-w-[420px] rounded-[13px] bg-paper
           p-gr-5 shadow-paper-hover border border-[color:var(--color-line)]
           animate-softUp
         "
@@ -268,11 +296,16 @@ function DeleteConfirm({
         >
           {copy.deleteConfirmTitle}
         </h2>
-        <p className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted jp-text-discipline">
+        <p
+          id="zanshin-delete-description"
+          className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted jp-text-discipline"
+        >
           {copy.deleteConfirmBody}
         </p>
         <div className="mt-gr-5 flex items-center justify-end gap-gr-3">
           <button
+            ref={cancelRef}
+            autoFocus
             type="button"
             onClick={onCancel}
             className="
@@ -283,10 +316,11 @@ function DeleteConfirm({
             {copy.cancel}
           </button>
           <button
+            ref={confirmRef}
             type="button"
             onClick={onConfirm}
             className="
-              rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
+              zanshin-delete-confirm rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
               text-washi shadow-paper-soft transition-soft
               hover:bg-vermilion/90 active:scale-[0.98]
             "
