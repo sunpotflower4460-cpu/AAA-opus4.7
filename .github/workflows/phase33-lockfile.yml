@@ -1,0 +1,59 @@
+name: Phase 33 Lockfile Generator
+
+on:
+  push:
+    branches: ["bugfix/phase33-capacitor-ios-reproducibility"]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Promote Capacitor 7 to reproducible project dependencies
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          delete pkg.peerDependencies;
+          delete pkg.peerDependenciesMeta;
+          pkg.dependencies = {
+            ...pkg.dependencies,
+            '@capacitor/core': '7.6.8',
+            '@capacitor/ios': '7.6.8',
+          };
+          pkg.devDependencies = {
+            ...pkg.devDependencies,
+            '@capacitor/cli': '7.6.8',
+          };
+          pkg.scripts = {
+            ...pkg.scripts,
+            'cap:sync:ios': 'npm run build && cap sync ios',
+            'cap:open:ios': 'cap open ios',
+          };
+          fs.writeFileSync('package.json', `${JSON.stringify(pkg, null, 2)}\n`);
+          NODE
+          npm install --package-lock-only --ignore-scripts
+
+      - name: Verify generated dependency graph
+        run: |
+          npm ci
+          npx cap --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase33-capacitor-lockfiles
+          path: |
+            package.json
+            package-lock.json
+          if-no-files-found: error
