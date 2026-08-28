@@ -40,14 +40,13 @@ export function NoteCard({ note, onOpen }: Props) {
       <span
         aria-hidden="true"
         className={[
-          "absolute left-gr-3 top-gr-3 bottom-gr-3 rounded-full",
+          "zanshin-note-card__spine absolute left-gr-3 top-gr-3 bottom-gr-3 rounded-full",
           note.isFavorite ? "w-[2px] bg-gold/72" : "w-px bg-sumi/10",
         ].join(" ")}
       />
 
       <div className="flex items-start gap-gr-3">
         <div className="min-w-0 flex-1">
-          {/* Phase 13: 日付印を上部に配置 */}
           <div className="mb-gr-3">
             <ZanshinDateStamp isoString={note.createdAt} compact />
           </div>
@@ -81,7 +80,6 @@ export function NoteCard({ note, onOpen }: Props) {
             title={copy.favoriteBadge}
             className="mt-[6px] shrink-0 text-gold/82"
           >
-            {/* 金の小さな印 — 装飾ではなく、しるし */}
             <svg
               width="9"
               height="9"
@@ -94,6 +92,8 @@ export function NoteCard({ note, onOpen }: Props) {
           </span>
         )}
       </div>
+
+      <span className="zanshin-note-card__corner" aria-hidden="true" />
     </button>
   );
 }
