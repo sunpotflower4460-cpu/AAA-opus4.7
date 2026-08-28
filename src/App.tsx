@@ -311,7 +311,8 @@ export default function App() {
 
     setNotes(result.notes);
     setLastDeleted(null);
-    setLastSaveResult(null);
+    // エディタが conflict error のまま残らないよう、採用した保存先状態を正常として通知する。
+    setLastSaveResult({ ok: true });
     setExternalConflict(false);
     setCanLoadStoredNotes(true);
     setLoadError(false);
