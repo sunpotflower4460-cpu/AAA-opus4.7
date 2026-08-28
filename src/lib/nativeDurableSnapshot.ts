@@ -7,19 +7,39 @@ const PRIMARY_PATH = "zanshin/notes.snapshot.v1.json";
 const BACKUP_PATH = "zanshin/notes.snapshot.backup.v1.json";
 const CORRUPT_PATH = "zanshin/notes.snapshot.corrupt.v1.json";
 const DIRECTORY = Directory.LibraryNoCloud;
+const FILE_NOT_FOUND_CODE = "OS-PLUG-FILE-0008";
 
 let writeChain: Promise<void> = Promise.resolve();
+
+type NativeReadResult =
+  | { status: "ok"; raw: string }
+  | { status: "missing" }
+  | { status: "error" };
 
 export function isNativeDurableSnapshotAvailable(): boolean {
   return Capacitor.isNativePlatform();
 }
 
-async function readRaw(path: string): Promise<string | null> {
+function nativeErrorCode(error: unknown): string | null {
+  if (typeof error !== "object" || error === null || !("code" in error)) return null;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
+}
+
+async function readRaw(path: string): Promise<NativeReadResult> {
   try {
-    const result = await Filesystem.readFile({ path, directory: DIRECTORY, encoding: Encoding.UTF8 });
-    return typeof result.data === "string" ? result.data : null;
-  } catch {
-    return null;
+    const result = await Filesystem.readFile({
+      path,
+      directory: DIRECTORY,
+      encoding: Encoding.UTF8,
+    });
+    return typeof result.data === "string"
+      ? { status: "ok", raw: result.data }
+      : { status: "error" };
+  } catch (error) {
+    return nativeErrorCode(error) === FILE_NOT_FOUND_CODE
+      ? { status: "missing" }
+      : { status: "error" };
   }
 }
 
@@ -34,18 +54,25 @@ async function writeRaw(path: string, data: string): Promise<void> {
 }
 
 async function writeSnapshotRaw(nextRaw: string): Promise<void> {
-  const currentRaw = await readRaw(PRIMARY_PATH);
-  if (currentRaw === nextRaw) return;
+  const current = await readRaw(PRIMARY_PATH);
 
-  if (currentRaw !== null) {
-    if (parseValidNotesSnapshot(currentRaw) !== null) {
+  // 「存在しない」と「読めない」を混同しない。読込障害時にprimaryへ触ると、
+  // 既存の正常世代をbackupへ確定できないまま上書きする恐れがあるため中止する。
+  if (current.status === "error") {
+    throw new Error("native snapshot primary read failed");
+  }
+
+  if (current.status === "ok") {
+    if (current.raw === nextRaw) return;
+
+    if (parseValidNotesSnapshot(current.raw) !== null) {
       // 新しい primary に触る前に、直前の正常世代を確定する。
       // ここが失敗した場合は current primary を残し、新版へ進まない。
-      await writeRaw(BACKUP_PATH, currentRaw);
+      await writeRaw(BACKUP_PATH, current.raw);
     } else {
       // 破損した native snapshot も診断・救済余地を残すが、退避失敗は新版保存を妨げない。
       try {
-        await writeRaw(CORRUPT_PATH, currentRaw);
+        await writeRaw(CORRUPT_PATH, current.raw);
       } catch {
         // best effort
       }
@@ -92,14 +119,17 @@ export async function readNativeDurableSnapshot(): Promise<Note[] | null> {
 
   await writeChain.catch(() => {});
 
-  const primaryRaw = await readRaw(PRIMARY_PATH);
-  if (primaryRaw !== null) {
-    const primary = parseValidNotesSnapshot(primaryRaw);
-    if (primary !== null) return primary;
+  const primary = await readRaw(PRIMARY_PATH);
+  if (primary.status === "ok") {
+    const parsedPrimary = parseValidNotesSnapshot(primary.raw);
+    if (parsedPrimary !== null) return parsedPrimary;
   }
 
-  const backupRaw = await readRaw(BACKUP_PATH);
-  return backupRaw === null ? null : parseValidNotesSnapshot(backupRaw);
+  // primaryが不存在・破損・一時的に読込不能のいずれでも、backupは独立に読める可能性がある。
+  // ここは読み取り専用の復旧候補取得なので、primaryへ書き戻すことはしない。
+  const backup = await readRaw(BACKUP_PATH);
+  if (backup.status !== "ok") return null;
+  return parseValidNotesSnapshot(backup.raw);
 }
 
 export function resetNativeDurableSnapshotQueueForTesting(): void {
