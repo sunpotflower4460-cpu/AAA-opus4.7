@@ -3,7 +3,11 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
-import { BACKUP_KEY_FOR_TESTING, STORAGE_KEY_FOR_TESTING } from "../lib/storage";
+import {
+  BACKUP_KEY_FOR_TESTING,
+  PENDING_SAVE_KEY_FOR_TESTING,
+  STORAGE_KEY_FOR_TESTING,
+} from "../lib/storage";
 
 const durable = vi.hoisted(() => ({
   available: vi.fn(),
@@ -287,6 +291,57 @@ describe("App native durable snapshot", () => {
 
     expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
     expect(durable.persist).toHaveBeenCalledWith(local);
+  });
+
+  it("native待機中にvalid primaryへpending候補が追加されてもcheckingに固定せず再probeして競合を解放する", async () => {
+    const existing = [makeNote({ title: "元の保存済み版" })];
+    const pending = [
+      makeNote({
+        title: "native待機中の中断候補",
+        body: "別タブが追加した候補",
+        updatedAt: "2026-08-28T00:10:00.000Z",
+      }),
+    ];
+    const existingRaw = JSON.stringify(existing);
+    const pendingRaw = JSON.stringify(pending);
+    storage._store[STORAGE_KEY_FOR_TESTING] = existingRaw;
+
+    let resolveFirstRead!: (value: { status: "missing" }) => void;
+    durable.read
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirstRead = resolve;
+        }),
+      )
+      .mockResolvedValue({ status: "missing" });
+
+    renderApp();
+    await flushPromises();
+    expect(container.textContent).toContain(copy.nativeRecoveryChecking);
+
+    storage._store[PENDING_SAVE_KEY_FOR_TESTING] = JSON.stringify({
+      version: 1,
+      baseRaw: existingRaw,
+      nextRaw: pendingRaw,
+      writerId: "other-tab",
+    });
+
+    await act(async () => {
+      resolveFirstRead({ status: "missing" });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await flushPromises();
+
+    expect(durable.read).toHaveBeenCalledTimes(2);
+    expect(container.textContent).not.toContain(copy.nativeRecoveryChecking);
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain("native待機中の中断候補");
+    expect(hasButton(container, copy.storageConflictLoad)).toBe(true);
+    expect(hasButton(container, copy.storageConflictOverwrite)).toBe(true);
+    expect(durable.persist).not.toHaveBeenCalled();
   });
 
   it("通常autosave成功後は最新snapshotをnative側にも保存する", async () => {

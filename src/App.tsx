@@ -505,11 +505,21 @@ export default function App() {
     if (primaryHealth === "valid") {
       const current = loadNotes();
       if (!current.ok) {
-        flagExternalConflict(
-          canChooseStoredPrimary(current),
-          !hasRecoveryCandidate(current),
-          hasRecoveryCandidate(current) ? current.notes.length : 0,
-        );
+        if (hasRecoveryCandidate(current)) {
+          // primary health確認後に別タブ等がpending/recovery候補を追加した場合、
+          // mixed-timeの判定で解決せず候補を登録してnativeを再probeする。
+          // storage eventはnative gate中に抑止されるため、ここで明示的に拾う必要がある。
+          registerLocalRecoveryCandidate(current.notes);
+          return;
+        }
+
+        // 2回目のlocal readが失敗した場合も「checking」のまま固定しない。
+        // local/nativeの整合性を確定できないためfail closedでRetryへ送る。
+        nativeRecoveryGateRef.current = true;
+        saveGuardRef.current = true;
+        setNativeRecoveryStatus("error");
+        setNativeBackupRetryAllowed(false);
+        setLoadError(false);
         return;
       }
 
@@ -621,6 +631,7 @@ export default function App() {
     clearRecoveryCandidateSources,
     flagExternalConflict,
     persistDurableSnapshot,
+    registerLocalRecoveryCandidate,
   ]);
 
   useEffect(() => {
