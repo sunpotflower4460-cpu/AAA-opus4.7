@@ -2,7 +2,11 @@ import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
-import { STORAGE_KEY_FOR_TESTING } from "../lib/storage";
+import {
+  BACKUP_KEY_FOR_TESTING,
+  STORAGE_KEY_FOR_TESTING,
+} from "../lib/storage";
+import { copy } from "../lib/i18n";
 import type { Note } from "../types/note";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -37,6 +41,45 @@ function mockLocalStorage() {
       return store;
     },
   };
+}
+
+function dispatchStorageChange(key: string | null = STORAGE_KEY_FOR_TESTING) {
+  const event = new Event("storage") as StorageEvent;
+  Object.defineProperty(event, "key", { value: key });
+  window.dispatchEvent(event);
+}
+
+function click(element: Element) {
+  element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+function findButton(container: HTMLElement, text: string): HTMLButtonElement {
+  const button = Array.from(container.querySelectorAll("button")).find((candidate) =>
+    candidate.textContent?.includes(text),
+  );
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(`Button not found: ${text}`);
+  }
+  return button;
+}
+
+function openExistingNoteEditor(container: HTMLElement) {
+  act(() => click(findButton(container, "元のメモ")));
+  act(() => click(findButton(container, copy.editNote)));
+}
+
+function changeTextarea(container: HTMLElement, value: string) {
+  const textarea = container.querySelector("textarea");
+  if (!(textarea instanceof HTMLTextAreaElement)) {
+    throw new Error("textarea not found");
+  }
+
+  const valueSetter = Object.getOwnPropertyDescriptor(
+    HTMLTextAreaElement.prototype,
+    "value",
+  )?.set;
+  valueSetter?.call(textarea, value);
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 describe("App lifecycle persistence", () => {
@@ -106,5 +149,104 @@ describe("App lifecycle persistence", () => {
     });
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
+  });
+
+  it("未編集の画面は storage event で別タブの最新内容へ追従する", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+
+    const remote = [
+      makeNote({
+        title: "別タブの最新内容",
+        updatedAt: "2026-08-28T00:15:00.000Z",
+      }),
+    ];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
+
+    act(() => dispatchStorageChange());
+
+    expect(container.textContent).toContain("別タブの最新内容");
+    expect(container.textContent).not.toContain("元のメモ");
+  });
+
+  it("storage event が間に合わなくても保存直前比較で別タブ更新を上書きしない", () => {
+    const baseline = [makeNote()];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
+    renderApp();
+    openExistingNoteEditor(container);
+
+    act(() => changeTextarea(container, "この画面だけの未保存編集"));
+
+    const remote = [
+      makeNote({
+        title: "別タブで先に更新",
+        body: "別タブ本文",
+        updatedAt: "2026-08-28T00:20:00.000Z",
+      }),
+    ];
+    const remoteRaw = JSON.stringify(remote);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, remoteRaw);
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain(copy.saveConflict);
+  });
+
+  it("競合中に明示的な上書きを選ぶと、別タブ版をbackupへ残してローカル編集を保存する", () => {
+    const baseline = [makeNote()];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
+    renderApp();
+    openExistingNoteEditor(container);
+
+    act(() => changeTextarea(container, "この画面で残したい本文"));
+
+    const remote = [
+      makeNote({
+        title: "別タブ版",
+        body: "別タブ本文",
+        updatedAt: "2026-08-28T00:20:00.000Z",
+      }),
+    ];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
+
+    act(() => dispatchStorageChange());
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+
+    act(() => click(findButton(container, copy.storageConflictOverwrite)));
+
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    const backup = JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[];
+    expect(saved[0].body).toBe("この画面で残したい本文");
+    expect(backup).toEqual(remote);
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
+  });
+
+  it("競合中に保存先の内容を選ぶと、未保存ローカル編集を破棄して最新内容を読み込む", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+    openExistingNoteEditor(container);
+
+    act(() => changeTextarea(container, "破棄されるローカル編集"));
+
+    const remote = [
+      makeNote({
+        title: "採用する別タブ版",
+        body: "採用する本文",
+        updatedAt: "2026-08-28T00:25:00.000Z",
+      }),
+    ];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
+
+    act(() => dispatchStorageChange());
+    act(() => click(findButton(container, copy.storageConflictLoad)));
+
+    const textarea = container.querySelector("textarea");
+    expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
+    expect((textarea as HTMLTextAreaElement).value).toBe("採用する本文");
+    expect(container.textContent).not.toContain(copy.storageConflictTitle);
   });
 });
