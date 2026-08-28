@@ -20,7 +20,9 @@ jobs:
       - name: Install Capacitor App plugin
         run: npm install @capacitor/app@7.1.2 --save-exact
       - name: Apply source and native patch
-        run: python scripts/phase37_patch.py
+        run: |
+          python scripts/phase37_patch.py
+          python scripts/phase37_fix_test.py
       - name: Validate implementation
         run: |
           npm audit --omit=dev --audit-level=high
