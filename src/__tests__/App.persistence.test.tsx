@@ -248,5 +248,6 @@ describe("App lifecycle persistence", () => {
     expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
     expect((textarea as HTMLTextAreaElement).value).toBe("採用する本文");
     expect(container.textContent).not.toContain(copy.storageConflictTitle);
+    expect(container.textContent).not.toContain(copy.saveConflict);
   });
 });
