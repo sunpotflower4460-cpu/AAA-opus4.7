@@ -8,7 +8,6 @@ import {
 } from "../storage";
 import type { Note } from "../../types/note";
 
-// ヘルパー: 最低限有効な Note を生成する
 function makeNote(overrides: Partial<Note> = {}): Note {
   return {
     id: "test-id-1",
@@ -22,15 +21,22 @@ function makeNote(overrides: Partial<Note> = {}): Note {
   };
 }
 
-// localStorage のモック
 function mockLocalStorage() {
   const store: Record<string, string> = {};
   return {
     getItem: vi.fn((key: string) => store[key] ?? null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
-    removeItem: vi.fn((key: string) => { delete store[key]; }),
-    clear: vi.fn(() => { Object.keys(store).forEach((k) => delete store[k]); }),
-    get _store() { return store; },
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: vi.fn(() => {
+      Object.keys(store).forEach((key) => delete store[key]);
+    }),
+    get _store() {
+      return store;
+    },
   };
 }
 
@@ -46,71 +52,120 @@ describe("loadNotes", () => {
     });
   });
 
-  it("ストレージが空の場合は空配列を返す (ok: true)", () => {
-    const result = loadNotes();
-    expect(result.ok).toBe(true);
-    expect(result.notes).toEqual([]);
+  it("ストレージが空の場合は空配列を返す", () => {
+    expect(loadNotes()).toEqual({ ok: true, notes: [] });
   });
 
-  it("有効なメモを正しく読み込む (ok: true)", () => {
-    const note = makeNote();
-    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([note]));
+  it("有効なメモを正しく読み込む", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
     const result = loadNotes();
     expect(result.ok).toBe(true);
     expect(result.notes).toHaveLength(1);
     expect(result.notes[0].id).toBe("test-id-1");
   });
 
-  it("複数のメモを読み込む", () => {
-    const notes = [makeNote({ id: "id-1" }), makeNote({ id: "id-2" }), makeNote({ id: "id-3" })];
-    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(notes));
-    const result = loadNotes();
-    expect(result.ok).toBe(true);
-    expect(result.notes).toHaveLength(3);
-  });
+  it("JSON破損時は元データを退避する", () => {
+    const corruptData = "{ not valid json";
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptData);
 
-  it("JSON破損時は ok: false を返し、corrupt backup キーを含む", () => {
-    storage.setItem(STORAGE_KEY_FOR_TESTING, "{ invalid json ~~~");
     const result = loadNotes();
+
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.reason).toBe("corrupt");
       expect(result.corruptBackupKey).toBe(CORRUPT_BACKUP_KEY_FOR_TESTING);
-      expect(result.notes).toEqual([]);
     }
-  });
-
-  it("JSON破損時に破損データを corrupt backup キーへ退避する", () => {
-    const corruptData = "{ not valid json";
-    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptData);
-    loadNotes();
     expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe(corruptData);
   });
 
-  it("配列ではないデータ(オブジェクト)の場合は invalid_structure を返す", () => {
-    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify({ id: "123" }));
+  it("主データが壊れていても正常な直前バックアップから復元する", () => {
+    const backup = [makeNote({ id: "from-backup", title: "復元" })];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, "{ broken");
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(backup));
+
     const result = loadNotes();
+
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe("invalid_structure");
-    }
+    expect(result.notes.map((note) => note.id)).toEqual(["from-backup"]);
+    if (!result.ok) expect(result.recoveredFromBackup).toBe(true);
   });
 
-  it("不正な要素を除外する (isNote フィルタ)", () => {
-    const valid = makeNote({ id: "valid" });
-    const invalid = { id: 123, title: "bad" }; // id が number
-    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([valid, invalid]));
+  it("配列ではない主データでも正常なバックアップを復元する", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify({ id: "bad" }));
+    storage.setItem(
+      BACKUP_KEY_FOR_TESTING,
+      JSON.stringify([makeNote({ id: "backup-note" })]),
+    );
+
     const result = loadNotes();
-    expect(result.ok).toBe(true);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("invalid_structure");
+    expect(result.notes[0].id).toBe("backup-note");
+  });
+
+  it("一部に不正要素がある配列を正常扱いせず、正常要素だけ復元候補にする", () => {
+    const valid = makeNote({ id: "valid" });
+    const invalid = { id: 123, title: "bad" };
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([valid, invalid]));
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("invalid_structure");
     expect(result.notes).toHaveLength(1);
     expect(result.notes[0].id).toBe("valid");
+  });
+
+  it("重複IDは不正構造とし、updatedAt が新しい方だけを復元候補にする", () => {
+    const oldNote = makeNote({
+      id: "duplicate",
+      title: "古い",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    });
+    const newNote = makeNote({
+      id: "duplicate",
+      title: "新しい",
+      updatedAt: "2024-02-01T00:00:00.000Z",
+    });
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([oldNote, newNote]));
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0].title).toBe("新しい");
+  });
+
+  it("不正日時を持つメモを正常扱いしない", () => {
+    storage.setItem(
+      STORAGE_KEY_FOR_TESTING,
+      JSON.stringify([makeNote({ createdAt: "not-a-date" })]),
+    );
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual([]);
+  });
+
+  it("不正 locale を持つメモを正常扱いしない", () => {
+    const invalidLocale = { ...makeNote(), locale: "xx" };
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([invalidLocale]));
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual([]);
   });
 
   it("locale フィールドが省略されていてもロードできる", () => {
     const noteWithoutLocale = makeNote();
     delete (noteWithoutLocale as Partial<Note>).locale;
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([noteWithoutLocale]));
+
     const result = loadNotes();
+
     expect(result.ok).toBe(true);
     expect(result.notes).toHaveLength(1);
   });
@@ -129,47 +184,50 @@ describe("saveNotes", () => {
   });
 
   it("正常に保存できた場合は { ok: true } を返す", () => {
-    const result = saveNotes([makeNote()]);
-    expect(result.ok).toBe(true);
+    expect(saveNotes([makeNote()]).ok).toBe(true);
   });
 
   it("保存後にloadNotesで同じデータを読み込める", () => {
-    const notes = [makeNote({ id: "save-test" })];
-    saveNotes(notes);
+    saveNotes([makeNote({ id: "save-test" })]);
     const loaded = loadNotes();
     expect(loaded.ok).toBe(true);
     expect(loaded.notes[0].id).toBe("save-test");
   });
 
-  it("保存前に直前のデータをバックアップする", () => {
+  it("保存前に正常な直前データをバックアップする", () => {
     const original = [makeNote({ id: "original" })];
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(original));
 
-    const updated = [makeNote({ id: "updated" })];
-    saveNotes(updated);
+    saveNotes([makeNote({ id: "updated" })]);
 
-    const backup = storage._store[BACKUP_KEY_FOR_TESTING];
-    expect(backup).toBeDefined();
-    const parsed: unknown = JSON.parse(backup);
-    expect(Array.isArray(parsed) && (parsed as Array<{id: string}>)[0].id).toBe("original");
+    const backup = JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[];
+    expect(backup[0].id).toBe("original");
   });
 
-  it("容量超過時は { ok: false, reason: 'quota' } を返す", () => {
+  it("破損した主データで既存の正常バックアップを上書きしない", () => {
+    const validBackup = JSON.stringify([makeNote({ id: "safe-backup" })]);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, validBackup);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, "{ broken primary");
+
+    saveNotes([makeNote({ id: "recovered-and-edited" })]);
+
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(validBackup);
+  });
+
+  it("容量超過時は quota を返す", () => {
     storage.setItem.mockImplementation(() => {
       throw new DOMException("QuotaExceededError", "QuotaExceededError");
     });
+
     const result = saveNotes([makeNote()]);
+
     expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe("quota");
-    }
+    if (!result.ok) expect(result.reason).toBe("quota");
   });
 
   it("空配列を保存できる", () => {
     const result = saveNotes([]);
     expect(result.ok).toBe(true);
-    const loaded = loadNotes();
-    expect(loaded.ok).toBe(true);
-    expect(loaded.notes).toEqual([]);
+    expect(loadNotes()).toEqual({ ok: true, notes: [] });
   });
 });
