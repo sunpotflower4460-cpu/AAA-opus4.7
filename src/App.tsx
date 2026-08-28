@@ -40,10 +40,12 @@ function notesSnapshotMatches(left: readonly Note[], right: readonly Note[]): bo
 export default function App() {
   const [initialLoad] = useState(() => {
     const result = loadNotes();
+    const recoveryPending = !result.ok && result.notes.length > 0;
     return {
       notes: result.notes,
       loadFailed: !result.ok,
-      recoveredCount: result.ok ? 0 : result.notes.length,
+      recoveryPending,
+      recoveredCount: recoveryPending ? result.notes.length : 0,
     };
   });
 
@@ -56,14 +58,17 @@ export default function App() {
   const [isPremiumSheetOpen, setIsPremiumSheetOpen] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<SaveResult | null>(null);
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
-  const [loadError, setLoadError] = useState<boolean>(initialLoad.loadFailed);
-  const [externalConflict, setExternalConflict] = useState(false);
+  // 復元候補がある場合は、汎用エラーと二重表示せず recovery banner 側で案内する。
+  const [loadError, setLoadError] = useState<boolean>(
+    initialLoad.loadFailed && !initialLoad.recoveryPending,
+  );
+  const [externalConflict, setExternalConflict] = useState(initialLoad.recoveryPending);
   const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(!initialLoad.loadFailed);
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
 
-  // 破損復旧中は、ユーザー自身の明示的な編集が入るまで保存禁止を維持する。
+  // 破損復旧中は、ユーザーが復元内容を明示的に確定するまで保存禁止を維持する。
   const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
   // このタブ自身が変更したときだけ lifecycle flush を許可する。
   const notesDirtyRef = useRef(false);
@@ -72,7 +77,7 @@ export default function App() {
   // 最後に正常に読み込んだ / 保存した集合。保存直前の競合検知に使う。
   const baselineNotesRef = useRef<Note[]>(initialLoad.notes);
   const latestNotesRef = useRef(notes);
-  const externalConflictRef = useRef(false);
+  const externalConflictRef = useRef(initialLoad.recoveryPending);
 
   // pagehide は非常に早く来ることがあるため、paint 前に flush 用 snapshot を更新する。
   useLayoutEffect(() => {
@@ -86,7 +91,8 @@ export default function App() {
   }, []);
 
   const markNotesDirty = useCallback(() => {
-    saveGuardRef.current = false;
+    // recovery/conflict 中は明示解決を優先し、編集しただけでは guard を解除しない。
+    if (!externalConflictRef.current) saveGuardRef.current = false;
     if (!notesDirtyRef.current) dirtySinceRef.current = Date.now();
     notesDirtyRef.current = true;
     setLastSaveResult(null);
@@ -455,9 +461,14 @@ export default function App() {
               style={{ borderRadius: "7px 13px 8px 11px" }}
             >
               <p className="font-mincho text-[14px] tracking-mincho jp-text-discipline">
-                {copy.storageConflictTitle}
+                {canLoadStoredNotes ? copy.storageConflictTitle : copy.storageRecoveryTitle}
               </p>
               <p className="mt-gr-2 text-[12px] leading-ample text-ink-muted jp-text-discipline">
+                {!canLoadStoredNotes && initialLoad.recoveredCount > 0 && (
+                  <span className="mb-gr-1 block">
+                    復元候補を{initialLoad.recoveredCount}件表示しています。
+                  </span>
+                )}
                 {canLoadStoredNotes
                   ? copy.storageConflictBody
                   : copy.storageConflictRecoveryBody}
@@ -479,7 +490,9 @@ export default function App() {
                   className="min-h-[44px] bg-sumi px-gr-3 py-gr-2 font-mincho text-[12px] text-washi transition-soft hover:bg-indigo active:scale-[0.98]"
                   style={{ borderRadius: "6px 10px 7px 9px" }}
                 >
-                  {copy.storageConflictOverwrite}
+                  {canLoadStoredNotes
+                    ? copy.storageConflictOverwrite
+                    : copy.storageRecoverySave}
                 </button>
               </div>
             </div>
