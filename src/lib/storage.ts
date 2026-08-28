@@ -494,6 +494,25 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
       }
     }
 
+    if (!options.force && currentParsed.status === "valid" && currentRaw === serialized) {
+      if (unresolvedPendingSave && activePendingSave) {
+        // 同じ画面自身の中断候補を、その後の Undo 等で primary と同じ状態へ戻したケース。
+        // primary はすでに希望状態なので再書き込みせず、古い next を復元候補として残さないよう
+        // backup を現在 primary へ戻してから journal を解消する。
+        // 別 writer の active pending は上の競合判定ですでに止めている。
+        try {
+          window.localStorage.setItem(BACKUP_KEY, currentRaw);
+          window.localStorage.removeItem(PENDING_SAVE_KEY);
+        } catch (error) {
+          return saveFailureFromError(error);
+        }
+      }
+
+      // pending が無い完全な no-op は localStorage へ一切書かない。
+      // 実体がすでに保存済みなら quota / unavailable を偽の保存失敗として出さない。
+      return { ok: true };
+    }
+
     if (options.force) {
       const pendingCandidateRaw =
         unresolvedPendingSave && unresolvedPendingSave.nextRaw !== serialized
