@@ -79,6 +79,13 @@ export const copy = {
   nativeRecoveryReadError:
     "保存データの安全確認ができませんでした。上書きを防ぐため、編集と保存を止めています。",
   nativeRecoveryRetry: "もう一度確認する",
+  nativeRecoveryAlternativeNotice: (count: number) =>
+    count === 0
+      ? "端末内にも、すべて削除済みの別の復元候補があります。自動では混ぜません。"
+      : `端末内にも別の復元候補が${count}件あります。自動では混ぜません。`,
+  nativeRecoveryAlternativeActive: "端末内の別候補を表示しています。",
+  nativeRecoveryShowAlternative: "端末内の別候補を見る",
+  nativeRecoveryShowLocal: "元の復元候補に戻す",
   saveConflict: "別の変更と重なったため、保存を止めています",
   saveConflictEn: "Saving paused because another change was detected",
   saveRecovery: "復元内容を確認するまで、保存を止めています",

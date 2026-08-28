@@ -5,6 +5,8 @@ import {
   STORAGE_KEY_FOR_TESTING,
   BACKUP_KEY_FOR_TESTING,
   CONFLICT_BACKUP_KEY_FOR_TESTING,
+  RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING,
+  RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING,
   PENDING_SAVE_KEY_FOR_TESTING,
   CORRUPT_BACKUP_KEY_FOR_TESTING,
 } from "../storage";
@@ -73,10 +75,18 @@ describe("loadNotes", () => {
     }
   });
 
-  it("primary が無くても backup が空なら初回状態として空配列を返す", () => {
+  it("primary が無く backup が空配列なら全削除済みの復元候補として返す", () => {
     storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify([]));
 
-    expect(loadNotes()).toEqual({ ok: true, notes: [] });
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual([]);
+    if (!result.ok) {
+      expect(result.reason).toBe("missing_primary");
+      expect(result.recoveredFromBackup).toBe(true);
+      expect(result.recoveryCandidate).toBe(true);
+    }
   });
 
   it("有効なメモを正しく読み込む", () => {
@@ -612,6 +622,90 @@ describe("saveNotes", () => {
     expect(result).toEqual({ ok: true });
     expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(interruptedRaw);
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
+  });
+
+  it("force 保存は BACKUP_KEY だけに残る別世代の正常復元候補も専用退避してから上書きする", () => {
+    const hiddenRecovery = [makeNote({ id: "hidden-recovery", title: "見えていない復元候補" })];
+    const forced = [makeNote({ id: "forced", title: "この画面を確定" })];
+    const corruptRaw = "{ broken primary before force";
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(hiddenRecovery));
+
+    const result = saveNotes(forced, { force: true });
+
+    expect(result).toEqual({ ok: true });
+    expect(JSON.parse(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(hiddenRecovery);
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+    expect(storage._store[CORRUPT_BACKUP_KEY_FOR_TESTING]).toBe(corruptRaw);
+  });
+
+  it("force 保存は既存のrecovery archiveをsecondaryへ残して新候補を退避する", () => {
+    const olderArchive = [makeNote({ id: "older-archive", title: "先に退避済み" })];
+    const hiddenRecovery = [makeNote({ id: "hidden-recovery", title: "今回の復元候補" })];
+    const forced = [makeNote({ id: "forced", title: "この画面" })];
+    const corruptRaw = "{ broken primary before second recovery force";
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(hiddenRecovery));
+    storage.setItem(RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING, JSON.stringify(olderArchive));
+
+    const result = saveNotes(forced, { force: true });
+
+    expect(result).toEqual({ ok: true });
+    expect(
+      JSON.parse(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]) as Note[],
+    ).toEqual(hiddenRecovery);
+    expect(
+      JSON.parse(storage._store[RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING]) as Note[],
+    ).toEqual(olderArchive);
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+  });
+
+  it("recovery archiveが2枠とも別世代なら3世代目を捨てずforce保存を止める", () => {
+    const archive1 = [makeNote({ id: "archive-1", title: "退避1" })];
+    const archive2 = [makeNote({ id: "archive-2", title: "退避2" })];
+    const hiddenRecovery = [makeNote({ id: "archive-3", title: "今回の復元候補" })];
+    const forced = [makeNote({ id: "forced", title: "この画面" })];
+    const corruptRaw = "{ broken primary before full archive force";
+    const hiddenRaw = JSON.stringify(hiddenRecovery);
+    const archive1Raw = JSON.stringify(archive1);
+    const archive2Raw = JSON.stringify(archive2);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, hiddenRaw);
+    storage.setItem(RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING, archive1Raw);
+    storage.setItem(RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING, archive2Raw);
+
+    const result = saveNotes(forced, { force: true });
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(hiddenRaw);
+    expect(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(archive1Raw);
+    expect(storage._store[RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING]).toBe(archive2Raw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
+  });
+
+  it("force 保存で hidden recovery backup の退避に失敗したら元候補とprimaryを上書きしない", () => {
+    const hiddenRecovery = [makeNote({ id: "hidden-recovery", title: "守る復元候補" })];
+    const forced = [makeNote({ id: "forced", title: "この画面" })];
+    const hiddenRaw = JSON.stringify(hiddenRecovery);
+    const corruptRaw = "{ broken primary before failed force";
+    storage.setItem(STORAGE_KEY_FOR_TESTING, corruptRaw);
+    storage.setItem(BACKUP_KEY_FOR_TESTING, hiddenRaw);
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    const result = saveNotes(forced, { force: true });
+
+    expect(result).toEqual({ ok: false, reason: "quota" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(hiddenRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("force 保存で conflict backup の退避に失敗したら別画面版を上書きしない", () => {

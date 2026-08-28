@@ -76,7 +76,6 @@ export default function App() {
   const [nativeRecoveryInitiallyRequired] = useState(
     () =>
       isNativeDurableSnapshotAvailable() &&
-      !initialLoad.recoveryPending &&
       (initialLoad.loadFailed ||
         initialLoad.primaryHealth === "missing" ||
         initialLoad.primaryHealth === "invalid" ||
@@ -110,6 +109,13 @@ export default function App() {
   const [nativeRecoveryStatus, setNativeRecoveryStatus] = useState<
     "idle" | "checking" | "error"
   >(nativeRecoveryInitiallyRequired ? "checking" : "idle");
+  const [nativeRecoveryAlternativeCount, setNativeRecoveryAlternativeCount] = useState<
+    number | null
+  >(null);
+  const [recoveryCandidateSource, setRecoveryCandidateSource] = useState<"local" | "native">(
+    "local",
+  );
+  const [runtimeRecoveryProbeVersion, setRuntimeRecoveryProbeVersion] = useState(0);
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
@@ -128,6 +134,11 @@ export default function App() {
   const externalConflictRef = useRef(initialLoad.recoveryPending);
   const nativeRecoveryGateRef = useRef(nativeRecoveryInitiallyRequired);
   const nativeRecoveryProbeIdRef = useRef(0);
+  const localRecoveryCandidateRef = useRef<Note[] | null>(
+    initialLoad.recoveryPending ? initialLoad.notes : null,
+  );
+  const nativeRecoveryAlternativeRef = useRef<Note[] | null>(null);
+  const recoveryCandidateSourceRef = useRef<"local" | "native">("local");
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -155,6 +166,19 @@ export default function App() {
   // pagehide は非常に早く来ることがあるため、paint 前に flush 用 snapshot を更新する。
   useLayoutEffect(() => {
     latestNotesRef.current = notes;
+    if (!externalConflictRef.current) return;
+
+    if (
+      recoveryCandidateSourceRef.current === "local" &&
+      localRecoveryCandidateRef.current !== null
+    ) {
+      localRecoveryCandidateRef.current = notes;
+    } else if (
+      recoveryCandidateSourceRef.current === "native" &&
+      nativeRecoveryAlternativeRef.current !== null
+    ) {
+      nativeRecoveryAlternativeRef.current = notes;
+    }
   }, [notes]);
 
   const clearPersistTimer = useCallback(() => {
@@ -210,6 +234,29 @@ export default function App() {
     setCanLoadStoredNotes(true);
   }, []);
 
+  const clearRecoveryCandidateSources = useCallback(() => {
+    localRecoveryCandidateRef.current = null;
+    nativeRecoveryAlternativeRef.current = null;
+    recoveryCandidateSourceRef.current = "local";
+    setRecoveryCandidateSource("local");
+    setNativeRecoveryAlternativeCount(null);
+  }, []);
+
+  const registerLocalRecoveryCandidate = useCallback((snapshot: Note[]) => {
+    localRecoveryCandidateRef.current = snapshot;
+    nativeRecoveryAlternativeRef.current = null;
+    recoveryCandidateSourceRef.current = "local";
+    setRecoveryCandidateSource("local");
+    setNativeRecoveryAlternativeCount(null);
+
+    if (!isNativeDurableSnapshotAvailable()) return;
+    nativeRecoveryGateRef.current = true;
+    saveGuardRef.current = true;
+    clearPersistTimer();
+    setNativeRecoveryStatus("checking");
+    setRuntimeRecoveryProbeVersion((version) => version + 1);
+  }, [clearPersistTimer]);
+
   const refreshCleanNotesFromStorage = useCallback(() => {
     if (
       notesDirtyRef.current ||
@@ -223,6 +270,7 @@ export default function App() {
     if (!remote.ok) {
       if (hasRecoveryCandidate(remote)) {
         // 空配列を含む中断保存も候補になり得るため、件数ではなく明示フラグで判定する。
+        registerLocalRecoveryCandidate(remote.notes);
         applyCleanRemoteNotes(remote.notes);
         flagExternalConflict(
           canChooseStoredPrimary(remote),
@@ -239,7 +287,12 @@ export default function App() {
     // 正常な保存先を正式採用したら、native復旧層も同じ正本へ追従させる。
     // recovery candidate は上の !remote.ok 分岐なので、未確定候補をここで保存することはない。
     persistDurableSnapshot(remote.notes);
-  }, [applyCleanRemoteNotes, flagExternalConflict, persistDurableSnapshot]);
+  }, [
+    applyCleanRemoteNotes,
+    flagExternalConflict,
+    persistDurableSnapshot,
+    registerLocalRecoveryCandidate,
+  ]);
 
   const applySaveResult = useCallback(
     (result: SaveResult, snapshot: Note[]) => {
@@ -255,6 +308,7 @@ export default function App() {
         setCanLoadStoredNotes(true);
         setRecoveryCandidateCount(0);
         setLoadError(false);
+        clearRecoveryCandidateSources();
         persistDurableSnapshot(snapshot);
         return;
       }
@@ -271,7 +325,7 @@ export default function App() {
         );
       }
     },
-    [flagExternalConflict, persistDurableSnapshot],
+    [clearRecoveryCandidateSources, flagExternalConflict, persistDurableSnapshot],
   );
 
   const probeNativeRecovery = useCallback(async () => {
@@ -286,6 +340,79 @@ export default function App() {
     if (!mountedRef.current || nativeRecoveryProbeIdRef.current != probeId) return;
 
     const primaryHealth = getNotesPrimaryHealth();
+    const localRecoveryCandidate = localRecoveryCandidateRef.current;
+
+    // localStorage 側にも復元候補がある時は native を自動採用・自動mergeしない。
+    // 現在の local 候補を再確認し、異なる native 世代があれば別候補として保持する。
+    if (localRecoveryCandidate !== null) {
+      const current = loadNotes();
+      if (current.ok) {
+        nativeRecoveryGateRef.current = false;
+        setNativeRecoveryStatus("idle");
+        saveGuardRef.current = false;
+        notesDirtyRef.current = false;
+        dirtySinceRef.current = null;
+        baselineNotesRef.current = current.notes;
+        latestNotesRef.current = current.notes;
+        externalConflictRef.current = false;
+        clearRecoveryCandidateSources();
+        setNotes(current.notes);
+        setLastSaveResult(null);
+        setExternalConflict(false);
+        setCanLoadStoredNotes(true);
+        setRecoveryCandidateCount(0);
+        setLoadError(false);
+        persistDurableSnapshot(current.notes);
+        return;
+      }
+
+      if (hasRecoveryCandidate(current)) {
+        const currentCandidate = current.notes;
+        localRecoveryCandidateRef.current = currentCandidate;
+        if (recoveryCandidateSourceRef.current === "local") {
+          baselineNotesRef.current = currentCandidate;
+          latestNotesRef.current = currentCandidate;
+          setNotes(currentCandidate);
+          setRecoveryCandidateCount(currentCandidate.length);
+        }
+        setCanLoadStoredNotes(canChooseStoredPrimary(current));
+
+        if (primaryHealth === "unavailable" || nativeResult.status === "error") {
+          nativeRecoveryGateRef.current = true;
+          saveGuardRef.current = true;
+          setNativeRecoveryStatus("error");
+          setNativeBackupRetryAllowed(false);
+          setLoadError(false);
+          return;
+        }
+
+        if (
+          nativeResult.status === "available" &&
+          !notesSnapshotMatches(nativeResult.notes, currentCandidate)
+        ) {
+          nativeRecoveryAlternativeRef.current = nativeResult.notes;
+          setNativeRecoveryAlternativeCount(nativeResult.notes.length);
+        } else {
+          nativeRecoveryAlternativeRef.current = null;
+          setNativeRecoveryAlternativeCount(null);
+          if (recoveryCandidateSourceRef.current === "native") {
+            recoveryCandidateSourceRef.current = "local";
+            setRecoveryCandidateSource("local");
+          }
+        }
+
+        nativeRecoveryGateRef.current = false;
+        setNativeRecoveryStatus("idle");
+        saveGuardRef.current = true;
+        externalConflictRef.current = true;
+        setExternalConflict(true);
+        setLoadError(false);
+        return;
+      }
+
+      // local candidate が外部要因で消えた場合は通常の primary/native 判定へ戻す。
+      localRecoveryCandidateRef.current = null;
+    }
 
     // probe中に別タブ等から正常primaryが到着した場合は、その現在値を正本として採用する。
     if (primaryHealth === "valid") {
@@ -353,6 +480,7 @@ export default function App() {
   }, [
     applyCleanRemoteNotes,
     clearPersistTimer,
+    clearRecoveryCandidateSources,
     flagExternalConflict,
     persistDurableSnapshot,
   ]);
@@ -382,6 +510,19 @@ export default function App() {
     persistDurableSnapshot,
     probeNativeRecovery,
   ]);
+
+  useEffect(() => {
+    if (runtimeRecoveryProbeVersion === 0) return undefined;
+    if (!isNativeDurableSnapshotAvailable()) return undefined;
+    if (localRecoveryCandidateRef.current === null) return undefined;
+
+    queueMicrotask(() => {
+      void probeNativeRecovery();
+    });
+    return () => {
+      nativeRecoveryProbeIdRef.current += 1;
+    };
+  }, [probeNativeRecovery, runtimeRecoveryProbeVersion]);
 
   const retryNativeRecovery = useCallback(() => {
     void probeNativeRecovery();
@@ -494,6 +635,7 @@ export default function App() {
         if (!remote.ok) {
           const remoteHasRecoveryCandidate = hasRecoveryCandidate(remote);
           if (locallyClean && remoteHasRecoveryCandidate) {
+            registerLocalRecoveryCandidate(remote.notes);
             applyCleanRemoteNotes(remote.notes);
             flagExternalConflict(
               canChooseStoredPrimary(remote),
@@ -525,7 +667,12 @@ export default function App() {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [applyCleanRemoteNotes, flagExternalConflict, persistDurableSnapshot]);
+  }, [
+    applyCleanRemoteNotes,
+    flagExternalConflict,
+    persistDurableSnapshot,
+    registerLocalRecoveryCandidate,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -631,9 +778,10 @@ export default function App() {
     setCanLoadStoredNotes(true);
     setRecoveryCandidateCount(0);
     setLoadError(false);
+    clearRecoveryCandidateSources();
     // ユーザーが保存済み版を正本として明示採用したので、古いnative候補を残さない。
     persistDurableSnapshot(result.notes);
-  }, [clearPersistTimer, persistDurableSnapshot]);
+  }, [clearPersistTimer, clearRecoveryCandidateSources, persistDurableSnapshot]);
 
   const forceSaveCurrentNotes = useCallback(() => {
     clearPersistTimer();
@@ -658,6 +806,22 @@ export default function App() {
     });
     applySaveResult(result, snapshot);
   }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
+
+  const showRecoveryCandidateSource = useCallback((source: "local" | "native") => {
+    const snapshot =
+      source === "local"
+        ? localRecoveryCandidateRef.current
+        : nativeRecoveryAlternativeRef.current;
+    if (snapshot === null) return;
+
+    recoveryCandidateSourceRef.current = source;
+    baselineNotesRef.current = snapshot;
+    latestNotesRef.current = snapshot;
+    setRecoveryCandidateSource(source);
+    setNotes(snapshot);
+    setRecoveryCandidateCount(snapshot.length);
+    setLastSaveResult({ ok: false, reason: "conflict" });
+  }, []);
 
   const retryNativeBackup = useCallback(() => {
     if (
@@ -788,7 +952,7 @@ export default function App() {
             </div>
           )}
 
-          {externalConflict && (
+          {externalConflict && nativeRecoveryStatus === "idle" && (
             <div
               role="alert"
               aria-live="assertive"
@@ -807,8 +971,37 @@ export default function App() {
                 {canLoadStoredNotes
                   ? copy.storageConflictBody
                   : copy.storageConflictRecoveryBody}
+                {nativeRecoveryAlternativeCount !== null && (
+                  <span
+                    data-testid="native-recovery-alternative"
+                    className="mt-gr-2 block text-sumi/80"
+                  >
+                    {copy.nativeRecoveryAlternativeNotice(nativeRecoveryAlternativeCount)}
+                    {recoveryCandidateSource === "native" && (
+                      <span className="mt-gr-1 block">
+                        {copy.nativeRecoveryAlternativeActive}
+                      </span>
+                    )}
+                  </span>
+                )}
               </p>
               <div className="mt-gr-3 flex flex-wrap justify-end gap-gr-2">
+                {nativeRecoveryAlternativeCount !== null && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      showRecoveryCandidateSource(
+                        recoveryCandidateSource === "native" ? "local" : "native",
+                      )
+                    }
+                    className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                    style={{ borderRadius: "6px 10px 7px 9px" }}
+                  >
+                    {recoveryCandidateSource === "native"
+                      ? copy.nativeRecoveryShowLocal
+                      : copy.nativeRecoveryShowAlternative}
+                  </button>
+                )}
                 {canLoadStoredNotes && (
                   <button
                     type="button"

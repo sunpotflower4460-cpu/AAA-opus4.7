@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
-import { STORAGE_KEY_FOR_TESTING } from "../lib/storage";
+import { BACKUP_KEY_FOR_TESTING, STORAGE_KEY_FOR_TESTING } from "../lib/storage";
 
 const durable = vi.hoisted(() => ({
   available: vi.fn(),
@@ -313,6 +313,162 @@ describe("App native durable snapshot", () => {
     expect(hasButton(container, copy.nativeBackupRetry)).toBe(false);
   });
 
+
+  it("local復元確認中にprimaryが正常化したら候補と同一内容でもrecovery状態を完全解除する", async () => {
+    const candidate = [makeNote({ id: "recovered", title: "復旧候補と同じ正本" })];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(candidate);
+    let resolveNative: ((value: { status: "missing" }) => void) | undefined;
+    durable.read.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveNative = resolve;
+        }),
+    );
+
+    renderApp();
+    expect(container.querySelector('[data-testid="native-recovery-checking"]')).not.toBeNull();
+    expect(container.textContent).toContain("復旧候補と同じ正本");
+
+    // probe本体はqueueMicrotaskで開始される。resolver生成前にresolveするとテストだけが
+    // 永久pendingになるため、実際にnative readが始まったことを確認してから競合を再現する。
+    await flushPromises();
+    expect(durable.read).toHaveBeenCalledTimes(1);
+    expect(resolveNative).toBeDefined();
+
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(candidate);
+    await act(async () => {
+      resolveNative?.({ status: "missing" });
+      await Promise.resolve();
+    });
+    await flushPromises();
+
+    expect(container.querySelector('[data-testid="native-recovery-checking"]')).toBeNull();
+    expect(container.textContent).not.toContain(copy.storageRecoveryTitle);
+    expect(hasButton(container, copy.storageRecoverySave)).toBe(false);
+    expect(durable.persist).toHaveBeenCalledWith(candidate);
+
+    act(() => click(findButton(container, "復旧候補と同じ正本")));
+    act(() => click(findButton(container, copy.editNote)));
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    act(() => {
+      setter?.call(textarea, "正常化後に編集できる");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      vi.advanceTimersByTime(500);
+    });
+    await flushPromises();
+
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved[0]?.body).toBe("正常化後に編集できる");
+  });
+
+  it("localの空backupも全削除済み候補としてnative別世代と切り替えて選べる", async () => {
+    const nativeCandidate = [makeNote({ id: "native-existing", title: "nativeに残るメモ" })];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify([]);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeCandidate });
+
+    renderApp();
+    expect(container.querySelector('[data-testid="native-recovery-checking"]')).not.toBeNull();
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).not.toContain("nativeに残るメモ");
+    expect(hasButton(container, copy.nativeRecoveryShowAlternative)).toBe(true);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    expect(container.textContent).toContain("nativeに残るメモ");
+    expect(hasButton(container, copy.nativeRecoveryShowLocal)).toBe(true);
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowLocal)));
+    expect(container.textContent).not.toContain("nativeに残るメモ");
+
+    act(() => click(findButton(container, copy.storageRecoverySave)));
+    await flushPromises();
+
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual([]);
+    expect(durable.persist).toHaveBeenCalledWith([]);
+  });
+
+  it("local復元候補があってもnativeを確認し、異なる別世代を隠さず明示的に切り替えられる", async () => {
+    const localCandidate = [makeNote({ id: "local-recovery", title: "local復元候補" })];
+    const nativeCandidate = [makeNote({ id: "native-recovery", title: "native別候補" })];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localCandidate);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeCandidate });
+
+    renderApp();
+    expect(container.querySelector('[data-testid="native-recovery-checking"]')).not.toBeNull();
+    expect(hasButton(container, copy.storageRecoverySave)).toBe(false);
+    await flushPromises();
+
+    expect(container.textContent).toContain("local復元候補");
+    expect(container.querySelector('[data-testid="native-recovery-alternative"]')).not.toBeNull();
+    expect(hasButton(container, copy.nativeRecoveryShowAlternative)).toBe(true);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+    expect(durable.persist).not.toHaveBeenCalled();
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    expect(container.textContent).toContain("native別候補");
+    expect(hasButton(container, copy.nativeRecoveryShowLocal)).toBe(true);
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowLocal)));
+    expect(container.textContent).toContain("local復元候補");
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    act(() => click(findButton(container, copy.storageRecoverySave)));
+    await flushPromises();
+
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(nativeCandidate);
+    expect(durable.persist).toHaveBeenCalledWith(nativeCandidate);
+  });
+
+  it("local復元候補がある状態でnative読込に失敗したらforce確定を出さず、retry完了後だけ解放する", async () => {
+    const localCandidate = [makeNote({ id: "local-recovery", title: "守るlocal候補" })];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localCandidate);
+    durable.read
+      .mockResolvedValueOnce({ status: "error" })
+      .mockResolvedValue({ status: "missing" });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.nativeRecoveryReadError);
+    expect(hasButton(container, copy.storageRecoverySave)).toBe(false);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+
+    act(() => click(findButton(container, copy.nativeRecoveryRetry)));
+    await flushPromises();
+
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    expect(container.textContent).toContain("守るlocal候補");
+    expect(hasButton(container, copy.storageRecoverySave)).toBe(true);
+  });
+
+  it("runtimeでlocal復元候補へ遷移した場合もnative別世代を再確認して隠さない", async () => {
+    const existing = [makeNote({ id: "existing", title: "起動時正本" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);
+    renderApp();
+    await flushPromises();
+    durable.persist.mockClear();
+
+    const localCandidate = [makeNote({ id: "runtime-local", title: "runtime local候補" })];
+    const nativeCandidate = [makeNote({ id: "runtime-native", title: "runtime native候補" })];
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localCandidate);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeCandidate });
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    expect(container.querySelector('[data-testid="native-recovery-checking"]')).not.toBeNull();
+    await flushPromises();
+
+    expect(container.textContent).toContain("runtime local候補");
+    expect(container.querySelector('[data-testid="native-recovery-alternative"]')).not.toBeNull();
+    expect(hasButton(container, copy.nativeRecoveryShowAlternative)).toBe(true);
+    expect(durable.persist).not.toHaveBeenCalled();
+  });
 
   it("初回loadNotesだけ一時失敗して直後にprimaryが読めてもnative safety probeで現在正本へ収束する", async () => {
     const existing = [makeNote({ title: "一時障害後の正本" })];

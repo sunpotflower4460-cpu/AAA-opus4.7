@@ -8,6 +8,11 @@ const BACKUP_KEY = "zanshin.notes.backup.v1";
 const CONFLICT_BACKUP_KEY = "zanshin.notes.conflict.backup.v1";
 // pending候補と現在primaryの両方を退避する必要がある稀な競合で、primary側を残す第二退避先。
 const SECONDARY_CONFLICT_BACKUP_KEY = "zanshin.notes.conflict.secondary.backup.v1";
+// force-save 直前の通常 recovery backup が current/pending と別世代なら、見えていない候補として別退避する。
+const RECOVERY_CONFLICT_BACKUP_KEY = "zanshin.notes.recovery.conflict.backup.v1";
+// recovery conflict backup 自体にも未確認世代が残っている場合、その既存世代をもう1段退避する。
+const RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY =
+  "zanshin.notes.recovery.conflict.secondary.backup.v1";
 // localStorage は複数キーを原子的に更新できないため、base -> next を記録して中断保存を判定する。
 const PENDING_SAVE_KEY = "zanshin.notes.pending.v1";
 const CORRUPT_BACKUP_KEY = "zanshin.notes.corrupt.backup";
@@ -396,7 +401,8 @@ export function loadNotes(options: LoadOptions = {}): LoadResult {
       // backup は保存処理の primary より先に確定するため、primary 消失時の第一候補にする。
       const backupNotes = readValidatedBackup();
       if (backupNotes) {
-        if (backupNotes.length === 0) return { ok: true, notes: [] };
+        // backup key が存在する時点で過去に保存済み状態があった。
+        // [] も「全削除を保存した」正当な世代なので fresh install と同一視しない。
         return {
           ok: false,
           notes: backupNotes,
@@ -542,6 +548,15 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
         currentRaw !== serialized
           ? currentRaw
           : null;
+      const existingRecoveryBackupRaw = window.localStorage.getItem(BACKUP_KEY);
+      const recoveryBackupCandidateRaw =
+        existingRecoveryBackupRaw !== null &&
+        parseNotesRaw(existingRecoveryBackupRaw).status === "valid" &&
+        existingRecoveryBackupRaw !== serialized &&
+        existingRecoveryBackupRaw !== pendingCandidateRaw &&
+        existingRecoveryBackupRaw !== currentCandidateRaw
+          ? existingRecoveryBackupRaw
+          : null;
 
       // pending の next が未採用なら最優先 conflict backup に残す。
       if (pendingCandidateRaw !== null) {
@@ -559,6 +574,56 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
             : CONFLICT_BACKUP_KEY;
         try {
           window.localStorage.setItem(currentBackupKey, currentCandidateRaw);
+        } catch (error) {
+          return saveFailureFromError(error);
+        }
+      }
+
+      // primary が壊れている/消えている時は BACKUP_KEY が唯一の正常候補になり得る。
+      // force-save で BACKUP_KEY を新版へ更新する前に、別世代なら専用退避へ確定する。
+      if (recoveryBackupCandidateRaw !== null) {
+        try {
+          const existingRecoveryArchiveRaw = window.localStorage.getItem(
+            RECOVERY_CONFLICT_BACKUP_KEY,
+          );
+          let shouldWritePrimaryRecoveryArchive =
+            existingRecoveryArchiveRaw !== recoveryBackupCandidateRaw;
+
+          if (
+            existingRecoveryArchiveRaw !== null &&
+            existingRecoveryArchiveRaw !== recoveryBackupCandidateRaw &&
+            parseNotesRaw(existingRecoveryArchiveRaw).status === "valid"
+          ) {
+            const secondaryRecoveryArchiveRaw = window.localStorage.getItem(
+              RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY,
+            );
+
+            if (secondaryRecoveryArchiveRaw === recoveryBackupCandidateRaw) {
+              // 新候補はすでにsecondaryに残っている。既存primary archiveを上書きしない。
+              shouldWritePrimaryRecoveryArchive = false;
+            } else if (
+              secondaryRecoveryArchiveRaw === null ||
+              secondaryRecoveryArchiveRaw === existingRecoveryArchiveRaw ||
+              parseNotesRaw(secondaryRecoveryArchiveRaw).status !== "valid"
+            ) {
+              // 既存の未確認archiveをsecondaryへ退避できてから、新候補をprimary archiveへ置く。
+              window.localStorage.setItem(
+                RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY,
+                existingRecoveryArchiveRaw,
+              );
+            } else {
+              // primary/secondary archive の両方に別世代が残っている。
+              // 3世代目を落とさず、現在の BACKUP_KEY も残したまま force-save を止める。
+              return { ok: false, reason: "conflict" };
+            }
+          }
+
+          if (shouldWritePrimaryRecoveryArchive) {
+            window.localStorage.setItem(
+              RECOVERY_CONFLICT_BACKUP_KEY,
+              recoveryBackupCandidateRaw,
+            );
+          }
         } catch (error) {
           return saveFailureFromError(error);
         }
@@ -599,5 +664,8 @@ export const STORAGE_KEY_FOR_TESTING = STORAGE_KEY;
 export const BACKUP_KEY_FOR_TESTING = BACKUP_KEY;
 export const CONFLICT_BACKUP_KEY_FOR_TESTING = CONFLICT_BACKUP_KEY;
 export const SECONDARY_CONFLICT_BACKUP_KEY_FOR_TESTING = SECONDARY_CONFLICT_BACKUP_KEY;
+export const RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING = RECOVERY_CONFLICT_BACKUP_KEY;
+export const RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING =
+  RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY;
 export const PENDING_SAVE_KEY_FOR_TESTING = PENDING_SAVE_KEY;
 export const CORRUPT_BACKUP_KEY_FOR_TESTING = CORRUPT_BACKUP_KEY;
