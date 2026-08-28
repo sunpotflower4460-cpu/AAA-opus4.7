@@ -93,6 +93,17 @@ export default function App() {
     }
   }, []);
 
+  const flagExternalConflict = useCallback(
+    (alsoReportLoadError = false) => {
+      clearPersistTimer();
+      externalConflictRef.current = true;
+      setExternalConflict(true);
+      setLastSaveResult({ ok: false, reason: "conflict" });
+      if (alsoReportLoadError) setLoadError(true);
+    },
+    [clearPersistTimer],
+  );
+
   useEffect(() => {
     clearPersistTimer();
 
@@ -159,19 +170,14 @@ export default function App() {
         const remote = loadNotes();
 
         if (!remote.ok) {
-          clearPersistTimer();
-          externalConflictRef.current = true;
-          setExternalConflict(true);
-          setLoadError(true);
+          flagExternalConflict(true);
         } else if (
           notesDirtyRef.current ||
           saveGuardRef.current ||
           externalConflictRef.current
         ) {
           // ローカル未保存編集がある間は、外部変更を勝手に採用も上書きもしない。
-          clearPersistTimer();
-          externalConflictRef.current = true;
-          setExternalConflict(true);
+          flagExternalConflict();
         } else {
           // この画面が未編集なら、別タブの最新状態へ安全に追従する。
           baselineNotesRef.current = remote.notes;
@@ -189,7 +195,7 @@ export default function App() {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [clearPersistTimer]);
+  }, [flagExternalConflict]);
 
   useEffect(() => {
     return () => {
