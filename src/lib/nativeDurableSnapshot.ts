@@ -158,21 +158,34 @@ export async function readNativeDurableSnapshot(): Promise<NativeDurableSnapshot
   await writeChain.catch(() => {});
 
   const primary = await readRaw(PRIMARY_PATH);
+  if (primary.status === "error") {
+    // primary が読めない場合、より新しい正常世代が存在する可能性を否定できない。
+    // 古い backup を available として返すと silent rollback を確定可能にしてしまうため、
+    // 下位世代へ降りず safety check 未完了として扱う。
+    return { status: "error" };
+  }
   if (primary.status === "ok") {
     const parsedPrimary = parseValidNotesSnapshot(primary.raw);
     if (parsedPrimary !== null) return { status: "available", notes: parsedPrimary };
   }
 
-  // primary が missing / corrupt / read error の場合でも backup は独立に読める可能性がある。
+  // primary が missing または「読めたが破損」なら、より新しい正常世代が隠れている
+  // 不確実性はないため backup へ進める。
   const backup = await readRaw(BACKUP_PATH);
+  if (backup.status === "error") {
+    // backup が読めない場合も、その世代が secondary より新しい可能性を否定できない。
+    return { status: "error" };
+  }
   if (backup.status === "ok") {
     const parsedBackup = parseValidNotesSnapshot(backup.raw);
     if (parsedBackup !== null) return { status: "available", notes: parsedBackup };
   }
 
-  // rotation で退避した secondary も実際の復元経路へ含める。
-  // primary / backup の片方が I/O error や破損でも、secondary が正常なら読み取り専用候補として救済する。
+  // primary / backup が missing または明確な破損と確認できた場合だけ secondary へ進む。
   const secondaryBackup = await readRaw(SECONDARY_BACKUP_PATH);
+  if (secondaryBackup.status === "error") {
+    return { status: "error" };
+  }
   if (secondaryBackup.status === "ok") {
     const parsedSecondaryBackup = parseValidNotesSnapshot(secondaryBackup.raw);
     if (parsedSecondaryBackup !== null) {
@@ -180,16 +193,7 @@ export async function readNativeDurableSnapshot(): Promise<NativeDurableSnapshot
     }
   }
 
-  // 3層すべてから正常候補を得られなかった場合、I/O error または構造破損の痕跡が1つでもあれば
-  // fresh install と誤認せず error を返す。
-  if (
-    primary.status === "error" ||
-    backup.status === "error" ||
-    secondaryBackup.status === "error"
-  ) {
-    return { status: "error" };
-  }
-
+  // 読めたファイルが1つでも構造破損なら fresh install ではない。
   if (
     primary.status === "ok" ||
     backup.status === "ok" ||

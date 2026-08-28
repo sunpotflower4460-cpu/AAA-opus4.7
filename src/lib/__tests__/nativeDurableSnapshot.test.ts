@@ -172,7 +172,7 @@ describe("native durable snapshot", () => {
     expect(await readNativeDurableSnapshot()).toEqual({ status: "available", notes: backup });
   });
 
-  it("primary読込が一時失敗しても正常backupは読み取り専用の復元候補として返す", async () => {
+  it("primary読込がI/O失敗なら古いbackupを確定可能な候補として返さない", async () => {
     const backup = [makeNote("backup")];
     files.set(NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup, JSON.stringify(backup));
     mocks.readFile.mockImplementation(async ({ path }: { path: string }) => {
@@ -184,7 +184,8 @@ describe("native durable snapshot", () => {
       return { data };
     });
 
-    expect(await readNativeDurableSnapshot()).toEqual({ status: "available", notes: backup });
+    expect(await readNativeDurableSnapshot()).toEqual({ status: "error" });
+    expect(mocks.readFile).toHaveBeenCalledTimes(1);
     expect(mocks.writeFile).not.toHaveBeenCalled();
   });
 
