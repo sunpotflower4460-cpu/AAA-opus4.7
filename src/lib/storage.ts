@@ -19,6 +19,17 @@ export type SaveResult =
       reason: "quota" | "unavailable" | "unknown" | "conflict" | "invalid_data";
     };
 
+export function isRetryableSaveFailure(
+  result: SaveResult | null | undefined,
+): boolean {
+  return (
+    result?.ok === false &&
+    (result.reason === "quota" ||
+      result.reason === "unavailable" ||
+      result.reason === "unknown")
+  );
+}
+
 export type SaveOptions = {
   /**
    * 最後にこの画面が正常に読み込んだ / 保存したメモ集合。
