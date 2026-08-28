@@ -645,6 +645,44 @@ describe("App native durable snapshot", () => {
     expect(container.querySelector("textarea")?.value).toBe("native edited by user");
   });
 
+  it("表示中native候補の件数を編集すると候補件数表示も追従する", async () => {
+    const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
+    renderApp();
+    await flushPromises();
+
+    act(() => click(findButton(container, "同じメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    act(() => {
+      setter?.call(textarea, "screen dirty");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const localCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "local" })];
+    const nativeCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "native" })];
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localCandidate);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeCandidate });
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    await flushPromises();
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(1));
+
+    const backButton = container.querySelector(`button[aria-label="${copy.back}"]`);
+    if (!(backButton instanceof HTMLButtonElement)) throw new Error("editor back button not found");
+    act(() => click(backButton));
+    act(() => click(findButton(container, copy.newNote)));
+
+    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(2));
+    expect(container.textContent).not.toContain(copy.nativeRecoveryAlternativeNotice(1));
+  });
+
   it("dirty三者競合でnative読込失敗中は候補を保持したままforce確定を出さない", async () => {
     const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);

@@ -179,16 +179,20 @@ export default function App() {
     ) {
       screenRecoveryCandidateRef.current = notes;
       setScreenRecoveryCandidateCount(notes.length);
+      setRecoveryCandidateCount(notes.length);
     } else if (
       recoveryCandidateSourceRef.current === "local" &&
       localRecoveryCandidateRef.current !== null
     ) {
       localRecoveryCandidateRef.current = notes;
+      setRecoveryCandidateCount(notes.length);
     } else if (
       recoveryCandidateSourceRef.current === "native" &&
       nativeRecoveryAlternativeRef.current !== null
     ) {
       nativeRecoveryAlternativeRef.current = notes;
+      setNativeRecoveryAlternativeCount(notes.length);
+      setRecoveryCandidateCount(notes.length);
     }
   }, [notes]);
 
