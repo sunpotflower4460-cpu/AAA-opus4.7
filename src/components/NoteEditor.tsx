@@ -37,7 +37,13 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null
   }
 
   useEffect(() => {
-    if (saveState !== "saving" || !saveResult) return;
+    if (!saveResult) return;
+
+    // 通常は saving 中の結果だけを受け取る。
+    // 競合UIから明示的に上書き保存した場合は error -> saved の回復も許可する。
+    const shouldHandleResult =
+      saveState === "saving" || (saveState === "error" && saveResult.ok);
+    if (!shouldHandleResult) return;
 
     if (savedTimer.current) {
       window.clearTimeout(savedTimer.current);
@@ -102,6 +108,11 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null
     setConfirmingDelete(false);
     window.requestAnimationFrame(() => deleteButtonRef.current?.focus());
   }
+
+  const saveErrorMessage =
+    saveResult?.ok === false && saveResult.reason === "conflict"
+      ? copy.saveConflict
+      : copy.saveError;
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
@@ -244,7 +255,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null
             )}
             {saveState === "error" && (
               <span className="zanshin-save-status flex items-center gap-gr-2 text-vermilion">
-                <span className="font-mincho">{copy.saveError}</span>
+                <span className="font-mincho">{saveErrorMessage}</span>
               </span>
             )}
           </span>

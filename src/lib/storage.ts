@@ -1,12 +1,26 @@
 import type { Note } from "../types/note";
 
-const STORAGE_KEY = "zanshin.notes.v1";
+export const NOTES_STORAGE_KEY = "zanshin.notes.v1";
+const STORAGE_KEY = NOTES_STORAGE_KEY;
 const BACKUP_KEY = "zanshin.notes.backup.v1";
 const CORRUPT_BACKUP_KEY = "zanshin.notes.corrupt.backup";
 
 export type SaveResult =
   | { ok: true }
-  | { ok: false; reason: "quota" | "unavailable" | "unknown" };
+  | {
+      ok: false;
+      reason: "quota" | "unavailable" | "unknown" | "conflict" | "invalid_data";
+    };
+
+export type SaveOptions = {
+  /**
+   * 最後にこの画面が正常に読み込んだ / 保存したメモ集合。
+   * 現在の localStorage がこれと違う場合、別画面の更新とみなして保存を止める。
+   */
+  expectedNotes?: readonly Note[];
+  /** ユーザーが競合を理解した上で、この画面の内容を明示的に優先するときだけ true。 */
+  force?: boolean;
+};
 
 export type LoadResult =
   | { ok: true; notes: Note[] }
@@ -88,6 +102,13 @@ function parseNotesRaw(raw: string): ParsedNotesResult {
     status: foundInvalidStructure ? "invalid_structure" : "valid",
     notes: Array.from(notesById.values()),
   };
+}
+
+function notesMatch(left: readonly Note[], right: readonly Note[]): boolean {
+  // Note 型に将来フィールドが追加された場合も、その差分を競合として扱う。
+  // 既知フィールドだけを比較すると、古い画面が新しいスキーマの情報を黙って消し得る。
+  // 多少の false-positive より silent overwrite を防ぐ方を優先する。
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function mergeRecoveredNotes(primary: Note[], backup: Note[]): Note[] {
@@ -179,24 +200,51 @@ export function loadNotes(): LoadResult {
 
 /**
  * localStorage にメモを保存する。
+ * - 保存対象そのものを検証し、不正構造を新たに永続化しない
+ * - expectedNotes が指定されている場合は、現在の primary と一致するときだけ保存する
+ * - 別画面の変更を検知した場合は conflict を返し、黙って上書きしない
  * - 保存前に「正常と検証できた」直前データだけをバックアップする
- * - 破損した主データで正常バックアップを上書きしない
- * - quota超過・利用不可を検出して SaveResult で返す
+ * - force はユーザーが競合を理解して明示的に上書きするときだけ使用する
  */
-export function saveNotes(notes: Note[]): SaveResult {
+export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult {
   if (typeof window === "undefined") return { ok: false, reason: "unavailable" };
 
+  let serialized: string;
   try {
+    serialized = JSON.stringify(notes);
+  } catch {
+    return { ok: false, reason: "invalid_data" };
+  }
+
+  if (parseNotesRaw(serialized).status !== "valid") {
+    return { ok: false, reason: "invalid_data" };
+  }
+
+  try {
+    const currentRaw = window.localStorage.getItem(STORAGE_KEY);
+    const currentParsed = currentRaw
+      ? parseNotesRaw(currentRaw)
+      : ({ status: "valid", notes: [] } satisfies ParsedNotesResult);
+
+    if (!options.force && options.expectedNotes) {
+      if (
+        currentParsed.status !== "valid" ||
+        !notesMatch(currentParsed.notes, options.expectedNotes)
+      ) {
+        return { ok: false, reason: "conflict" };
+      }
+    }
+
+    // 直前の正常 primary は、force 上書き時も先にバックアップへ残す。
     try {
-      const current = window.localStorage.getItem(STORAGE_KEY);
-      if (current && parseNotesRaw(current).status === "valid") {
-        window.localStorage.setItem(BACKUP_KEY, current);
+      if (currentRaw && currentParsed.status === "valid") {
+        window.localStorage.setItem(BACKUP_KEY, currentRaw);
       }
     } catch {
       // バックアップ失敗は主データ保存を妨げない
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+    window.localStorage.setItem(STORAGE_KEY, serialized);
     return { ok: true };
   } catch (error) {
     if (isQuotaError(error)) return { ok: false, reason: "quota" };
