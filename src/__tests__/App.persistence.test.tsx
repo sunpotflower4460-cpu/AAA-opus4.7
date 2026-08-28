@@ -207,6 +207,35 @@ describe("App lifecycle persistence", () => {
     expect(container.textContent).not.toContain("元のメモ");
   });
 
+  it("実行中に primary だけ消失しても clean 画面は backup 候補を先に表示してから確定させる", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+
+    const recovered = [
+      makeNote({
+        id: "runtime-recovery",
+        title: "実行中に救出したメモ",
+        body: "backupからの候補",
+        updatedAt: "2026-08-28T00:16:00.000Z",
+      }),
+    ];
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(recovered));
+    storage.removeItem(STORAGE_KEY_FOR_TESTING);
+
+    act(() => dispatchStorageChange());
+
+    expect(container.textContent).toContain("実行中に救出したメモ");
+    expect(container.textContent).not.toContain("元のメモ");
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).toContain("復元候補を1件表示しています");
+
+    act(() => click(findButton(container, copy.storageRecoverySave)));
+
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved).toEqual(recovered);
+    expect(container.textContent).not.toContain(copy.storageRecoveryTitle);
+  });
+
   it("suspend中に storage event を取りこぼしても pageshow 復帰時に未編集画面を最新化する", () => {
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
     renderApp();
