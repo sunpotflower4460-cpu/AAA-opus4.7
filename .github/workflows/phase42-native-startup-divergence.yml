@@ -17,17 +17,17 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-      - name: Remove stale hook dependency
+      - name: Add matching snapshot regression
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path("src/App.tsx")
+          path = Path("src/__tests__/App.native-durable-snapshot.test.tsx")
           text = path.read_text()
-          old = '''  }, [\n    applyCleanRemoteNotes,\n    clearPersistTimer,\n    clearRecoveryCandidateSources,\n    flagExternalConflict,\n    persistDurableSnapshot,\n  ]);'''
-          new = '''  }, [\n    clearPersistTimer,\n    clearRecoveryCandidateSources,\n    flagExternalConflict,\n    persistDurableSnapshot,\n  ]);'''
-          if text.count(old) != 1:
-              raise SystemExit(f"probe dependency marker: {text.count(old)}")
-          path.write_text(text.replace(old, new, 1))
+          marker = '''  it("正常localと異なるnative snapshotは起動だけで上書きせず別候補として保持する", async () => {'''
+          extra = '''  it("正常localとnative snapshotが同一なら競合にせず安全確認後に通常起動する", async () => {\n    const existing = [makeNote({ title: "同じ正本" })];\n    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);\n    durable.read.mockResolvedValue({ status: "available", notes: existing });\n\n    renderApp();\n    await flushPromises();\n\n    expect(container.textContent).toContain("同じ正本");\n    expect(container.textContent).not.toContain(copy.storageConflictTitle);\n    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);\n    expect(durable.persist).toHaveBeenCalledWith(existing);\n  });\n\n'''
+          if text.count(marker) != 1:
+              raise SystemExit(f"matching snapshot test marker: {text.count(marker)}")
+          path.write_text(text.replace(marker, extra + marker, 1))
           PY
       - name: Validate Phase 42
         run: |
@@ -37,10 +37,10 @@ jobs:
           npx cap sync ios
           git diff --exit-code -- ios
           git diff --check
-      - name: Commit lint cleanup
+      - name: Commit matching regression
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/App.tsx
-          git commit -m "Phase 42: remove stale native probe dependency"
+          git add src/__tests__/App.native-durable-snapshot.test.tsx
+          git commit -m "Phase 42: cover matching local and native startup snapshots"
           git push origin HEAD:bugfix/phase42-native-startup-divergence
