@@ -33,6 +33,10 @@ const AUTOSAVE_DEBOUNCE_MS = 500;
 const AUTOSAVE_MAX_WAIT_MS = 3_000;
 const UNDO_TIMEOUT_MS = 10_000;
 
+function notesSnapshotMatches(left: readonly Note[], right: readonly Note[]): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export default function App() {
   const [initialLoad] = useState(() => {
     const result = loadNotes();
@@ -99,6 +103,35 @@ export default function App() {
     },
     [clearPersistTimer],
   );
+
+  const applyCleanRemoteNotes = useCallback((remoteNotes: Note[]) => {
+    if (notesSnapshotMatches(remoteNotes, baselineNotesRef.current)) return;
+
+    dirtySinceRef.current = null;
+    baselineNotesRef.current = remoteNotes;
+    latestNotesRef.current = remoteNotes;
+    setNotes(remoteNotes);
+    setLastSaveResult(null);
+    setCanLoadStoredNotes(true);
+  }, []);
+
+  const refreshCleanNotesFromStorage = useCallback(() => {
+    if (
+      notesDirtyRef.current ||
+      saveGuardRef.current ||
+      externalConflictRef.current
+    ) {
+      return;
+    }
+
+    const remote = loadNotes();
+    if (!remote.ok) {
+      flagExternalConflict(false, true);
+      return;
+    }
+
+    applyCleanRemoteNotes(remote.notes);
+  }, [applyCleanRemoteNotes, flagExternalConflict]);
 
   const applySaveResult = useCallback(
     (result: SaveResult, snapshot: Note[]) => {
@@ -174,19 +207,27 @@ export default function App() {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") flushPendingNotes();
+      if (document.visibilityState === "hidden") {
+        flushPendingNotes();
+      } else {
+        // iOS/WKWebView の復帰や長時間 suspend 後は storage event を取りこぼすことがあるため、
+        // ローカル未編集のときだけ保存先を再確認する。
+        refreshCleanNotesFromStorage();
+      }
     };
 
     window.addEventListener("beforeunload", flushPendingNotes);
     window.addEventListener("pagehide", flushPendingNotes);
+    window.addEventListener("pageshow", refreshCleanNotesFromStorage);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("beforeunload", flushPendingNotes);
       window.removeEventListener("pagehide", flushPendingNotes);
+      window.removeEventListener("pageshow", refreshCleanNotesFromStorage);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [flushPendingNotes]);
+  }, [flushPendingNotes, refreshCleanNotesFromStorage]);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -206,12 +247,7 @@ export default function App() {
           flagExternalConflict(true);
         } else {
           // この画面が未編集なら、別タブの最新状態へ安全に追従する。
-          dirtySinceRef.current = null;
-          baselineNotesRef.current = remote.notes;
-          latestNotesRef.current = remote.notes;
-          setNotes(remote.notes);
-          setLastSaveResult(null);
-          setCanLoadStoredNotes(true);
+          applyCleanRemoteNotes(remote.notes);
         }
       }
 
@@ -223,7 +259,7 @@ export default function App() {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [flagExternalConflict]);
+  }, [applyCleanRemoteNotes, flagExternalConflict]);
 
   useEffect(() => {
     return () => {
