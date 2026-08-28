@@ -9,8 +9,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Capacitor generated native projects (run `npx cap add ios` / `npx cap add android` to regenerate)
-ios
+# Capacitor native projects are source artifacts and are version-controlled.
+# Platform-generated build/web/config outputs are ignored inside ios/.gitignore.
 android
 
 # wrangler files

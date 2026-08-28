@@ -32,3 +32,13 @@ jobs:
 
       - name: Run check (typecheck + lint + test + build)
         run: npm run check
+
+      - name: Verify committed iOS project stays in sync
+        run: |
+          npx cap sync ios
+          test -f ios/App/App.xcodeproj/project.pbxproj
+          test -f ios/App/App/Info.plist
+          grep -q 'TARGETED_DEVICE_FAMILY = 1;' ios/App/App.xcodeproj/project.pbxproj
+          ! grep -q 'TARGETED_DEVICE_FAMILY = "1,2"' ios/App/App.xcodeproj/project.pbxproj
+          ! grep -q 'UIInterfaceOrientationLandscape' ios/App/App/Info.plist
+          git diff --exit-code -- ios
