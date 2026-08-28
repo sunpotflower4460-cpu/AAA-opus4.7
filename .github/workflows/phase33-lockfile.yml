@@ -1,17 +1,19 @@
-name: Phase 33 Native Finalizer
+name: Phase 33 Native Exporter
 
 on:
   push:
     branches: ["bugfix/phase33-capacitor-ios-reproducibility"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  finalize:
+  export:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
@@ -145,71 +147,29 @@ jobs:
           mark(1024, 320, 36, 736, 320, 38).save(icon_path, optimize=True)
 
           splash_path = Path('ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png')
-          splash = mark(2732, 300, 30, 1575, 1186, 35)
-          splash.save(splash_path, optimize=True)
+          mark(2732, 300, 30, 1575, 1186, 35).save(splash_path, optimize=True)
           shutil.copyfile(splash_path, splash_path.with_name('splash-2732x2732-1.png'))
           shutil.copyfile(splash_path, splash_path.with_name('splash-2732x2732-2.png'))
 
-          icon = Image.open(icon_path)
-          assert icon.size == (1024, 1024)
-          assert icon.mode == 'RGB'
-          splash_check = Image.open(splash_path)
-          assert splash_check.size == (2732, 2732)
-          assert splash_check.mode == 'RGB'
+          assert Image.open(icon_path).size == (1024, 1024)
+          assert Image.open(icon_path).mode == 'RGB'
+          assert Image.open(splash_path).size == (2732, 2732)
+          assert Image.open(splash_path).mode == 'RGB'
           PY
 
-      - name: Harden standard CI against native drift
+      - name: Remove generated native outputs from export
         run: |
-          cat > .github/workflows/check.yml <<'EOF'
-          name: Check
+          rm -rf ios/App/App/public
+          rm -f ios/App/App/capacitor.config.json ios/App/App/config.xml
+          rm -rf ios/capacitor-cordova-ios-plugins
 
-          on:
-            push:
-              branches: ["**"]
-            pull_request:
-              branches: ["**"]
-
-          permissions:
-            contents: read
-
-          jobs:
-            check:
-              runs-on: ubuntu-latest
-
-              steps:
-                - uses: actions/checkout@v7
-                  with:
-                    persist-credentials: false
-
-                - name: Setup Node.js
-                  uses: actions/setup-node@v7
-                  with:
-                    node-version: "22"
-                    cache: "npm"
-
-                - name: Install dependencies
-                  run: npm ci
-
-                - name: Audit production dependencies
-                  run: npm audit --omit=dev --audit-level=high
-
-                - name: Run check (typecheck + lint + test + build)
-                  run: npm run check
-
-                - name: Verify committed iOS project stays in sync
-                  run: |
-                    npx cap sync ios
-                    test -f ios/App/App.xcodeproj/project.pbxproj
-                    test -f ios/App/App/Info.plist
-                    git diff --exit-code -- ios
-          EOF
-
-      - name: Commit native source and remove temporary workflow
-        run: |
-          rm .github/workflows/phase33-lockfile.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git status --short
-          git commit -m "Phase 33: commit reproducible iOS native source"
-          git push origin HEAD:bugfix/phase33-capacitor-ios-reproducibility
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phase33-final-native-source
+          path: |
+            package.json
+            package-lock.json
+            tsconfig.node.json
+            .gitignore
+            ios
+          if-no-files-found: error
