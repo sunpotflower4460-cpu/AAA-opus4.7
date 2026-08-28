@@ -71,8 +71,8 @@ export const copy = {
   saveConflictEn: "Saving paused because another change was detected",
   storageConflictTitle: "保存先の内容が変わっています",
   storageConflictBody:
-    "別の画面で更新されたか、復元中のデータがあります。自動保存を止めています。残す内容を選んでください。",
-  storageConflictLoad: "保存先の内容を読み込む",
+    "別の画面で更新されたか、復元中のデータがあります。自動保存を止めています。保存先を読み込むと、この画面の未保存編集は破棄されます。",
+  storageConflictLoad: "未保存編集を破棄して読み込む",
   storageConflictOverwrite: "この画面の編集で上書き",
 
   // お気に入り
