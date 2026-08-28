@@ -122,6 +122,19 @@ function preserveCorruptRaw(raw: string): void {
   }
 }
 
+function readValidatedBackup(): Note[] | null {
+  try {
+    const backupRaw = window.localStorage.getItem(BACKUP_KEY);
+    if (!backupRaw) return null;
+
+    const backup = parseNotesRaw(backupRaw);
+    return backup.status === "valid" ? backup.notes : null;
+  } catch {
+    // バックアップ領域だけが読み出せなくても、主データから救えた正常要素は返す。
+    return null;
+  }
+}
+
 /**
  * localStorage からメモを読み込む。
  * - 正常データはそのまま返す
@@ -146,14 +159,10 @@ export function loadNotes(): LoadResult {
     let recoveredNotes = primary.notes;
     let recoveredFromBackup = false;
 
-    const backupRaw = window.localStorage.getItem(BACKUP_KEY);
-    if (backupRaw) {
-      const backup = parseNotesRaw(backupRaw);
-      // バックアップ自体が完全に正常なときだけ復旧元として採用する。
-      if (backup.status === "valid") {
-        recoveredNotes = mergeRecoveredNotes(primary.notes, backup.notes);
-        recoveredFromBackup = backup.notes.length > 0;
-      }
+    const backupNotes = readValidatedBackup();
+    if (backupNotes) {
+      recoveredNotes = mergeRecoveredNotes(primary.notes, backupNotes);
+      recoveredFromBackup = backupNotes.length > 0;
     }
 
     return {
