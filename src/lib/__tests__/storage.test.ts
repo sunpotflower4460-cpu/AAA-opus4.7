@@ -260,18 +260,17 @@ describe("saveNotes", () => {
   it("未知の将来フィールドだけが変わっていても conflict として検知する", () => {
     const baseline = [
       { ...makeNote({ id: "shared" }), futureField: { revision: 1 } },
-    ] as Note[];
+    ];
     const remote = [
       { ...makeNote({ id: "shared" }), futureField: { revision: 2 } },
-    ] as Note[];
+    ];
     const local = [makeNote({ id: "shared", title: "古い画面から編集" })];
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
 
     const result = saveNotes(local, { expectedNotes: baseline });
 
     expect(result).toEqual({ ok: false, reason: "conflict" });
-    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Array<Record<string, unknown>>)
-      .toEqual(remote);
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as unknown).toEqual(remote);
   });
 
   it("期待内容と primary が一致していれば通常保存できる", () => {
