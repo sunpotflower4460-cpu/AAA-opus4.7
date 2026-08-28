@@ -77,7 +77,7 @@ export const copy = {
   nativeBackupRetry: "予備保存をもう一度作る",
   nativeRecoveryChecking: "端末内の復元データを確認しています…",
   nativeRecoveryReadError:
-    "端末内の復元データを確認できませんでした。上書きを防ぐため、編集と保存を止めています。",
+    "保存データの安全確認ができませんでした。上書きを防ぐため、編集と保存を止めています。",
   nativeRecoveryRetry: "もう一度確認する",
   saveConflict: "別の変更と重なったため、保存を止めています",
   saveConflictEn: "Saving paused because another change was detected",

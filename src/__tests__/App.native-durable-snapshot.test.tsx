@@ -312,4 +312,51 @@ describe("App native durable snapshot", () => {
     expect(container.querySelector('[data-testid="native-backup-failure"]')).not.toBeNull();
     expect(hasButton(container, copy.nativeBackupRetry)).toBe(false);
   });
+
+  it("localStorage API自体が一時利用不能ならnative確認を必須化し、回復確認まで編集しない", async () => {
+    storage.getItem.mockImplementation((key: string) => {
+      if (key === STORAGE_KEY_FOR_TESTING) {
+        throw new DOMException("storage unavailable", "SecurityError");
+      }
+      return storage._store[key] ?? null;
+    });
+    durable.read.mockResolvedValue({ status: "missing" });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.nativeRecoveryReadError);
+    expect(container.querySelector('[data-testid="native-recovery-error"]')).not.toBeNull();
+    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => vi.advanceTimersByTime(1_000));
+    await flushPromises();
+    expect(container.querySelector("textarea")).toBeNull();
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+
+    storage.getItem.mockImplementation((key: string) => storage._store[key] ?? null);
+    act(() => click(findButton(container, copy.nativeRecoveryRetry)));
+    await flushPromises();
+
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    act(() => click(findButton(container, copy.emptyAction)));
+    expect(container.querySelector("textarea")).not.toBeNull();
+  });
+
+  it("local primary破損かつnative不存在でもfresh install扱いせず明示復旧を要求する", async () => {
+    storage._store[STORAGE_KEY_FOR_TESTING] = "{broken";
+    durable.read.mockResolvedValue({ status: "missing" });
+
+    renderApp();
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(hasButton(container, copy.storageRecoverySave)).toBe(true);
+
+    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => vi.advanceTimersByTime(1_000));
+    await flushPromises();
+
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe("{broken");
+  });
+
 });

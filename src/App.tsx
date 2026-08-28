@@ -77,7 +77,9 @@ export default function App() {
     () =>
       isNativeDurableSnapshotAvailable() &&
       !initialLoad.recoveryPending &&
-      (initialLoad.primaryHealth === "missing" || initialLoad.primaryHealth === "invalid"),
+      (initialLoad.primaryHealth === "missing" ||
+        initialLoad.primaryHealth === "invalid" ||
+        initialLoad.primaryHealth === "unavailable"),
   );
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
@@ -308,6 +310,7 @@ export default function App() {
       saveGuardRef.current = true;
       setNativeRecoveryStatus("error");
       setNativeBackupRetryAllowed(false);
+      setLoadError(false);
       return;
     }
 
@@ -331,10 +334,19 @@ export default function App() {
       return;
     }
 
-    // primary/backupの不存在を正常に確認できた時だけfresh installとして編集を解放する。
+    if (primaryHealth === "invalid") {
+      nativeRecoveryGateRef.current = false;
+      setNativeRecoveryStatus("idle");
+      saveGuardRef.current = true;
+      flagExternalConflict(false, false);
+      return;
+    }
+
+    // local primary と native primary/backup の不存在をすべて正常確認できた時だけfresh installとして解放する。
     nativeRecoveryGateRef.current = false;
     setNativeRecoveryStatus("idle");
-    saveGuardRef.current = initialLoad.loadFailed;
+    saveGuardRef.current = false;
+    setLoadError(false);
   }, [
     applyCleanRemoteNotes,
     clearPersistTimer,
