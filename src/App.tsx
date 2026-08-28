@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
 import { loadNotes, NOTES_STORAGE_KEY, saveNotes } from "./lib/storage";
@@ -46,6 +53,7 @@ export default function App() {
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
   const [loadError, setLoadError] = useState<boolean>(initialLoad.loadFailed);
   const [externalConflict, setExternalConflict] = useState(false);
+  const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(!initialLoad.loadFailed);
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
@@ -59,7 +67,8 @@ export default function App() {
   const latestNotesRef = useRef(notes);
   const externalConflictRef = useRef(false);
 
-  useEffect(() => {
+  // pagehide は非常に早く来ることがあるため、paint 前に flush 用 snapshot を更新する。
+  useLayoutEffect(() => {
     latestNotesRef.current = notes;
   }, [notes]);
 
@@ -75,33 +84,40 @@ export default function App() {
     setLastSaveResult(null);
   }, []);
 
-  const applySaveResult = useCallback((result: SaveResult, snapshot: Note[]) => {
-    setLastSaveResult(result);
-
-    if (result.ok) {
-      notesDirtyRef.current = false;
-      saveGuardRef.current = false;
-      baselineNotesRef.current = snapshot;
-      externalConflictRef.current = false;
-      setExternalConflict(false);
-      return;
-    }
-
-    if (result.reason === "conflict") {
-      externalConflictRef.current = true;
-      setExternalConflict(true);
-    }
-  }, []);
-
   const flagExternalConflict = useCallback(
-    (alsoReportLoadError = false) => {
+    (storedReadable: boolean, alsoReportLoadError = false) => {
       clearPersistTimer();
       externalConflictRef.current = true;
       setExternalConflict(true);
+      setCanLoadStoredNotes(storedReadable);
       setLastSaveResult({ ok: false, reason: "conflict" });
       if (alsoReportLoadError) setLoadError(true);
     },
     [clearPersistTimer],
+  );
+
+  const applySaveResult = useCallback(
+    (result: SaveResult, snapshot: Note[]) => {
+      setLastSaveResult(result);
+
+      if (result.ok) {
+        notesDirtyRef.current = false;
+        saveGuardRef.current = false;
+        baselineNotesRef.current = snapshot;
+        externalConflictRef.current = false;
+        setExternalConflict(false);
+        setCanLoadStoredNotes(true);
+        return;
+      }
+
+      if (result.reason === "conflict") {
+        // storage event が届く前に保存直前比較で競合した場合も、
+        // 現在の保存先が読み込み可能かをここで判定する。
+        const stored = loadNotes();
+        flagExternalConflict(stored.ok, !stored.ok);
+      }
+    },
+    [flagExternalConflict],
   );
 
   useEffect(() => {
@@ -170,20 +186,21 @@ export default function App() {
         const remote = loadNotes();
 
         if (!remote.ok) {
-          flagExternalConflict(true);
+          flagExternalConflict(false, true);
         } else if (
           notesDirtyRef.current ||
           saveGuardRef.current ||
           externalConflictRef.current
         ) {
           // ローカル未保存編集がある間は、外部変更を勝手に採用も上書きもしない。
-          flagExternalConflict();
+          flagExternalConflict(true);
         } else {
           // この画面が未編集なら、別タブの最新状態へ安全に追従する。
           baselineNotesRef.current = remote.notes;
           latestNotesRef.current = remote.notes;
           setNotes(remote.notes);
           setLastSaveResult(null);
+          setCanLoadStoredNotes(true);
         }
       }
 
@@ -275,6 +292,7 @@ export default function App() {
   const loadStoredNotes = useCallback(() => {
     const result = loadNotes();
     if (!result.ok) {
+      setCanLoadStoredNotes(false);
       setLoadError(true);
       return;
     }
@@ -295,6 +313,7 @@ export default function App() {
     setLastDeleted(null);
     setLastSaveResult(null);
     setExternalConflict(false);
+    setCanLoadStoredNotes(true);
     setLoadError(false);
   }, [clearPersistTimer]);
 
@@ -390,17 +409,21 @@ export default function App() {
                 {copy.storageConflictTitle}
               </p>
               <p className="mt-gr-2 text-[12px] leading-ample text-ink-muted jp-text-discipline">
-                {copy.storageConflictBody}
+                {canLoadStoredNotes
+                  ? copy.storageConflictBody
+                  : copy.storageConflictRecoveryBody}
               </p>
               <div className="mt-gr-3 flex flex-wrap justify-end gap-gr-2">
-                <button
-                  type="button"
-                  onClick={loadStoredNotes}
-                  className="min-h-[44px] border border-[color:var(--color-line)] px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
-                  style={{ borderRadius: "6px 10px 7px 9px" }}
-                >
-                  {copy.storageConflictLoad}
-                </button>
+                {canLoadStoredNotes && (
+                  <button
+                    type="button"
+                    onClick={loadStoredNotes}
+                    className="min-h-[44px] border border-[color:var(--color-line)] px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                    style={{ borderRadius: "6px 10px 7px 9px" }}
+                  >
+                    {copy.storageConflictLoad}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={forceSaveCurrentNotes}
