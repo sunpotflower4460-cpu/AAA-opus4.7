@@ -123,36 +123,42 @@ export default function App() {
     [],
   );
 
-  const deleteNote = useCallback((id: string) => {
-    setNotes((prev) => {
-      const target = prev.find((n) => n.id === id);
-      if (target) {
-        // 既存のUndoタイマーをクリア（前の削除を確定）
-        if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
-        const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
-        setLastDeleted(deleted);
-        undoTimerRef.current = window.setTimeout(() => {
-          undoTimerRef.current = null;
-          setLastDeleted(null);
-        }, UNDO_TIMEOUT_MS);
+  const deleteNote = useCallback(
+    (id: string) => {
+      const target = notes.find((note) => note.id === id);
+      if (!target) {
+        setView({ kind: "list" });
+        return;
       }
-      return prev.filter((note) => note.id !== id);
-    });
-    setView({ kind: "list" });
-  }, []);
+
+      // State updater の中でタイマーや別 setState を作らない。
+      // React StrictMode の updater 二重評価でも副作用が重複しないようにする。
+      if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
+      const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
+
+      setNotes((prev) => prev.filter((note) => note.id !== id));
+      setLastDeleted(deleted);
+      undoTimerRef.current = window.setTimeout(() => {
+        undoTimerRef.current = null;
+        setLastDeleted(null);
+      }, UNDO_TIMEOUT_MS);
+      setView({ kind: "list" });
+    },
+    [notes],
+  );
 
   const undoDelete = useCallback(() => {
+    if (!lastDeleted) return;
+
     if (undoTimerRef.current) {
       window.clearTimeout(undoTimerRef.current);
       undoTimerRef.current = null;
     }
-    setLastDeleted((deleted) => {
-      if (!deleted) return null;
-      const { deletedAt: _, ...note } = deleted;
-      setNotes((prev) => [note, ...prev]);
-      return null;
-    });
-  }, []);
+
+    const { deletedAt: _, ...note } = lastDeleted;
+    setNotes((prev) => (prev.some((item) => item.id === note.id) ? prev : [note, ...prev]));
+    setLastDeleted(null);
+  }, [lastDeleted]);
 
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
