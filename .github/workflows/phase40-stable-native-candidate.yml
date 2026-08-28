@@ -1,0 +1,36 @@
+name: Phase 40 Stable Native Candidate
+
+on:
+  push:
+    branches: ["bugfix/phase40-dirty-three-way-recovery"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Apply stable native candidate hardening
+        run: python scripts/phase40_stable_native_candidate.py
+      - name: Validate stable native candidate hardening
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+          npm run check
+          npx cap sync ios
+          git diff --exit-code -- ios
+          git diff --check
+      - name: Commit source and regression
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/__tests__/App.native-durable-snapshot.test.tsx
+          git commit -m "Phase 40: keep edited native candidate stable"
+          git push origin HEAD:bugfix/phase40-dirty-three-way-recovery
