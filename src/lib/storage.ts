@@ -104,22 +104,11 @@ function parseNotesRaw(raw: string): ParsedNotesResult {
   };
 }
 
-function canonicalNotes(notes: readonly Note[]): string {
-  return JSON.stringify(
-    notes.map((note) => [
-      note.id,
-      note.title,
-      note.body,
-      note.createdAt,
-      note.updatedAt,
-      note.isFavorite,
-      note.locale ?? null,
-    ]),
-  );
-}
-
 function notesMatch(left: readonly Note[], right: readonly Note[]): boolean {
-  return canonicalNotes(left) === canonicalNotes(right);
+  // Note 型に将来フィールドが追加された場合も、その差分を競合として扱う。
+  // 既知フィールドだけを比較すると、古い画面が新しいスキーマの情報を黙って消し得る。
+  // 多少の false-positive より silent overwrite を防ぐ方を優先する。
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function mergeRecoveredNotes(primary: Note[], backup: Note[]): Note[] {
