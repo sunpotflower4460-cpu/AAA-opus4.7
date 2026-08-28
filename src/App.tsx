@@ -9,6 +9,7 @@ import {
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
 import {
+  getNotesPrimaryHealth,
   isRetryableSaveFailure,
   loadNotes,
   NOTES_STORAGE_KEY,
@@ -27,6 +28,11 @@ import { createId } from "./lib/id";
 import { copy } from "./lib/i18n";
 import { getSaveFailureMessage } from "./lib/saveFailureUi";
 import { subscribeToNativeAppState } from "./lib/nativeAppLifecycle";
+import {
+  isNativeDurableSnapshotAvailable,
+  persistNativeDurableSnapshot,
+  readNativeDurableSnapshot,
+} from "./lib/nativeDurableSnapshot";
 import { AppShell } from "./components/AppShell";
 import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
@@ -62,10 +68,20 @@ export default function App() {
       recoveryPending,
       storedPrimaryAvailable: canChooseStoredPrimary(result),
       recoveredCount: recoveryPending ? result.notes.length : 0,
+      primaryHealth: getNotesPrimaryHealth(),
     };
   });
   // 同じ画面自身の中断保存だけを継続更新できるよう、mount寿命内で固定したIDを使う。
   const [persistenceWriterId] = useState(() => createId());
+  const [nativeRecoveryInitiallyRequired] = useState(
+    () =>
+      isNativeDurableSnapshotAvailable() &&
+      !initialLoad.recoveryPending &&
+      (initialLoad.loadFailed ||
+        initialLoad.primaryHealth === "missing" ||
+        initialLoad.primaryHealth === "invalid" ||
+        initialLoad.primaryHealth === "unavailable"),
+  );
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
   const [view, setView] = useState<View>({ kind: "list" });
@@ -78,7 +94,9 @@ export default function App() {
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
   // 復元候補がある場合は、汎用エラーと二重表示せず recovery banner 側で案内する。
   const [loadError, setLoadError] = useState<boolean>(
-    initialLoad.loadFailed && !initialLoad.recoveryPending,
+    initialLoad.loadFailed &&
+      !initialLoad.recoveryPending &&
+      !nativeRecoveryInitiallyRequired,
   );
   const [externalConflict, setExternalConflict] = useState(initialLoad.recoveryPending);
   const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(
@@ -87,12 +105,19 @@ export default function App() {
   const [recoveryCandidateCount, setRecoveryCandidateCount] = useState(
     initialLoad.recoveredCount,
   );
+  const [nativeBackupError, setNativeBackupError] = useState(false);
+  const [nativeBackupRetryAllowed, setNativeBackupRetryAllowed] = useState(false);
+  const [nativeRecoveryStatus, setNativeRecoveryStatus] = useState<
+    "idle" | "checking" | "error"
+  >(nativeRecoveryInitiallyRequired ? "checking" : "idle");
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
 
   // 破損復旧中は、ユーザーが復元内容を明示的に確定するまで保存禁止を維持する。
-  const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
+  const saveGuardRef = useRef<boolean>(
+    initialLoad.loadFailed || nativeRecoveryInitiallyRequired,
+  );
   // このタブ自身が変更したときだけ lifecycle flush を許可する。
   const notesDirtyRef = useRef(false);
   // debounce が連続入力で永遠に後ろ倒しにならないよう、dirty 区間の開始時刻を保持する。
@@ -101,6 +126,31 @@ export default function App() {
   const baselineNotesRef = useRef<Note[]>(initialLoad.notes);
   const latestNotesRef = useRef(notes);
   const externalConflictRef = useRef(initialLoad.recoveryPending);
+  const nativeRecoveryGateRef = useRef(nativeRecoveryInitiallyRequired);
+  const nativeRecoveryProbeIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const persistDurableSnapshot = useCallback((snapshot: readonly Note[]) => {
+    if (!isNativeDurableSnapshotAvailable()) return;
+
+    void persistNativeDurableSnapshot(snapshot).then((ok) => {
+      if (!mountedRef.current) return;
+      setNativeBackupError(!ok);
+      setNativeBackupRetryAllowed(
+        !ok &&
+          !notesDirtyRef.current &&
+          !saveGuardRef.current &&
+          !externalConflictRef.current,
+      );
+    });
+  }, []);
 
   // pagehide は非常に早く来ることがあるため、paint 前に flush 用 snapshot を更新する。
   useLayoutEffect(() => {
@@ -114,6 +164,10 @@ export default function App() {
   }, []);
 
   const markNotesDirty = useCallback(() => {
+    // native復旧の確認中/読込障害中は、旧データを上書きし得る編集自体を開始させない。
+    setNativeBackupRetryAllowed(false);
+    if (nativeRecoveryGateRef.current) return false;
+
     if (externalConflictRef.current) {
       // recovery/conflict 中の編集は自動保存を再開せず、エディタにも停止理由を即時通知する。
       setLastSaveResult({ ok: false, reason: "conflict" });
@@ -123,6 +177,7 @@ export default function App() {
     }
     if (!notesDirtyRef.current) dirtySinceRef.current = Date.now();
     notesDirtyRef.current = true;
+    return true;
   }, []);
 
   const flagExternalConflict = useCallback(
@@ -137,6 +192,7 @@ export default function App() {
       setCanLoadStoredNotes(storedReadable);
       setRecoveryCandidateCount(storedReadable ? 0 : visibleRecoveryCount);
       setLastSaveResult({ ok: false, reason: "conflict" });
+      setNativeBackupRetryAllowed(false);
       // 状態が回復した後に古い汎用エラーが残らないよう、毎回現在状態へ揃える。
       setLoadError(alsoReportLoadError && visibleRecoveryCount === 0);
     },
@@ -180,7 +236,10 @@ export default function App() {
     }
 
     applyCleanRemoteNotes(remote.notes);
-  }, [applyCleanRemoteNotes, flagExternalConflict]);
+    // 正常な保存先を正式採用したら、native復旧層も同じ正本へ追従させる。
+    // recovery candidate は上の !remote.ok 分岐なので、未確定候補をここで保存することはない。
+    persistDurableSnapshot(remote.notes);
+  }, [applyCleanRemoteNotes, flagExternalConflict, persistDurableSnapshot]);
 
   const applySaveResult = useCallback(
     (result: SaveResult, snapshot: Note[]) => {
@@ -196,6 +255,7 @@ export default function App() {
         setCanLoadStoredNotes(true);
         setRecoveryCandidateCount(0);
         setLoadError(false);
+        persistDurableSnapshot(snapshot);
         return;
       }
 
@@ -211,8 +271,121 @@ export default function App() {
         );
       }
     },
-    [flagExternalConflict],
+    [flagExternalConflict, persistDurableSnapshot],
   );
+
+  const probeNativeRecovery = useCallback(async () => {
+    const probeId = nativeRecoveryProbeIdRef.current + 1;
+    nativeRecoveryProbeIdRef.current = probeId;
+    nativeRecoveryGateRef.current = true;
+    saveGuardRef.current = true;
+    clearPersistTimer();
+    setNativeRecoveryStatus("checking");
+
+    const nativeResult = await readNativeDurableSnapshot();
+    if (!mountedRef.current || nativeRecoveryProbeIdRef.current != probeId) return;
+
+    const primaryHealth = getNotesPrimaryHealth();
+
+    // probe中に別タブ等から正常primaryが到着した場合は、その現在値を正本として採用する。
+    if (primaryHealth === "valid") {
+      const current = loadNotes();
+      nativeRecoveryGateRef.current = false;
+      setNativeRecoveryStatus("idle");
+      if (current.ok) {
+        saveGuardRef.current = false;
+        applyCleanRemoteNotes(current.notes);
+        setLoadError(false);
+        persistDurableSnapshot(current.notes);
+      } else {
+        flagExternalConflict(
+          canChooseStoredPrimary(current),
+          !hasRecoveryCandidate(current),
+          hasRecoveryCandidate(current) ? current.notes.length : 0,
+        );
+      }
+      return;
+    }
+
+    // localStorage自体を読めない状態では、nativeの結果だけで上書き可否を決めない。
+    if (primaryHealth === "unavailable" || nativeResult.status === "error") {
+      nativeRecoveryGateRef.current = true;
+      saveGuardRef.current = true;
+      setNativeRecoveryStatus("error");
+      setNativeBackupRetryAllowed(false);
+      setLoadError(false);
+      return;
+    }
+
+    if (nativeResult.status === "available") {
+      const nativeSnapshot = nativeResult.notes;
+      nativeRecoveryGateRef.current = false;
+      setNativeRecoveryStatus("idle");
+      saveGuardRef.current = true;
+      externalConflictRef.current = true;
+      dirtySinceRef.current = null;
+      baselineNotesRef.current = nativeSnapshot;
+      latestNotesRef.current = nativeSnapshot;
+      setNotes(nativeSnapshot);
+      setLastSaveResult({ ok: false, reason: "conflict" });
+      setExternalConflict(true);
+      setCanLoadStoredNotes(false);
+      setRecoveryCandidateCount(nativeSnapshot.length);
+      setLoadError(false);
+      setNativeBackupError(false);
+      setNativeBackupRetryAllowed(false);
+      return;
+    }
+
+    if (primaryHealth === "invalid") {
+      nativeRecoveryGateRef.current = false;
+      setNativeRecoveryStatus("idle");
+      saveGuardRef.current = true;
+      flagExternalConflict(false, false);
+      return;
+    }
+
+    // local primary と native primary/backup の不存在をすべて正常確認できた時だけfresh installとして解放する。
+    nativeRecoveryGateRef.current = false;
+    setNativeRecoveryStatus("idle");
+    saveGuardRef.current = false;
+    setLoadError(false);
+  }, [
+    applyCleanRemoteNotes,
+    clearPersistTimer,
+    flagExternalConflict,
+    persistDurableSnapshot,
+  ]);
+
+  useEffect(() => {
+    if (!isNativeDurableSnapshotAvailable()) return undefined;
+
+    if (nativeRecoveryInitiallyRequired) {
+      // 初期state/refですでに編集・保存はgate済み。probeのstate通知はeffect本体の外で開始する。
+      queueMicrotask(() => {
+        void probeNativeRecovery();
+      });
+      return () => {
+        nativeRecoveryProbeIdRef.current += 1;
+      };
+    }
+
+    // 正常localStorageがある既存ユーザーは初回Phase38起動でnative耐久層へ移行する。
+    if (initialLoad.primaryHealth === "valid" && !initialLoad.loadFailed) {
+      persistDurableSnapshot(baselineNotesRef.current);
+    }
+    return undefined;
+  }, [
+    initialLoad.loadFailed,
+    initialLoad.primaryHealth,
+    nativeRecoveryInitiallyRequired,
+    persistDurableSnapshot,
+    probeNativeRecovery,
+  ]);
+
+  const retryNativeRecovery = useCallback(() => {
+    void probeNativeRecovery();
+  }, [probeNativeRecovery]);
 
   useEffect(() => {
     clearPersistTimer();
@@ -308,6 +481,10 @@ export default function App() {
       const notesStorageChanged = event.key === null || event.key === NOTES_STORAGE_KEY;
 
       if (notesStorageChanged) {
+        // startup native probe中のstorage変更はprobe完了時に現在primaryを再評価する。
+        // ここで競合扱いにすると、ユーザー編集が無いのに不要なconflictへ昇格してしまう。
+        if (nativeRecoveryGateRef.current) return;
+
         const remote = loadNotes();
         const locallyClean =
           !notesDirtyRef.current &&
@@ -336,6 +513,7 @@ export default function App() {
         } else {
           // この画面が未編集なら、別タブの最新状態へ安全に追従する。
           applyCleanRemoteNotes(remote.notes);
+          persistDurableSnapshot(remote.notes);
         }
       }
 
@@ -347,7 +525,7 @@ export default function App() {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [applyCleanRemoteNotes, flagExternalConflict]);
+  }, [applyCleanRemoteNotes, flagExternalConflict, persistDurableSnapshot]);
 
   useEffect(() => {
     return () => {
@@ -357,7 +535,7 @@ export default function App() {
   }, [clearPersistTimer]);
 
   const createNote = useCallback(() => {
-    markNotesDirty();
+    if (!markNotesDirty()) return;
     setSearchQuery("");
 
     const iso = nowIso();
@@ -377,7 +555,7 @@ export default function App() {
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
-      markNotesDirty();
+      if (!markNotesDirty()) return;
       setNotes((prev) =>
         prev.map((note) =>
           note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
@@ -395,10 +573,10 @@ export default function App() {
         return;
       }
 
+      if (!markNotesDirty()) return;
+
       if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
       const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
-
-      markNotesDirty();
       setNotes((prev) => prev.filter((note) => note.id !== id));
       setLastDeleted(deleted);
       undoTimerRef.current = window.setTimeout(() => {
@@ -411,7 +589,7 @@ export default function App() {
   );
 
   const undoDelete = useCallback(() => {
-    if (!lastDeleted) return;
+    if (!lastDeleted || !markNotesDirty()) return;
 
     if (undoTimerRef.current) {
       window.clearTimeout(undoTimerRef.current);
@@ -419,7 +597,6 @@ export default function App() {
     }
 
     const { deletedAt: _, ...note } = lastDeleted;
-    markNotesDirty();
     setNotes((prev) => (prev.some((item) => item.id === note.id) ? prev : [note, ...prev]));
     setLastDeleted(null);
   }, [lastDeleted, markNotesDirty]);
@@ -454,7 +631,9 @@ export default function App() {
     setCanLoadStoredNotes(true);
     setRecoveryCandidateCount(0);
     setLoadError(false);
-  }, [clearPersistTimer]);
+    // ユーザーが保存済み版を正本として明示採用したので、古いnative候補を残さない。
+    persistDurableSnapshot(result.notes);
+  }, [clearPersistTimer, persistDurableSnapshot]);
 
   const forceSaveCurrentNotes = useCallback(() => {
     clearPersistTimer();
@@ -479,6 +658,17 @@ export default function App() {
     });
     applySaveResult(result, snapshot);
   }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
+
+  const retryNativeBackup = useCallback(() => {
+    if (
+      notesDirtyRef.current ||
+      saveGuardRef.current ||
+      externalConflictRef.current
+    ) {
+      return;
+    }
+    persistDurableSnapshot(baselineNotesRef.current);
+  }, [persistDurableSnapshot]);
 
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
@@ -526,6 +716,8 @@ export default function App() {
     showGlobalSaveFailure &&
     !externalConflict &&
     isRetryableSaveFailure(lastSaveResult);
+  const canRetryNativeBackup =
+    nativeBackupError && nativeBackupRetryAllowed && !externalConflict;
 
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
@@ -536,8 +728,45 @@ export default function App() {
 
   return (
     <AppShell>
-      {(loadError || externalConflict || showGlobalSaveFailure) && (
+      {(loadError ||
+        externalConflict ||
+        showGlobalSaveFailure ||
+        nativeBackupError ||
+        nativeRecoveryStatus !== "idle") && (
         <div className="pointer-events-none fixed inset-x-gr-4 top-[max(env(safe-area-inset-top),12px)] z-30 flex flex-col gap-gr-2">
+          {nativeRecoveryStatus === "checking" && (
+            <div
+              data-testid="native-recovery-checking"
+              role="status"
+              aria-live="polite"
+              className="pointer-events-auto border border-gold/25 bg-paper px-gr-4 py-gr-3 font-mincho text-[12px] leading-ample text-sumi shadow-paper-hover animate-fadeIn"
+              style={{ borderRadius: "7px 13px 8px 11px" }}
+            >
+              {copy.nativeRecoveryChecking}
+            </div>
+          )}
+
+          {nativeRecoveryStatus === "error" && (
+            <div
+              data-testid="native-recovery-error"
+              role="alert"
+              aria-live="assertive"
+              className="pointer-events-auto flex flex-wrap items-center justify-between gap-gr-3 border border-vermilion/30 bg-paper px-gr-4 py-gr-3 text-sumi shadow-paper-hover animate-fadeIn"
+              style={{ borderRadius: "7px 13px 8px 11px" }}
+            >
+              <span className="font-mincho text-[12px] leading-ample jp-text-discipline">
+                {copy.nativeRecoveryReadError}
+              </span>
+              <button
+                type="button"
+                onClick={retryNativeRecovery}
+                className="min-h-[44px] shrink-0 rounded-full border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+              >
+                {copy.nativeRecoveryRetry}
+              </button>
+            </div>
+          )}
+
           {loadError && (
             <div
               role="alert"
@@ -604,6 +833,29 @@ export default function App() {
             </div>
           )}
 
+
+          {nativeBackupError && (
+            <div
+              data-testid="native-backup-failure"
+              role="alert"
+              aria-live="polite"
+              className="pointer-events-auto flex flex-wrap items-center justify-between gap-gr-3 border border-gold/35 bg-paper px-gr-4 py-gr-3 text-sumi shadow-paper-hover animate-fadeIn"
+              style={{ borderRadius: "7px 13px 8px 11px" }}
+            >
+              <span className="font-mincho text-[12px] leading-ample jp-text-discipline">
+                {copy.nativeBackupError}
+              </span>
+              {canRetryNativeBackup && (
+                <button
+                  type="button"
+                  onClick={retryNativeBackup}
+                  className="min-h-[44px] shrink-0 rounded-full border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                >
+                  {copy.nativeBackupRetry}
+                </button>
+              )}
+            </div>
+          )}
 
           {showGlobalSaveFailure && globalSaveFailureMessage && (
             <div

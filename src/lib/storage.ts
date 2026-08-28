@@ -150,6 +150,24 @@ function parseNotesRaw(raw: string): ParsedNotesResult {
   };
 }
 
+export function parseValidNotesSnapshot(raw: string): Note[] | null {
+  const parsed = parseNotesRaw(raw);
+  return parsed.status === "valid" ? parsed.notes : null;
+}
+
+export type NotesPrimaryHealth = "missing" | "valid" | "invalid" | "unavailable";
+
+export function getNotesPrimaryHealth(): NotesPrimaryHealth {
+  if (typeof window === "undefined") return "unavailable";
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return "missing";
+    return parseNotesRaw(raw).status === "valid" ? "valid" : "invalid";
+  } catch {
+    return "unavailable";
+  }
+}
+
 function notesMatch(left: readonly Note[], right: readonly Note[]): boolean {
   // Note 型に将来フィールドが追加された場合も、その差分を競合として扱う。
   // 既知フィールドだけを比較すると、古い画面が新しいスキーマの情報を黙って消し得る。
