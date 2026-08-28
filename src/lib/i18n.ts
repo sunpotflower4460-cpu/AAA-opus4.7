@@ -72,10 +72,12 @@ export const copy = {
   storageConflictTitle: "保存先の内容が変わっています",
   storageConflictBody:
     "別の画面で更新されたか、復元中のデータがあります。自動保存を止めています。保存先を読み込むと、この画面の未保存編集は破棄されます。",
+  storageRecoveryTitle: "保存データを確認してください",
   storageConflictRecoveryBody:
-    "元の保存データに問題があるため、自動保存を止めています。復元できた内容を確認し、この画面の内容で保存し直す場合だけ上書きを選んでください。元の破損データは退避されています。",
+    "保存先のデータに問題があるため、自動保存を止めています。この画面に残っている内容を確認し、それを保存し直す場合だけ選んでください。可能な場合は元の問題データも退避します。",
   storageConflictLoad: "未保存編集を破棄して読み込む",
   storageConflictOverwrite: "この画面の編集で上書き",
+  storageRecoverySave: "この画面の内容で保存し直す",
 
   // お気に入り
   favoriteOn: "大切な余韻として残す",
