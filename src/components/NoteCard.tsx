@@ -36,18 +36,20 @@ export function NoteCard({ note, onOpen }: Props) {
         active:translate-y-0 active:scale-[0.997]
       "
     >
-      {/* 刀の刃のような細い縦線 — お気に入りは金、それ以外は薄墨の余韻 */}
-      <span
-        aria-hidden="true"
-        className={[
-          "absolute left-gr-3 top-gr-3 bottom-gr-3 rounded-full",
-          note.isFavorite ? "w-[2px] bg-gold/72" : "w-px bg-sumi/10",
-        ].join(" ")}
-      />
-
       <div className="flex items-start gap-gr-3">
+        {/*
+         * Phase 28 はカード直下要素を position: relative !important にするため、
+         * 紙の背骨はこの相対コンテナ内へ置く。見た目だけでなく上書き競合も避ける。
+         */}
+        <span
+          aria-hidden="true"
+          className={[
+            "zanshin-note-card__spine absolute left-[-21px] top-gr-3 bottom-gr-3 rounded-full",
+            note.isFavorite ? "w-[2px] bg-gold/72" : "w-px bg-sumi/10",
+          ].join(" ")}
+        />
+
         <div className="min-w-0 flex-1">
-          {/* Phase 13: 日付印を上部に配置 */}
           <div className="mb-gr-3">
             <ZanshinDateStamp isoString={note.createdAt} compact />
           </div>
@@ -81,7 +83,6 @@ export function NoteCard({ note, onOpen }: Props) {
             title={copy.favoriteBadge}
             className="mt-[6px] shrink-0 text-gold/82"
           >
-            {/* 金の小さな印 — 装飾ではなく、しるし */}
             <svg
               width="9"
               height="9"
@@ -94,6 +95,8 @@ export function NoteCard({ note, onOpen }: Props) {
           </span>
         )}
       </div>
+
+      <span className="zanshin-note-card__corner" aria-hidden="true" />
     </button>
   );
 }

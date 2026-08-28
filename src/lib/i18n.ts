@@ -80,9 +80,9 @@ export const copy = {
   deleteConfirmTitle: "この余韻を手放しますか？",
   deleteConfirmTitleEn: "Let this trace go?",
   deleteConfirmBody:
-    "この言葉を静かに手放しますか？\n削除すると、あとから戻すことはできません。",
+    "この言葉を静かに手放しますか？\n削除したあとも、しばらくは元に戻せます。",
   deleteConfirmBodyEn:
-    "Let this note go quietly?\nOnce deleted, it cannot be brought back.",
+    "Let this note go quietly?\nYou can undo for a short while after deleting it.",
   cancel: "残しておく",
   cancelEn: "Keep it",
   confirmDelete: "手放す（削除）",

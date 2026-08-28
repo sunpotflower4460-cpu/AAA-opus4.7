@@ -43,7 +43,7 @@ export function EmptyState({ onCreate, searching = false }: Props) {
         onClick={onCreate}
         aria-label={copy.emptyAction}
         className="
-          mt-gr-2 rounded-full border border-[color:var(--color-line)]
+          zanshin-empty-action mt-gr-2 rounded-full border border-[color:var(--color-line)]
           bg-paper/82 px-gr-5 py-[10px] font-mincho text-[14px] tracking-mincho text-sumi
           shadow-paper-soft transition-soft
           hover:bg-paper hover:shadow-paper hover:-translate-y-[1px]
