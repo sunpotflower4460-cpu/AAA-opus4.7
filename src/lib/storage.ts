@@ -6,6 +6,8 @@ const STORAGE_KEY = NOTES_STORAGE_KEY;
 const BACKUP_KEY = "zanshin.notes.backup.v1";
 // 競合解決で「この画面を優先」する直前の、別画面側の正常データ専用退避先。
 const CONFLICT_BACKUP_KEY = "zanshin.notes.conflict.backup.v1";
+// localStorage は複数キーを原子的に更新できないため、base -> next を記録して中断保存を判定する。
+const PENDING_SAVE_KEY = "zanshin.notes.pending.v1";
 const CORRUPT_BACKUP_KEY = "zanshin.notes.corrupt.backup";
 
 export type SaveResult =
@@ -30,14 +32,29 @@ export type LoadResult =
   | {
       ok: false;
       notes: Note[];
-      reason: "corrupt" | "invalid_structure" | "missing_primary" | "unavailable";
+      reason:
+        | "corrupt"
+        | "invalid_structure"
+        | "missing_primary"
+        | "interrupted_save"
+        | "unavailable";
       corruptBackupKey?: string;
       recoveredFromBackup?: boolean;
+      recoveredFromPendingSave?: boolean;
+      /** 空配列も正当な「削除を保存しようとした」候補になり得るため件数とは分けて持つ。 */
+      recoveryCandidate?: boolean;
     };
 
 type ParsedNotesResult = {
   status: "valid" | "corrupt" | "invalid_structure";
   notes: Note[];
+};
+
+type PendingSaveJournal = {
+  version: 1;
+  baseRaw: string | null;
+  nextRaw: string;
+  nextNotes: Note[];
 };
 
 function isValidDateString(value: unknown): value is string {
@@ -166,9 +183,62 @@ function readValidatedBackup(): Note[] | null {
   }
 }
 
+function readPendingSaveJournal(): PendingSaveJournal | null {
+  try {
+    const journalRaw = window.localStorage.getItem(PENDING_SAVE_KEY);
+    if (journalRaw === null) return null;
+
+    const parsed = JSON.parse(journalRaw) as unknown;
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const journal = parsed as Record<string, unknown>;
+    if (
+      journal.version !== 1 ||
+      (journal.baseRaw !== null && typeof journal.baseRaw !== "string") ||
+      typeof journal.nextRaw !== "string"
+    ) {
+      return null;
+    }
+
+    const next = parseNotesRaw(journal.nextRaw);
+    if (next.status !== "valid") return null;
+
+    return {
+      version: 1,
+      baseRaw: journal.baseRaw as string | null,
+      nextRaw: journal.nextRaw,
+      nextNotes: next.notes,
+    };
+  } catch {
+    // journal が読めなくても、primary / backup の通常復旧は継続する。
+    return null;
+  }
+}
+
+function clearPendingSaveJournal(): void {
+  try {
+    window.localStorage.removeItem(PENDING_SAVE_KEY);
+  } catch {
+    // 次回 loadNotes() が primary === nextRaw を確認して再度掃除できる。
+  }
+}
+
+function repairCompletedPendingSave(journal: PendingSaveJournal): void {
+  try {
+    window.localStorage.setItem(BACKUP_KEY, journal.nextRaw);
+  } catch {
+    // primary はすでに nextRaw なので読み込みは正常継続する。
+    // journal を残せば次回もう一度 backup 修復を試せる。
+    return;
+  }
+  clearPendingSaveJournal();
+}
+
 /**
  * localStorage からメモを読み込む。
  * - 正常データはそのまま返す
+ * - save journal の base が現在 primary と一致すれば、中断された next を復元候補として返す
+ * - save journal の next が現在 primary と一致すれば保存完了済みとして backup / journal を自己修復する
  * - primary だけ消失して正常な backup が残っていれば復元候補として返す
  * - JSON破損 / 不正要素 / 重複ID / 不正日時は元データを退避する
  * - 最新の正常 backup が利用できれば復元候補としてマージする
@@ -179,6 +249,28 @@ export function loadNotes(): LoadResult {
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
+    const pendingSave = readPendingSaveJournal();
+
+    if (pendingSave && raw === pendingSave.nextRaw) {
+      // primary まで書けた後に cleanup だけ中断したケース。
+      // 正常データを返しつつ、backup と journal を可能な範囲で自己修復する。
+      repairCompletedPendingSave(pendingSave);
+      return { ok: true, notes: pendingSave.nextNotes };
+    }
+
+    if (pendingSave && raw === pendingSave.baseRaw) {
+      // journal は書けたが primary が base のままなので、next の確定前に中断したと断定できる。
+      // next が [] でも「全削除を保存しようとした」正当な候補なので recoveryCandidate を明示する。
+      if (raw !== null && parseNotesRaw(raw).status !== "valid") preserveCorruptRaw(raw);
+      return {
+        ok: false,
+        notes: pendingSave.nextNotes,
+        reason: "interrupted_save",
+        recoveredFromPendingSave: true,
+        recoveryCandidate: true,
+      };
+    }
+
     if (raw === null) {
       // アプリ自身は保存済み primary を removeItem しない。
       // backup は保存処理の primary より先に確定するため、primary 消失時の第一候補にする。
@@ -190,6 +282,7 @@ export function loadNotes(): LoadResult {
           notes: backupNotes,
           reason: "missing_primary",
           recoveredFromBackup: true,
+          recoveryCandidate: true,
         };
       }
       return { ok: true, notes: [] };
@@ -217,9 +310,10 @@ export function loadNotes(): LoadResult {
       reason: primary.status,
       corruptBackupKey: CORRUPT_BACKUP_KEY,
       recoveredFromBackup,
+      recoveryCandidate: recoveredNotes.length > 0,
     };
   } catch {
-    return { ok: false, notes: [], reason: "unavailable" };
+    return { ok: false, notes: [], reason: "unavailable", recoveryCandidate: false };
   }
 }
 
@@ -228,9 +322,10 @@ export function loadNotes(): LoadResult {
  * - 保存対象そのものを検証し、不正構造を新たに永続化しない
  * - expectedNotes が指定されている場合は、現在の primary と一致するときだけ保存する
  * - 別画面の変更を検知した場合は conflict を返し、黙って上書きしない
+ * - 既存の中断 journal が別スナップショットを指す場合も競合として守る
  * - 破損 primary は force なしでは上書きせず、raw を退避して conflict とする
- * - force で正常な別画面データを上書きする前は conflict backup への退避成功を必須にする
- * - 復旧用 backup を primary より先に書き、backup 更新に失敗した場合は primary を変更しない
+ * - force で別画面データを上書きする前は、最も新しい競合候補の専用退避成功を必須にする
+ * - journal -> recovery backup -> primary の順に書き、途中中断を次回 loadNotes() で判定可能にする
  */
 export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult {
   if (typeof window === "undefined") return { ok: false, reason: "unavailable" };
@@ -252,11 +347,24 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
       currentRaw !== null
         ? parseNotesRaw(currentRaw)
         : ({ status: "valid", notes: [] } satisfies ParsedNotesResult);
+    const pendingSave = readPendingSaveJournal();
+    const activePendingSave =
+      pendingSave && currentRaw === pendingSave.baseRaw ? pendingSave : null;
+
+    if (pendingSave && currentRaw === pendingSave.nextRaw) {
+      // 前回は primary まで成功して cleanup だけ残った。今回の保存前に可能な範囲で整える。
+      repairCompletedPendingSave(pendingSave);
+    }
 
     if (currentRaw !== null && currentParsed.status !== "valid") {
       preserveCorruptRaw(currentRaw);
       // 破損状態を通常保存で黙って置換しない。復元内容を確認した force のみ許可する。
       if (!options.force) return { ok: false, reason: "conflict" };
+    }
+
+    if (!options.force && activePendingSave && activePendingSave.nextRaw !== serialized) {
+      // 別の保存が journal だけ残して中断している。primary が同じでも、その候補を黙って消さない。
+      return { ok: false, reason: "conflict" };
     }
 
     if (!options.force && options.expectedNotes) {
@@ -268,24 +376,41 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
       }
     }
 
-    // 正常な別画面データを明示上書きする場合、その版を保存できなければ上書き自体を中止する。
-    if (options.force && currentRaw !== null && currentParsed.status === "valid") {
+    // 明示上書き時は、中断 journal の next があれば現在 primary より新しい候補として優先退避する。
+    const conflictCandidateRaw =
+      activePendingSave?.nextRaw ??
+      (currentRaw !== null && currentParsed.status === "valid" ? currentRaw : null);
+    if (options.force && conflictCandidateRaw !== null && conflictCandidateRaw !== serialized) {
       try {
-        window.localStorage.setItem(CONFLICT_BACKUP_KEY, currentRaw);
+        window.localStorage.setItem(CONFLICT_BACKUP_KEY, conflictCandidateRaw);
       } catch (error) {
         return saveFailureFromError(error);
       }
     }
 
+    const nextJournal = JSON.stringify({
+      version: 1,
+      baseRaw: currentRaw,
+      nextRaw: serialized,
+    });
+
+    try {
+      window.localStorage.setItem(PENDING_SAVE_KEY, nextJournal);
+    } catch (error) {
+      return saveFailureFromError(error);
+    }
+
     // primary より先に復旧コピーを確定する。
-    // これに失敗した場合は「保存成功なのに復旧コピーだけ古い」状態を作らない。
+    // 失敗しても journal が残るため、次回は next を中断保存候補として提示できる。
     try {
       window.localStorage.setItem(BACKUP_KEY, serialized);
     } catch (error) {
       return saveFailureFromError(error);
     }
 
+    // primary が失敗しても journal + backup の next は残り、再起動後に復元候補として拾える。
     window.localStorage.setItem(STORAGE_KEY, serialized);
+    clearPendingSaveJournal();
     return { ok: true };
   } catch (error) {
     return saveFailureFromError(error);
@@ -295,4 +420,5 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
 export const STORAGE_KEY_FOR_TESTING = STORAGE_KEY;
 export const BACKUP_KEY_FOR_TESTING = BACKUP_KEY;
 export const CONFLICT_BACKUP_KEY_FOR_TESTING = CONFLICT_BACKUP_KEY;
+export const PENDING_SAVE_KEY_FOR_TESTING = PENDING_SAVE_KEY;
 export const CORRUPT_BACKUP_KEY_FOR_TESTING = CORRUPT_BACKUP_KEY;
