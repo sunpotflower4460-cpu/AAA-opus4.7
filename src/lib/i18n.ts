@@ -72,6 +72,9 @@ export const copy = {
   saveErrorInvalidData: "この内容を安全に保存できませんでした",
   retrySave: "もう一度保存する",
   retrySaveEn: "Try saving again",
+  nativeBackupError:
+    "メモ本体は保存されていますが、端末内の予備保存を更新できませんでした。",
+  nativeBackupRetry: "予備保存をもう一度作る",
   saveConflict: "別の変更と重なったため、保存を止めています",
   saveConflictEn: "Saving paused because another change was detected",
   saveRecovery: "復元内容を確認するまで、保存を止めています",

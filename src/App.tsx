@@ -9,6 +9,7 @@ import {
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
 import {
+  getNotesPrimaryHealth,
   isRetryableSaveFailure,
   loadNotes,
   NOTES_STORAGE_KEY,
@@ -27,6 +28,11 @@ import { createId } from "./lib/id";
 import { copy } from "./lib/i18n";
 import { getSaveFailureMessage } from "./lib/saveFailureUi";
 import { subscribeToNativeAppState } from "./lib/nativeAppLifecycle";
+import {
+  isNativeDurableSnapshotAvailable,
+  persistNativeDurableSnapshot,
+  readNativeDurableSnapshot,
+} from "./lib/nativeDurableSnapshot";
 import { AppShell } from "./components/AppShell";
 import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
@@ -87,6 +93,8 @@ export default function App() {
   const [recoveryCandidateCount, setRecoveryCandidateCount] = useState(
     initialLoad.recoveredCount,
   );
+  const [nativeBackupError, setNativeBackupError] = useState(false);
+  const [nativeBackupRetryAllowed, setNativeBackupRetryAllowed] = useState(false);
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
@@ -101,6 +109,29 @@ export default function App() {
   const baselineNotesRef = useRef<Note[]>(initialLoad.notes);
   const latestNotesRef = useRef(notes);
   const externalConflictRef = useRef(initialLoad.recoveryPending);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const persistDurableSnapshot = useCallback((snapshot: readonly Note[]) => {
+    if (!isNativeDurableSnapshotAvailable()) return;
+
+    void persistNativeDurableSnapshot(snapshot).then((ok) => {
+      if (!mountedRef.current) return;
+      setNativeBackupError(!ok);
+      setNativeBackupRetryAllowed(
+        !ok &&
+          !notesDirtyRef.current &&
+          !saveGuardRef.current &&
+          !externalConflictRef.current,
+      );
+    });
+  }, []);
 
   // pagehide は非常に早く来ることがあるため、paint 前に flush 用 snapshot を更新する。
   useLayoutEffect(() => {
@@ -137,6 +168,7 @@ export default function App() {
       setCanLoadStoredNotes(storedReadable);
       setRecoveryCandidateCount(storedReadable ? 0 : visibleRecoveryCount);
       setLastSaveResult({ ok: false, reason: "conflict" });
+      setNativeBackupRetryAllowed(false);
       // 状態が回復した後に古い汎用エラーが残らないよう、毎回現在状態へ揃える。
       setLoadError(alsoReportLoadError && visibleRecoveryCount === 0);
     },
@@ -196,6 +228,7 @@ export default function App() {
         setCanLoadStoredNotes(true);
         setRecoveryCandidateCount(0);
         setLoadError(false);
+        persistDurableSnapshot(snapshot);
         return;
       }
 
@@ -211,8 +244,53 @@ export default function App() {
         );
       }
     },
-    [flagExternalConflict],
+    [flagExternalConflict, persistDurableSnapshot],
   );
+
+  useEffect(() => {
+    if (!isNativeDurableSnapshotAvailable()) return undefined;
+
+    let cancelled = false;
+
+    void readNativeDurableSnapshot().then((nativeSnapshot) => {
+      if (cancelled) return;
+
+      const primaryHealth = getNotesPrimaryHealth();
+      const canAdoptNativeRecovery =
+        nativeSnapshot !== null &&
+        nativeSnapshot.length > 0 &&
+        (primaryHealth === "missing" || primaryHealth === "invalid") &&
+        !notesDirtyRef.current &&
+        !externalConflictRef.current;
+
+      if (canAdoptNativeRecovery && nativeSnapshot) {
+        clearPersistTimer();
+        saveGuardRef.current = true;
+        externalConflictRef.current = true;
+        dirtySinceRef.current = null;
+        baselineNotesRef.current = nativeSnapshot;
+        latestNotesRef.current = nativeSnapshot;
+        setNotes(nativeSnapshot);
+        setLastSaveResult({ ok: false, reason: "conflict" });
+        setExternalConflict(true);
+        setCanLoadStoredNotes(false);
+        setRecoveryCandidateCount(nativeSnapshot.length);
+        setLoadError(false);
+        setNativeBackupError(false);
+        setNativeBackupRetryAllowed(false);
+        return;
+      }
+
+      // 既存ユーザーは最初のPhase38起動で、正常localStorageをnative耐久層へ移行する。
+      if (primaryHealth === "valid" && !initialLoad.loadFailed) {
+        persistDurableSnapshot(baselineNotesRef.current);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearPersistTimer, initialLoad.loadFailed, persistDurableSnapshot]);
 
   useEffect(() => {
     clearPersistTimer();
@@ -480,6 +558,17 @@ export default function App() {
     applySaveResult(result, snapshot);
   }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
 
+  const retryNativeBackup = useCallback(() => {
+    if (
+      notesDirtyRef.current ||
+      saveGuardRef.current ||
+      externalConflictRef.current
+    ) {
+      return;
+    }
+    persistDurableSnapshot(baselineNotesRef.current);
+  }, [persistDurableSnapshot]);
+
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
   }, []);
@@ -526,6 +615,8 @@ export default function App() {
     showGlobalSaveFailure &&
     !externalConflict &&
     isRetryableSaveFailure(lastSaveResult);
+  const canRetryNativeBackup =
+    nativeBackupError && nativeBackupRetryAllowed && !externalConflict;
 
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
@@ -536,7 +627,7 @@ export default function App() {
 
   return (
     <AppShell>
-      {(loadError || externalConflict || showGlobalSaveFailure) && (
+      {(loadError || externalConflict || showGlobalSaveFailure || nativeBackupError) && (
         <div className="pointer-events-none fixed inset-x-gr-4 top-[max(env(safe-area-inset-top),12px)] z-30 flex flex-col gap-gr-2">
           {loadError && (
             <div
@@ -604,6 +695,29 @@ export default function App() {
             </div>
           )}
 
+
+          {nativeBackupError && (
+            <div
+              data-testid="native-backup-failure"
+              role="alert"
+              aria-live="polite"
+              className="pointer-events-auto flex flex-wrap items-center justify-between gap-gr-3 border border-gold/35 bg-paper px-gr-4 py-gr-3 text-sumi shadow-paper-hover animate-fadeIn"
+              style={{ borderRadius: "7px 13px 8px 11px" }}
+            >
+              <span className="font-mincho text-[12px] leading-ample jp-text-discipline">
+                {copy.nativeBackupError}
+              </span>
+              {canRetryNativeBackup && (
+                <button
+                  type="button"
+                  onClick={retryNativeBackup}
+                  className="min-h-[44px] shrink-0 rounded-full border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                >
+                  {copy.nativeBackupRetry}
+                </button>
+              )}
+            </div>
+          )}
 
           {showGlobalSaveFailure && globalSaveFailureMessage && (
             <div
