@@ -532,7 +532,7 @@ export default function App() {
               <p className="mt-gr-2 text-[12px] leading-ample text-ink-muted jp-text-discipline">
                 {!canLoadStoredNotes && recoveryCandidateCount > 0 && (
                   <span className="mb-gr-1 block">
-                    復元候補を{recoveryCandidateCount}件表示しています。
+                    {copy.storageRecoveryCandidateCount(recoveryCandidateCount)}
                   </span>
                 )}
                 {canLoadStoredNotes
