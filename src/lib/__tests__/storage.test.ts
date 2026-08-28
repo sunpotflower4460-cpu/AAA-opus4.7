@@ -233,6 +233,71 @@ describe("saveNotes", () => {
     expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(validBackup);
   });
 
+  it("期待していた内容から primary が変わっていれば conflict で保存を止める", () => {
+    const baseline = [makeNote({ id: "shared", title: "最初" })];
+    const remote = [
+      makeNote({
+        id: "shared",
+        title: "別タブ更新",
+        updatedAt: "2024-01-02T00:00:00.000Z",
+      }),
+    ];
+    const local = [
+      makeNote({
+        id: "shared",
+        title: "こちらの更新",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+      }),
+    ];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
+
+    const result = saveNotes(local, { expectedNotes: baseline });
+
+    expect(result).toEqual({ ok: false, reason: "conflict" });
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(remote);
+  });
+
+  it("期待内容と primary が一致していれば通常保存できる", () => {
+    const baseline = [makeNote({ id: "shared", title: "最初" })];
+    const local = [
+      makeNote({
+        id: "shared",
+        title: "こちらの更新",
+        updatedAt: "2024-01-03T00:00:00.000Z",
+      }),
+    ];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
+
+    const result = saveNotes(local, { expectedNotes: baseline });
+
+    expect(result).toEqual({ ok: true });
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
+  });
+
+  it("force 保存は競合した現在内容をバックアップしてから明示的に上書きする", () => {
+    const remote = [makeNote({ id: "remote", title: "別タブ" })];
+    const local = [makeNote({ id: "local", title: "この画面" })];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
+
+    const result = saveNotes(local, { force: true });
+
+    expect(result).toEqual({ ok: true });
+    expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(remote);
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(local);
+  });
+
+  it("保存対象そのものが不正なら invalid_data として永続化を拒否する", () => {
+    const duplicateId = [
+      makeNote({ id: "duplicate", title: "a" }),
+      makeNote({ id: "duplicate", title: "b" }),
+    ];
+
+    const result = saveNotes(duplicateId);
+
+    expect(result).toEqual({ ok: false, reason: "invalid_data" });
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+  });
+
   it("容量超過時は quota を返す", () => {
     storage.setItem.mockImplementation(() => {
       throw new DOMException("QuotaExceededError", "QuotaExceededError");
