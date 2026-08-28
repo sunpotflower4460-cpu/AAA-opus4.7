@@ -38,6 +38,7 @@ jobs:
           };
           pkg.scripts = {
             ...pkg.scripts,
+            'cap:add:ios': 'npm run build && cap add ios',
             'cap:sync:ios': 'npm run build && cap sync ios',
             'cap:open:ios': 'cap open ios',
           };
@@ -50,10 +51,19 @@ jobs:
           npm ci
           npx cap --version
 
+      - name: Verify reproducible iOS scaffold and sync
+        run: |
+          npm run build
+          npx cap add ios
+          npx cap sync ios
+          test -f ios/App/App.xcodeproj/project.pbxproj
+          test -f ios/App/App/Info.plist
+
       - uses: actions/upload-artifact@v4
         with:
-          name: phase33-capacitor-lockfiles
+          name: phase33-capacitor-artifacts
           path: |
             package.json
             package-lock.json
+            ios
           if-no-files-found: error
