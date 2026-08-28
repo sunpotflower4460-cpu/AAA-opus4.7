@@ -17,12 +17,14 @@
     "cap:open:ios": "cap open ios"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@capacitor/app": "7.1.2",
     "@capacitor/core": "7.6.8",
-    "@capacitor/ios": "7.6.8"
+    "@capacitor/ios": "7.6.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "7.6.8",
     "@cloudflare/vite-plugin": "^1.40.0",
     "@eslint/js": "^10.0.1",
     "@types/react": "^18.3.12",
@@ -41,8 +43,7 @@
     "typescript-eslint": "^8.60.0",
     "vite": "^6.0.0",
     "vitest": "^4.1.7",
-    "wrangler": "^4.98.0",
-    "@capacitor/cli": "7.6.8"
+    "wrangler": "^4.98.0"
   },
   "engines": {
     "node": ">=22"
