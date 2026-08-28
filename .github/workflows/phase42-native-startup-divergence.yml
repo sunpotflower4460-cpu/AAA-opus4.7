@@ -1,0 +1,36 @@
+name: Phase 42 Native Startup Divergence
+
+on:
+  push:
+    branches: ["bugfix/phase42-native-startup-divergence"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Apply startup divergence hardening
+        run: python scripts/phase42_native_startup_divergence.py
+      - name: Validate Phase 42
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+          npm run check
+          npx cap sync ios
+          git diff --exit-code -- ios
+          git diff --check
+      - name: Commit source and regressions
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/__tests__/App.native-durable-snapshot.test.tsx
+          git commit -m "Phase 42: reconcile local and native snapshots before startup writes"
+          git push origin HEAD:bugfix/phase42-native-startup-divergence
