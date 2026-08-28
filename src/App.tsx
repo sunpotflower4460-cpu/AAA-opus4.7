@@ -30,12 +30,17 @@ const UNDO_TIMEOUT_MS = 10_000;
 export default function App() {
   // 初回ロード結果を一度だけ取得（loadNotes はマウント時に一度だけ呼ぶ）
   const [initialLoad] = useState(() => {
-    const r = loadNotes();
-    return { notes: r.notes, loadFailed: !r.ok };
+    const result = loadNotes();
+    return {
+      notes: result.notes,
+      loadFailed: !result.ok,
+      recoveredCount: result.ok ? 0 : result.notes.length,
+    };
   });
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
   const [view, setView] = useState<View>({ kind: "list" });
+  const [searchQuery, setSearchQuery] = useState("");
   const [monetization, setMonetization] = useState<MonetizationState>(() =>
     loadMonetizationState(),
   );
@@ -49,37 +54,75 @@ export default function App() {
   /** 初回ロードがデータ破損だった場合の警告表示 */
   const [loadError, setLoadError] = useState<boolean>(initialLoad.loadFailed);
 
-  /** データ破損時に自動保存で空配列で上書きしないためのガード */
+  /**
+   * 破損ロード時は、ユーザーが明示的に編集するまで保存を禁止する。
+   * 一度スキップしただけで解除せず、データ確認中のリロード/終了でも元データを守る。
+   */
   const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
+
+  /**
+   * このタブ自身が変更したときだけ lifecycle flush を許可する。
+   * 開いただけの古いタブが pagehide で新しい別タブの内容を上書きする事故を防ぐ。
+   */
+  const notesDirtyRef = useRef(false);
+  const latestNotesRef = useRef(notes);
+  latestNotesRef.current = notes;
+
+  const markNotesDirty = useCallback(() => {
+    saveGuardRef.current = false;
+    notesDirtyRef.current = true;
+    setLastSaveResult(null);
+  }, []);
 
   const persistTimer = useRef<number | null>(null);
   useEffect(() => {
-    if (persistTimer.current) window.clearTimeout(persistTimer.current);
+    if (persistTimer.current) {
+      window.clearTimeout(persistTimer.current);
+      persistTimer.current = null;
+    }
+
+    if (saveGuardRef.current || !notesDirtyRef.current) return undefined;
+
     persistTimer.current = window.setTimeout(() => {
-      // 破損ロード時は最初の自動保存をスキップ（空データで上書きしない）
-      if (saveGuardRef.current) {
-        saveGuardRef.current = false;
-        return;
-      }
+      persistTimer.current = null;
+      if (saveGuardRef.current || !notesDirtyRef.current) return;
+
       const result = saveNotes(notes);
       setLastSaveResult(result);
+      if (result.ok) notesDirtyRef.current = false;
     }, AUTOSAVE_DEBOUNCE_MS);
+
     return () => {
-      if (persistTimer.current) window.clearTimeout(persistTimer.current);
+      if (persistTimer.current) {
+        window.clearTimeout(persistTimer.current);
+        persistTimer.current = null;
+      }
     };
   }, [notes]);
 
+  const flushPendingNotes = useCallback(() => {
+    if (saveGuardRef.current || !notesDirtyRef.current) return;
+
+    const result = saveNotes(latestNotesRef.current);
+    setLastSaveResult(result);
+    if (result.ok) notesDirtyRef.current = false;
+  }, []);
+
   useEffect(() => {
-    const flush = () => {
-      saveNotes(notes);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushPendingNotes();
     };
-    window.addEventListener("beforeunload", flush);
-    window.addEventListener("pagehide", flush);
+
+    window.addEventListener("beforeunload", flushPendingNotes);
+    window.addEventListener("pagehide", flushPendingNotes);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
-      window.removeEventListener("beforeunload", flush);
-      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", flushPendingNotes);
+      window.removeEventListener("pagehide", flushPendingNotes);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [notes]);
+  }, [flushPendingNotes]);
 
   useEffect(() => {
     const syncMonetization = () => setMonetization(loadMonetizationState());
@@ -96,7 +139,9 @@ export default function App() {
   }, []);
 
   const createNote = useCallback(() => {
-    saveGuardRef.current = false; // 明示的な操作: 保存ガードを解除する
+    markNotesDirty();
+    setSearchQuery("");
+
     const iso = nowIso();
     const note: Note = {
       id: createId(),
@@ -109,18 +154,18 @@ export default function App() {
     };
     setNotes((prev) => [note, ...prev]);
     setView({ kind: "editor", id: note.id });
-  }, []);
+  }, [markNotesDirty]);
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
-      saveGuardRef.current = false; // 明示的な編集: 保存ガードを解除する
+      markNotesDirty();
       setNotes((prev) =>
         prev.map((note) =>
           note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
         ),
       );
     },
-    [],
+    [markNotesDirty],
   );
 
   const deleteNote = useCallback(
@@ -136,6 +181,7 @@ export default function App() {
       if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
       const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
 
+      markNotesDirty();
       setNotes((prev) => prev.filter((note) => note.id !== id));
       setLastDeleted(deleted);
       undoTimerRef.current = window.setTimeout(() => {
@@ -144,7 +190,7 @@ export default function App() {
       }, UNDO_TIMEOUT_MS);
       setView({ kind: "list" });
     },
-    [notes],
+    [markNotesDirty, notes],
   );
 
   const undoDelete = useCallback(() => {
@@ -156,9 +202,10 @@ export default function App() {
     }
 
     const { deletedAt: _, ...note } = lastDeleted;
+    markNotesDirty();
     setNotes((prev) => (prev.some((item) => item.id === note.id) ? prev : [note, ...prev]));
     setLastDeleted(null);
-  }, [lastDeleted]);
+  }, [lastDeleted, markNotesDirty]);
 
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
@@ -220,7 +267,9 @@ export default function App() {
           style={{ borderRadius: "7px 13px 8px 11px" }}
         >
           <span className="font-mincho jp-text-discipline">
-            データの読み込みに問題がありました。メモが復元できない可能性があります。
+            {initialLoad.recoveredCount > 0
+              ? `保存データに問題がありました。復元できた${initialLoad.recoveredCount}件を表示しています。`
+              : "データの読み込みに問題がありました。メモが復元できない可能性があります。"}
           </span>
           <button
             type="button"
@@ -257,6 +306,8 @@ export default function App() {
           <NotesList
             notes={notes}
             monetization={monetization}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
             onOpen={openNote}
             onCreate={createNote}
             onOpenPremium={openPremiumSheet}
