@@ -187,20 +187,39 @@ export async function readNativeDurableSnapshot(): Promise<NativeDurableSnapshot
   }
 
   // primary が missing / corrupt / read error の場合でも backup は独立に読める可能性がある。
-  // ただし両方から正常候補を得られなければ、read error / corrupt の痕跡は error として保持する。
   const backup = await readRaw(BACKUP_PATH);
   if (backup.status === "ok") {
     const parsedBackup = parseValidNotesSnapshot(backup.raw);
     if (parsedBackup !== null) return { status: "available", notes: parsedBackup };
+  }
+
+  // rotation で退避した secondary も実際の復元経路へ含める。
+  // primary / backup の片方が I/O error や破損でも、secondary が正常なら読み取り専用候補として救済する。
+  const secondaryBackup = await readRaw(SECONDARY_BACKUP_PATH);
+  if (secondaryBackup.status === "ok") {
+    const parsedSecondaryBackup = parseValidNotesSnapshot(secondaryBackup.raw);
+    if (parsedSecondaryBackup !== null) {
+      return { status: "available", notes: parsedSecondaryBackup };
+    }
+  }
+
+  // 3層すべてから正常候補を得られなかった場合、I/O error または構造破損の痕跡が1つでもあれば
+  // fresh install と誤認せず error を返す。
+  if (
+    primary.status === "error" ||
+    backup.status === "error" ||
+    secondaryBackup.status === "error"
+  ) {
     return { status: "error" };
   }
 
-  if (primary.status === "error" || backup.status === "error") {
+  if (
+    primary.status === "ok" ||
+    backup.status === "ok" ||
+    secondaryBackup.status === "ok"
+  ) {
     return { status: "error" };
   }
-
-  // primary が読めたが構造破損していたのに backup が無い場合も、fresh install ではない。
-  if (primary.status === "ok") return { status: "error" };
 
   return { status: "missing" };
 }
