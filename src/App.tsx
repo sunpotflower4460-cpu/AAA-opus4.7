@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
-import { loadNotes, saveNotes } from "./lib/storage";
+import { loadNotes, NOTES_STORAGE_KEY, saveNotes } from "./lib/storage";
 import type { SaveResult } from "./lib/storage";
 import {
   REMOVE_ADS_PRODUCT,
@@ -45,6 +45,7 @@ export default function App() {
   const [lastSaveResult, setLastSaveResult] = useState<SaveResult | null>(null);
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
   const [loadError, setLoadError] = useState<boolean>(initialLoad.loadFailed);
+  const [externalConflict, setExternalConflict] = useState(false);
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
@@ -53,11 +54,20 @@ export default function App() {
   const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
   // このタブ自身が変更したときだけ lifecycle flush を許可する。
   const notesDirtyRef = useRef(false);
+  // 最後に正常に読み込んだ / 保存した集合。保存直前の競合検知に使う。
+  const baselineNotesRef = useRef<Note[]>(initialLoad.notes);
   const latestNotesRef = useRef(notes);
+  const externalConflictRef = useRef(false);
 
   useEffect(() => {
     latestNotesRef.current = notes;
   }, [notes]);
+
+  const clearPersistTimer = useCallback(() => {
+    if (!persistTimerRef.current) return;
+    window.clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = null;
+  }, []);
 
   const markNotesDirty = useCallback(() => {
     saveGuardRef.current = false;
@@ -65,38 +75,65 @@ export default function App() {
     setLastSaveResult(null);
   }, []);
 
-  useEffect(() => {
-    if (persistTimerRef.current) {
-      window.clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
+  const applySaveResult = useCallback((result: SaveResult, snapshot: Note[]) => {
+    setLastSaveResult(result);
+
+    if (result.ok) {
+      notesDirtyRef.current = false;
+      saveGuardRef.current = false;
+      baselineNotesRef.current = snapshot;
+      externalConflictRef.current = false;
+      setExternalConflict(false);
+      return;
     }
 
-    if (saveGuardRef.current || !notesDirtyRef.current) return undefined;
+    if (result.reason === "conflict") {
+      externalConflictRef.current = true;
+      setExternalConflict(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    clearPersistTimer();
+
+    if (
+      saveGuardRef.current ||
+      externalConflictRef.current ||
+      !notesDirtyRef.current
+    ) {
+      return undefined;
+    }
 
     persistTimerRef.current = window.setTimeout(() => {
       persistTimerRef.current = null;
-      if (saveGuardRef.current || !notesDirtyRef.current) return;
+      if (
+        saveGuardRef.current ||
+        externalConflictRef.current ||
+        !notesDirtyRef.current
+      ) {
+        return;
+      }
 
-      const result = saveNotes(notes);
-      setLastSaveResult(result);
-      if (result.ok) notesDirtyRef.current = false;
+      const result = saveNotes(notes, { expectedNotes: baselineNotesRef.current });
+      applySaveResult(result, notes);
     }, AUTOSAVE_DEBOUNCE_MS);
 
-    return () => {
-      if (persistTimerRef.current) {
-        window.clearTimeout(persistTimerRef.current);
-        persistTimerRef.current = null;
-      }
-    };
-  }, [notes]);
+    return clearPersistTimer;
+  }, [notes, applySaveResult, clearPersistTimer]);
 
   const flushPendingNotes = useCallback(() => {
-    if (saveGuardRef.current || !notesDirtyRef.current) return;
+    if (
+      saveGuardRef.current ||
+      externalConflictRef.current ||
+      !notesDirtyRef.current
+    ) {
+      return;
+    }
 
-    const result = saveNotes(latestNotesRef.current);
-    setLastSaveResult(result);
-    if (result.ok) notesDirtyRef.current = false;
-  }, []);
+    const snapshot = latestNotesRef.current;
+    const result = saveNotes(snapshot, { expectedNotes: baselineNotesRef.current });
+    applySaveResult(result, snapshot);
+  }, [applySaveResult]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -115,16 +152,51 @@ export default function App() {
   }, [flushPendingNotes]);
 
   useEffect(() => {
-    const syncMonetization = () => setMonetization(loadMonetizationState());
-    window.addEventListener("storage", syncMonetization);
-    return () => window.removeEventListener("storage", syncMonetization);
-  }, []);
+    const handleStorage = (event: StorageEvent) => {
+      const notesStorageChanged = event.key === null || event.key === NOTES_STORAGE_KEY;
+
+      if (notesStorageChanged) {
+        const remote = loadNotes();
+
+        if (!remote.ok) {
+          clearPersistTimer();
+          externalConflictRef.current = true;
+          setExternalConflict(true);
+          setLoadError(true);
+        } else if (
+          notesDirtyRef.current ||
+          saveGuardRef.current ||
+          externalConflictRef.current
+        ) {
+          // ローカル未保存編集がある間は、外部変更を勝手に採用も上書きもしない。
+          clearPersistTimer();
+          externalConflictRef.current = true;
+          setExternalConflict(true);
+        } else {
+          // この画面が未編集なら、別タブの最新状態へ安全に追従する。
+          baselineNotesRef.current = remote.notes;
+          latestNotesRef.current = remote.notes;
+          setNotes(remote.notes);
+          setLastSaveResult(null);
+        }
+      }
+
+      // Premium は初回リリースでは無効だが、将来の別タブ同期を維持する。
+      if (event.key === null || event.key !== NOTES_STORAGE_KEY) {
+        setMonetization(loadMonetizationState());
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [clearPersistTimer]);
 
   useEffect(() => {
     return () => {
+      clearPersistTimer();
       if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
     };
-  }, []);
+  }, [clearPersistTimer]);
 
   const createNote = useCallback(() => {
     markNotesDirty();
@@ -194,6 +266,40 @@ export default function App() {
     setLastDeleted(null);
   }, [lastDeleted, markNotesDirty]);
 
+  const loadStoredNotes = useCallback(() => {
+    const result = loadNotes();
+    if (!result.ok) {
+      setLoadError(true);
+      return;
+    }
+
+    clearPersistTimer();
+    if (undoTimerRef.current) {
+      window.clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+
+    notesDirtyRef.current = false;
+    saveGuardRef.current = false;
+    externalConflictRef.current = false;
+    baselineNotesRef.current = result.notes;
+    latestNotesRef.current = result.notes;
+
+    setNotes(result.notes);
+    setLastDeleted(null);
+    setLastSaveResult(null);
+    setExternalConflict(false);
+    setLoadError(false);
+  }, [clearPersistTimer]);
+
+  const forceSaveCurrentNotes = useCallback(() => {
+    clearPersistTimer();
+    const snapshot = latestNotesRef.current;
+    const result = saveNotes(snapshot, { force: true });
+    applySaveResult(result, snapshot);
+    if (result.ok) setLoadError(false);
+  }, [applySaveResult, clearPersistTimer]);
+
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
   }, []);
@@ -242,26 +348,64 @@ export default function App() {
 
   return (
     <AppShell>
-      {loadError && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="fixed inset-x-gr-4 top-gr-3 z-30 flex items-center justify-between gap-gr-3 border border-vermilion/30 bg-paper px-gr-4 py-gr-2 text-[12px] leading-ample text-vermilion shadow-paper-hover animate-fadeIn"
-          style={{ borderRadius: "7px 13px 8px 11px" }}
-        >
-          <span className="font-mincho jp-text-discipline">
-            {initialLoad.recoveredCount > 0
-              ? `保存データに問題がありました。復元できた${initialLoad.recoveredCount}件を表示しています。`
-              : "データの読み込みに問題がありました。メモが復元できない可能性があります。"}
-          </span>
-          <button
-            type="button"
-            onClick={() => setLoadError(false)}
-            className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[8px] text-ink-muted/70 transition-soft hover:bg-vermilion/5 hover:text-sumi active:scale-[0.96]"
-            aria-label="閉じる"
-          >
-            ✕
-          </button>
+      {(loadError || externalConflict) && (
+        <div className="pointer-events-none fixed inset-x-gr-4 top-[max(env(safe-area-inset-top),12px)] z-30 flex flex-col gap-gr-2">
+          {loadError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="pointer-events-auto flex items-center justify-between gap-gr-3 border border-vermilion/30 bg-paper px-gr-4 py-gr-2 text-[12px] leading-ample text-vermilion shadow-paper-hover animate-fadeIn"
+              style={{ borderRadius: "7px 13px 8px 11px" }}
+            >
+              <span className="font-mincho jp-text-discipline">
+                {initialLoad.recoveredCount > 0
+                  ? `保存データに問題がありました。復元できた${initialLoad.recoveredCount}件を表示しています。`
+                  : "データの読み込みに問題がありました。メモが復元できない可能性があります。"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setLoadError(false)}
+                className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-[8px] text-ink-muted/70 transition-soft hover:bg-vermilion/5 hover:text-sumi active:scale-[0.96]"
+                aria-label="閉じる"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {externalConflict && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="pointer-events-auto border border-gold/35 bg-paper px-gr-4 py-gr-3 text-sumi shadow-paper-hover animate-fadeIn"
+              style={{ borderRadius: "7px 13px 8px 11px" }}
+            >
+              <p className="font-mincho text-[14px] tracking-mincho jp-text-discipline">
+                {copy.storageConflictTitle}
+              </p>
+              <p className="mt-gr-2 text-[12px] leading-ample text-ink-muted jp-text-discipline">
+                {copy.storageConflictBody}
+              </p>
+              <div className="mt-gr-3 flex flex-wrap justify-end gap-gr-2">
+                <button
+                  type="button"
+                  onClick={loadStoredNotes}
+                  className="min-h-[44px] border border-[color:var(--color-line)] px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                  style={{ borderRadius: "6px 10px 7px 9px" }}
+                >
+                  {copy.storageConflictLoad}
+                </button>
+                <button
+                  type="button"
+                  onClick={forceSaveCurrentNotes}
+                  className="min-h-[44px] bg-sumi px-gr-3 py-gr-2 font-mincho text-[12px] text-washi transition-soft hover:bg-indigo active:scale-[0.98]"
+                  style={{ borderRadius: "6px 10px 7px 9px" }}
+                >
+                  {copy.storageConflictOverwrite}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
