@@ -218,6 +218,7 @@ export function loadNotes(): LoadResult {
  * - 保存対象そのものを検証し、不正構造を新たに永続化しない
  * - expectedNotes が指定されている場合は、現在の primary と一致するときだけ保存する
  * - 別画面の変更を検知した場合は conflict を返し、黙って上書きしない
+ * - 保存直前に破損 primary が見えた場合も raw を退避してから判断する
  * - 保存前に「正常と検証できた」直前データだけをバックアップする
  * - force はユーザーが競合を理解して明示的に上書きするときだけ使用する
  */
@@ -237,9 +238,16 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
 
   try {
     const currentRaw = window.localStorage.getItem(STORAGE_KEY);
-    const currentParsed = currentRaw
-      ? parseNotesRaw(currentRaw)
-      : ({ status: "valid", notes: [] } satisfies ParsedNotesResult);
+    const currentParsed =
+      currentRaw !== null
+        ? parseNotesRaw(currentRaw)
+        : ({ status: "valid", notes: [] } satisfies ParsedNotesResult);
+
+    // loadNotes() を経由せず直接 saveNotes() が呼ばれた場合でも、
+    // 破損・不正構造の primary を黙って消さない。
+    if (currentRaw !== null && currentParsed.status !== "valid") {
+      preserveCorruptRaw(currentRaw);
+    }
 
     if (!options.force && options.expectedNotes) {
       if (
@@ -252,7 +260,7 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
 
     // 直前の正常 primary は、force 上書き時も先にバックアップへ残す。
     try {
-      if (currentRaw && currentParsed.status === "valid") {
+      if (currentRaw !== null && currentParsed.status === "valid") {
         window.localStorage.setItem(BACKUP_KEY, currentRaw);
       }
     } catch {
