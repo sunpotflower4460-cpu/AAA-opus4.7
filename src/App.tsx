@@ -350,8 +350,17 @@ export default function App() {
         nativeRecoveryGateRef.current = false;
         setNativeRecoveryStatus("idle");
         saveGuardRef.current = false;
+        notesDirtyRef.current = false;
+        dirtySinceRef.current = null;
+        baselineNotesRef.current = current.notes;
+        latestNotesRef.current = current.notes;
+        externalConflictRef.current = false;
         clearRecoveryCandidateSources();
-        applyCleanRemoteNotes(current.notes);
+        setNotes(current.notes);
+        setLastSaveResult(null);
+        setExternalConflict(false);
+        setCanLoadStoredNotes(true);
+        setRecoveryCandidateCount(0);
         setLoadError(false);
         persistDurableSnapshot(current.notes);
         return;
