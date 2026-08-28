@@ -14,7 +14,7 @@ type Props = {
  */
 export function ReadMode({ note, onBack, onEdit }: Props) {
   const title = note.title.trim() || copy.untitled;
-  const body = note.body.trim();
+  const hasBody = note.body.trim().length > 0;
 
   return (
     <div className="read-mode-shell mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
@@ -74,8 +74,9 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
           <h1 className="read-mode-title jp-text-discipline">{title}</h1>
           <span className="read-mode-divider" aria-hidden="true" />
 
-          {body ? (
-            <p className="read-mode-body jp-text-discipline">{body}</p>
+          {hasBody ? (
+            // 空判定だけ trim() を使い、表示内容は原文の改行・先頭末尾の余白を保つ。
+            <p className="read-mode-body jp-text-discipline">{note.body}</p>
           ) : (
             <p className="read-mode-body read-mode-empty-body jp-text-discipline">
               {copy.emptyReadBody}
