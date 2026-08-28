@@ -64,6 +64,20 @@ describe("native app lifecycle subscription", () => {
     expect(remove).toHaveBeenCalledTimes(1);
   });
 
+  it("listener removeがrejectしてもcleanupをunhandled rejectionにしない", async () => {
+    mocks.isNativePlatform.mockReturnValue(true);
+    const remove = vi.fn().mockRejectedValue(new Error("remove failed"));
+    mocks.addListener.mockResolvedValue({ remove });
+
+    const unsubscribe = subscribeToNativeAppState(() => {});
+    await Promise.resolve();
+    expect(() => unsubscribe()).not.toThrow();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(remove).toHaveBeenCalledTimes(1);
+  });
+
   it("native plugin登録失敗時もcleanup可能なままにする", async () => {
     mocks.isNativePlatform.mockReturnValue(true);
     mocks.addListener.mockRejectedValue(new Error("plugin unavailable"));
