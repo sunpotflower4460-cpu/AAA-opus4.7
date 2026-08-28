@@ -91,11 +91,15 @@ export default function App() {
   }, []);
 
   const markNotesDirty = useCallback(() => {
-    // recovery/conflict 中は明示解決を優先し、編集しただけでは guard を解除しない。
-    if (!externalConflictRef.current) saveGuardRef.current = false;
+    if (externalConflictRef.current) {
+      // recovery/conflict 中の編集は自動保存を再開せず、エディタにも停止理由を即時通知する。
+      setLastSaveResult({ ok: false, reason: "conflict" });
+    } else {
+      saveGuardRef.current = false;
+      setLastSaveResult(null);
+    }
     if (!notesDirtyRef.current) dirtySinceRef.current = Date.now();
     notesDirtyRef.current = true;
-    setLastSaveResult(null);
   }, []);
 
   const flagExternalConflict = useCallback(
@@ -555,6 +559,7 @@ export default function App() {
           onBack={() => setView({ kind: "list" })}
           onDelete={() => deleteNote(currentNote.id)}
           saveResult={lastSaveResult}
+          conflictMessage={canLoadStoredNotes ? copy.saveConflict : copy.saveRecovery}
         />
       )}
     </AppShell>
