@@ -13,13 +13,22 @@ type Props = {
   onDelete: () => void;
   /** App が実際に行った直近の保存結果。UIの保存表示を推測タイマーにしない。 */
   saveResult?: SaveResult | null;
+  /** conflict の理由に応じた保存停止メッセージ。 */
+  conflictMessage?: string;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const SAVED_FEEDBACK_VISIBLE_MS = 1200;
 
-export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null }: Props) {
+export function NoteEditor({
+  note,
+  onChange,
+  onBack,
+  onDelete,
+  saveResult = null,
+  conflictMessage = copy.saveConflict,
+}: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -51,13 +60,13 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null
     }
 
     if (!saveResult.ok) {
+      // 保存結果は外部ストレージI/Oの結果なので、このeffect内で状態へ反映する。
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSaveState("error");
       return;
     }
 
     // 実際の saveNotes 成功後にだけ「保存済み」へ遷移する。
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSaveState("saved");
     savedTimer.current = window.setTimeout(() => {
       setSaveState("idle");
@@ -111,7 +120,7 @@ export function NoteEditor({ note, onChange, onBack, onDelete, saveResult = null
 
   const saveErrorMessage =
     saveResult?.ok === false && saveResult.reason === "conflict"
-      ? copy.saveConflict
+      ? conflictMessage
       : copy.saveError;
 
   return (

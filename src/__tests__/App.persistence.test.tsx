@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import {
   BACKUP_KEY_FOR_TESTING,
+  CONFLICT_BACKUP_KEY_FOR_TESTING,
   STORAGE_KEY_FOR_TESTING,
 } from "../lib/storage";
 import { copy } from "../lib/i18n";
@@ -107,6 +108,7 @@ describe("App lifecycle persistence", () => {
       });
     }
     container.remove();
+    vi.useRealTimers();
   });
 
   function renderApp() {
@@ -151,6 +153,43 @@ describe("App lifecycle persistence", () => {
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
   });
 
+  it("500ms未満で入力し続けても最大待機時間で途中保存する", () => {
+    vi.useFakeTimers();
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+    openExistingNoteEditor(container);
+
+    for (let index = 1; index <= 8; index += 1) {
+      act(() => changeTextarea(container, `連続入力-${index}`));
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+    }
+
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved[0].body).toBe("連続入力-8");
+  });
+
+  it("pagehide が連続しても dirty 内容を重複保存しない", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+    openExistingNoteEditor(container);
+    act(() => changeTextarea(container, "一度だけ確定する本文"));
+    storage.setItem.mockClear();
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+      window.dispatchEvent(new Event("pagehide"));
+    });
+
+    const primaryWrites = storage.setItem.mock.calls.filter(
+      ([key]) => key === STORAGE_KEY_FOR_TESTING,
+    );
+    expect(primaryWrites).toHaveLength(1);
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved[0].body).toBe("一度だけ確定する本文");
+  });
+
   it("未編集の画面は storage event で別タブの最新内容へ追従する", () => {
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
     renderApp();
@@ -167,6 +206,88 @@ describe("App lifecycle persistence", () => {
 
     expect(container.textContent).toContain("別タブの最新内容");
     expect(container.textContent).not.toContain("元のメモ");
+  });
+
+  it("実行中に primary だけ消失しても clean 画面は backup 候補を先に表示してから確定させる", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+
+    const recovered = [
+      makeNote({
+        id: "runtime-recovery",
+        title: "実行中に救出したメモ",
+        body: "backupからの候補",
+        updatedAt: "2026-08-28T00:16:00.000Z",
+      }),
+    ];
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(recovered));
+    storage.removeItem(STORAGE_KEY_FOR_TESTING);
+
+    act(() => dispatchStorageChange());
+
+    expect(container.textContent).toContain("実行中に救出したメモ");
+    expect(container.textContent).not.toContain("元のメモ");
+    expect(container.textContent).toContain(copy.storageRecoveryTitle);
+    expect(container.textContent).toContain("復元候補を1件表示しています");
+
+    act(() => click(findButton(container, copy.storageRecoverySave)));
+
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved).toEqual(recovered);
+    expect(container.textContent).not.toContain(copy.storageRecoveryTitle);
+  });
+
+  it("suspend中に storage event を取りこぼしても pageshow 復帰時に未編集画面を最新化する", () => {
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
+    renderApp();
+
+    const remote = [
+      makeNote({
+        title: "復帰時に見つける最新版",
+        updatedAt: "2026-08-28T00:17:00.000Z",
+      }),
+    ];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(remote));
+
+    act(() => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+
+    expect(container.textContent).toContain("復帰時に見つける最新版");
+    expect(container.textContent).not.toContain("元のメモ");
+  });
+
+  it("未保存編集がある復帰では remote を勝手に採用せず、その後の保存境界で競合にする", () => {
+    const baseline = [makeNote()];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
+    renderApp();
+    openExistingNoteEditor(container);
+    act(() => changeTextarea(container, "復帰後も守るローカル本文"));
+
+    const remote = [
+      makeNote({
+        title: "suspend中の別画面更新",
+        body: "remote本文",
+        updatedAt: "2026-08-28T00:18:00.000Z",
+      }),
+    ];
+    const remoteRaw = JSON.stringify(remote);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, remoteRaw);
+
+    act(() => {
+      window.dispatchEvent(new Event("pageshow"));
+    });
+
+    const textarea = container.querySelector("textarea");
+    expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
+    expect((textarea as HTMLTextAreaElement).value).toBe("復帰後も守るローカル本文");
+
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
   });
 
   it("storage event が間に合わなくても保存直前比較で別タブ更新を上書きしない", () => {
@@ -196,7 +317,7 @@ describe("App lifecycle persistence", () => {
     expect(container.textContent).toContain(copy.saveConflict);
   });
 
-  it("競合中に明示的な上書きを選ぶと、別タブ版をbackupへ残してローカル編集を保存する", () => {
+  it("競合中に明示的な上書きを選ぶと、別タブ版を専用退避しローカル版を二重保存する", () => {
     const baseline = [makeNote()];
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
     renderApp();
@@ -220,9 +341,46 @@ describe("App lifecycle persistence", () => {
 
     const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
     const backup = JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[];
+    const conflictBackup = JSON.parse(
+      storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING],
+    ) as Note[];
     expect(saved[0].body).toBe("この画面で残したい本文");
-    expect(backup).toEqual(remote);
+    expect(backup).toEqual(saved);
+    expect(conflictBackup).toEqual(remote);
     expect(container.textContent).not.toContain(copy.storageConflictTitle);
+  });
+
+  it("競合上書き時に別タブ版の専用退避が失敗したらremoteを保持して競合状態を続ける", () => {
+    const baseline = [makeNote()];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
+    renderApp();
+    openExistingNoteEditor(container);
+    act(() => changeTextarea(container, "退避できるまで保存しない本文"));
+
+    const remote = [
+      makeNote({
+        title: "絶対に消さない別タブ版",
+        body: "remoteを保持",
+        updatedAt: "2026-08-28T00:22:00.000Z",
+      }),
+    ];
+    const remoteRaw = JSON.stringify(remote);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, remoteRaw);
+    act(() => dispatchStorageChange());
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === CONFLICT_BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    act(() => click(findButton(container, copy.storageConflictOverwrite)));
+
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(remoteRaw);
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain(copy.saveError);
   });
 
   it("競合中に保存先の内容を選ぶと、未保存ローカル編集を破棄して最新内容を読み込む", () => {

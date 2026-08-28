@@ -9,7 +9,7 @@ import {
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
 import { loadNotes, NOTES_STORAGE_KEY, saveNotes } from "./lib/storage";
-import type { SaveResult } from "./lib/storage";
+import type { LoadResult, SaveResult } from "./lib/storage";
 import {
   REMOVE_ADS_PRODUCT,
   loadMonetizationState,
@@ -30,17 +30,35 @@ type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; 
 type DeletedNote = Note & { deletedAt: string };
 
 const AUTOSAVE_DEBOUNCE_MS = 500;
+const AUTOSAVE_MAX_WAIT_MS = 3_000;
 const UNDO_TIMEOUT_MS = 10_000;
+
+function notesSnapshotMatches(left: readonly Note[], right: readonly Note[]): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function hasRecoveryCandidate(result: LoadResult): boolean {
+  return !result.ok && result.recoveryCandidate === true;
+}
+
+function canChooseStoredPrimary(result: LoadResult): boolean {
+  return result.ok || result.storedPrimaryAvailable === true;
+}
 
 export default function App() {
   const [initialLoad] = useState(() => {
     const result = loadNotes();
+    const recoveryPending = hasRecoveryCandidate(result);
     return {
       notes: result.notes,
       loadFailed: !result.ok,
-      recoveredCount: result.ok ? 0 : result.notes.length,
+      recoveryPending,
+      storedPrimaryAvailable: canChooseStoredPrimary(result),
+      recoveredCount: recoveryPending ? result.notes.length : 0,
     };
   });
+  // 同じ画面自身の中断保存だけを継続更新できるよう、mount寿命内で固定したIDを使う。
+  const [persistenceWriterId] = useState(() => createId());
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
   const [view, setView] = useState<View>({ kind: "list" });
@@ -51,21 +69,31 @@ export default function App() {
   const [isPremiumSheetOpen, setIsPremiumSheetOpen] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<SaveResult | null>(null);
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
-  const [loadError, setLoadError] = useState<boolean>(initialLoad.loadFailed);
-  const [externalConflict, setExternalConflict] = useState(false);
-  const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(!initialLoad.loadFailed);
+  // 復元候補がある場合は、汎用エラーと二重表示せず recovery banner 側で案内する。
+  const [loadError, setLoadError] = useState<boolean>(
+    initialLoad.loadFailed && !initialLoad.recoveryPending,
+  );
+  const [externalConflict, setExternalConflict] = useState(initialLoad.recoveryPending);
+  const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(
+    initialLoad.storedPrimaryAvailable,
+  );
+  const [recoveryCandidateCount, setRecoveryCandidateCount] = useState(
+    initialLoad.recoveredCount,
+  );
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
 
-  // 破損復旧中は、ユーザー自身の明示的な編集が入るまで保存禁止を維持する。
+  // 破損復旧中は、ユーザーが復元内容を明示的に確定するまで保存禁止を維持する。
   const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
   // このタブ自身が変更したときだけ lifecycle flush を許可する。
   const notesDirtyRef = useRef(false);
+  // debounce が連続入力で永遠に後ろ倒しにならないよう、dirty 区間の開始時刻を保持する。
+  const dirtySinceRef = useRef<number | null>(null);
   // 最後に正常に読み込んだ / 保存した集合。保存直前の競合検知に使う。
   const baselineNotesRef = useRef<Note[]>(initialLoad.notes);
   const latestNotesRef = useRef(notes);
-  const externalConflictRef = useRef(false);
+  const externalConflictRef = useRef(initialLoad.recoveryPending);
 
   // pagehide は非常に早く来ることがあるため、paint 前に flush 用 snapshot を更新する。
   useLayoutEffect(() => {
@@ -79,22 +107,73 @@ export default function App() {
   }, []);
 
   const markNotesDirty = useCallback(() => {
-    saveGuardRef.current = false;
+    if (externalConflictRef.current) {
+      // recovery/conflict 中の編集は自動保存を再開せず、エディタにも停止理由を即時通知する。
+      setLastSaveResult({ ok: false, reason: "conflict" });
+    } else {
+      saveGuardRef.current = false;
+      setLastSaveResult(null);
+    }
+    if (!notesDirtyRef.current) dirtySinceRef.current = Date.now();
     notesDirtyRef.current = true;
-    setLastSaveResult(null);
   }, []);
 
   const flagExternalConflict = useCallback(
-    (storedReadable: boolean, alsoReportLoadError = false) => {
+    (
+      storedReadable: boolean,
+      alsoReportLoadError = false,
+      visibleRecoveryCount = 0,
+    ) => {
       clearPersistTimer();
       externalConflictRef.current = true;
       setExternalConflict(true);
       setCanLoadStoredNotes(storedReadable);
+      setRecoveryCandidateCount(storedReadable ? 0 : visibleRecoveryCount);
       setLastSaveResult({ ok: false, reason: "conflict" });
-      if (alsoReportLoadError) setLoadError(true);
+      // 状態が回復した後に古い汎用エラーが残らないよう、毎回現在状態へ揃える。
+      setLoadError(alsoReportLoadError && visibleRecoveryCount === 0);
     },
     [clearPersistTimer],
   );
+
+  const applyCleanRemoteNotes = useCallback((remoteNotes: Note[]) => {
+    if (notesSnapshotMatches(remoteNotes, baselineNotesRef.current)) return;
+
+    dirtySinceRef.current = null;
+    baselineNotesRef.current = remoteNotes;
+    latestNotesRef.current = remoteNotes;
+    setNotes(remoteNotes);
+    setLastSaveResult(null);
+    setCanLoadStoredNotes(true);
+  }, []);
+
+  const refreshCleanNotesFromStorage = useCallback(() => {
+    if (
+      notesDirtyRef.current ||
+      saveGuardRef.current ||
+      externalConflictRef.current
+    ) {
+      return;
+    }
+
+    const remote = loadNotes();
+    if (!remote.ok) {
+      if (hasRecoveryCandidate(remote)) {
+        // 空配列を含む中断保存も候補になり得るため、件数ではなく明示フラグで判定する。
+        applyCleanRemoteNotes(remote.notes);
+        flagExternalConflict(
+          canChooseStoredPrimary(remote),
+          false,
+          remote.notes.length,
+        );
+      } else {
+        flagExternalConflict(false, true);
+      }
+      return;
+    }
+
+    applyCleanRemoteNotes(remote.notes);
+  }, [applyCleanRemoteNotes, flagExternalConflict]);
 
   const applySaveResult = useCallback(
     (result: SaveResult, snapshot: Note[]) => {
@@ -102,11 +181,14 @@ export default function App() {
 
       if (result.ok) {
         notesDirtyRef.current = false;
+        dirtySinceRef.current = null;
         saveGuardRef.current = false;
         baselineNotesRef.current = snapshot;
         externalConflictRef.current = false;
         setExternalConflict(false);
         setCanLoadStoredNotes(true);
+        setRecoveryCandidateCount(0);
+        setLoadError(false);
         return;
       }
 
@@ -114,7 +196,12 @@ export default function App() {
         // storage event が届く前に保存直前比較で競合した場合も、
         // 現在の保存先が読み込み可能かをここで判定する。
         const stored = loadNotes();
-        flagExternalConflict(stored.ok, !stored.ok);
+        const storedHasRecoveryCandidate = hasRecoveryCandidate(stored);
+        // ここはローカル dirty 状態なので、remote の復元候補を勝手に画面へ適用しない。
+        flagExternalConflict(
+          canChooseStoredPrimary(stored),
+          !stored.ok && !storedHasRecoveryCandidate,
+        );
       }
     },
     [flagExternalConflict],
@@ -131,6 +218,11 @@ export default function App() {
       return undefined;
     }
 
+    const dirtyForMs =
+      dirtySinceRef.current === null ? 0 : Math.max(0, Date.now() - dirtySinceRef.current);
+    const maxWaitRemainingMs = Math.max(0, AUTOSAVE_MAX_WAIT_MS - dirtyForMs);
+    const delayMs = Math.min(AUTOSAVE_DEBOUNCE_MS, maxWaitRemainingMs);
+
     persistTimerRef.current = window.setTimeout(() => {
       persistTimerRef.current = null;
       if (
@@ -141,12 +233,15 @@ export default function App() {
         return;
       }
 
-      const result = saveNotes(notes, { expectedNotes: baselineNotesRef.current });
+      const result = saveNotes(notes, {
+        expectedNotes: baselineNotesRef.current,
+        writerId: persistenceWriterId,
+      });
       applySaveResult(result, notes);
-    }, AUTOSAVE_DEBOUNCE_MS);
+    }, delayMs);
 
     return clearPersistTimer;
-  }, [notes, applySaveResult, clearPersistTimer]);
+  }, [notes, applySaveResult, clearPersistTimer, persistenceWriterId]);
 
   const flushPendingNotes = useCallback(() => {
     if (
@@ -158,25 +253,36 @@ export default function App() {
     }
 
     const snapshot = latestNotesRef.current;
-    const result = saveNotes(snapshot, { expectedNotes: baselineNotesRef.current });
+    const result = saveNotes(snapshot, {
+      expectedNotes: baselineNotesRef.current,
+      writerId: persistenceWriterId,
+    });
     applySaveResult(result, snapshot);
-  }, [applySaveResult]);
+  }, [applySaveResult, persistenceWriterId]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") flushPendingNotes();
+      if (document.visibilityState === "hidden") {
+        flushPendingNotes();
+      } else {
+        // iOS/WKWebView の復帰や長時間 suspend 後は storage event を取りこぼすことがあるため、
+        // ローカル未編集のときだけ保存先を再確認する。
+        refreshCleanNotesFromStorage();
+      }
     };
 
     window.addEventListener("beforeunload", flushPendingNotes);
     window.addEventListener("pagehide", flushPendingNotes);
+    window.addEventListener("pageshow", refreshCleanNotesFromStorage);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("beforeunload", flushPendingNotes);
       window.removeEventListener("pagehide", flushPendingNotes);
+      window.removeEventListener("pageshow", refreshCleanNotesFromStorage);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [flushPendingNotes]);
+  }, [flushPendingNotes, refreshCleanNotesFromStorage]);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -184,23 +290,33 @@ export default function App() {
 
       if (notesStorageChanged) {
         const remote = loadNotes();
+        const locallyClean =
+          !notesDirtyRef.current &&
+          !saveGuardRef.current &&
+          !externalConflictRef.current;
 
         if (!remote.ok) {
-          flagExternalConflict(false, true);
-        } else if (
-          notesDirtyRef.current ||
-          saveGuardRef.current ||
-          externalConflictRef.current
-        ) {
+          const remoteHasRecoveryCandidate = hasRecoveryCandidate(remote);
+          if (locallyClean && remoteHasRecoveryCandidate) {
+            applyCleanRemoteNotes(remote.notes);
+            flagExternalConflict(
+              canChooseStoredPrimary(remote),
+              false,
+              remote.notes.length,
+            );
+          } else {
+            // dirty 中はローカル内容を守り、remote の復元候補を勝手に適用しない。
+            flagExternalConflict(
+              canChooseStoredPrimary(remote),
+              !remoteHasRecoveryCandidate,
+            );
+          }
+        } else if (!locallyClean) {
           // ローカル未保存編集がある間は、外部変更を勝手に採用も上書きもしない。
           flagExternalConflict(true);
         } else {
           // この画面が未編集なら、別タブの最新状態へ安全に追従する。
-          baselineNotesRef.current = remote.notes;
-          latestNotesRef.current = remote.notes;
-          setNotes(remote.notes);
-          setLastSaveResult(null);
-          setCanLoadStoredNotes(true);
+          applyCleanRemoteNotes(remote.notes);
         }
       }
 
@@ -212,7 +328,7 @@ export default function App() {
 
     window.addEventListener("storage", handleStorage);
     return () => window.removeEventListener("storage", handleStorage);
-  }, [flagExternalConflict]);
+  }, [applyCleanRemoteNotes, flagExternalConflict]);
 
   useEffect(() => {
     return () => {
@@ -290,10 +406,11 @@ export default function App() {
   }, [lastDeleted, markNotesDirty]);
 
   const loadStoredNotes = useCallback(() => {
-    const result = loadNotes();
+    // pending candidate と正常 primary の両方がある場合は、候補を退避してから primary を明示採用する。
+    const result = loadNotes({ resolvePendingSave: "prefer_primary" });
     if (!result.ok) {
-      setCanLoadStoredNotes(false);
-      setLoadError(true);
+      setCanLoadStoredNotes(canChooseStoredPrimary(result));
+      setLoadError(!hasRecoveryCandidate(result));
       return;
     }
 
@@ -304,6 +421,7 @@ export default function App() {
     }
 
     notesDirtyRef.current = false;
+    dirtySinceRef.current = null;
     saveGuardRef.current = false;
     externalConflictRef.current = false;
     baselineNotesRef.current = result.notes;
@@ -315,16 +433,20 @@ export default function App() {
     setLastSaveResult({ ok: true });
     setExternalConflict(false);
     setCanLoadStoredNotes(true);
+    setRecoveryCandidateCount(0);
     setLoadError(false);
   }, [clearPersistTimer]);
 
   const forceSaveCurrentNotes = useCallback(() => {
     clearPersistTimer();
     const snapshot = latestNotesRef.current;
-    const result = saveNotes(snapshot, { force: true });
+    const result = saveNotes(snapshot, {
+      force: true,
+      writerId: persistenceWriterId,
+    });
     applySaveResult(result, snapshot);
     if (result.ok) setLoadError(false);
-  }, [applySaveResult, clearPersistTimer]);
+  }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
 
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
@@ -384,9 +506,7 @@ export default function App() {
               style={{ borderRadius: "7px 13px 8px 11px" }}
             >
               <span className="font-mincho jp-text-discipline">
-                {initialLoad.recoveredCount > 0
-                  ? `保存データに問題がありました。復元できた${initialLoad.recoveredCount}件を表示しています。`
-                  : "データの読み込みに問題がありました。メモが復元できない可能性があります。"}
+                データの読み込みに問題がありました。メモが復元できない可能性があります。
               </span>
               <button
                 type="button"
@@ -407,9 +527,14 @@ export default function App() {
               style={{ borderRadius: "7px 13px 8px 11px" }}
             >
               <p className="font-mincho text-[14px] tracking-mincho jp-text-discipline">
-                {copy.storageConflictTitle}
+                {canLoadStoredNotes ? copy.storageConflictTitle : copy.storageRecoveryTitle}
               </p>
               <p className="mt-gr-2 text-[12px] leading-ample text-ink-muted jp-text-discipline">
+                {!canLoadStoredNotes && recoveryCandidateCount > 0 && (
+                  <span className="mb-gr-1 block">
+                    {copy.storageRecoveryCandidateCount(recoveryCandidateCount)}
+                  </span>
+                )}
                 {canLoadStoredNotes
                   ? copy.storageConflictBody
                   : copy.storageConflictRecoveryBody}
@@ -431,7 +556,9 @@ export default function App() {
                   className="min-h-[44px] bg-sumi px-gr-3 py-gr-2 font-mincho text-[12px] text-washi transition-soft hover:bg-indigo active:scale-[0.98]"
                   style={{ borderRadius: "6px 10px 7px 9px" }}
                 >
-                  {copy.storageConflictOverwrite}
+                  {canLoadStoredNotes
+                    ? copy.storageConflictOverwrite
+                    : copy.storageRecoverySave}
                 </button>
               </div>
             </div>
@@ -494,6 +621,7 @@ export default function App() {
           onBack={() => setView({ kind: "list" })}
           onDelete={() => deleteNote(currentNote.id)}
           saveResult={lastSaveResult}
+          conflictMessage={canLoadStoredNotes ? copy.saveConflict : copy.saveRecovery}
         />
       )}
     </AppShell>
