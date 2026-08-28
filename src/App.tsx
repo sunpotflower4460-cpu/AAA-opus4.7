@@ -77,7 +77,8 @@ export default function App() {
     () =>
       isNativeDurableSnapshotAvailable() &&
       !initialLoad.recoveryPending &&
-      (initialLoad.primaryHealth === "missing" ||
+      (initialLoad.loadFailed ||
+        initialLoad.primaryHealth === "missing" ||
         initialLoad.primaryHealth === "invalid" ||
         initialLoad.primaryHealth === "unavailable"),
   );
