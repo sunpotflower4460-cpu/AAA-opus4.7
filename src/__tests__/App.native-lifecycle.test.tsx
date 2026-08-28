@@ -74,8 +74,10 @@ function changeTextarea(container: HTMLElement, value: string) {
   const textarea = container.querySelector("textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-  setter?.call(textarea, value);
-  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  act(() => {
+    setter?.call(textarea, value);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 }
 
 describe("App Capacitor native lifecycle", () => {
