@@ -41,6 +41,10 @@ function hasRecoveryCandidate(result: LoadResult): boolean {
   return !result.ok && result.recoveryCandidate === true;
 }
 
+function canChooseStoredPrimary(result: LoadResult): boolean {
+  return result.ok || result.storedPrimaryAvailable === true;
+}
+
 export default function App() {
   const [initialLoad] = useState(() => {
     const result = loadNotes();
@@ -49,6 +53,7 @@ export default function App() {
       notes: result.notes,
       loadFailed: !result.ok,
       recoveryPending,
+      storedPrimaryAvailable: canChooseStoredPrimary(result),
       recoveredCount: recoveryPending ? result.notes.length : 0,
     };
   });
@@ -69,7 +74,9 @@ export default function App() {
     initialLoad.loadFailed && !initialLoad.recoveryPending,
   );
   const [externalConflict, setExternalConflict] = useState(initialLoad.recoveryPending);
-  const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(!initialLoad.loadFailed);
+  const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(
+    initialLoad.storedPrimaryAvailable,
+  );
   const [recoveryCandidateCount, setRecoveryCandidateCount] = useState(
     initialLoad.recoveredCount,
   );
@@ -154,7 +161,11 @@ export default function App() {
       if (hasRecoveryCandidate(remote)) {
         // 空配列を含む中断保存も候補になり得るため、件数ではなく明示フラグで判定する。
         applyCleanRemoteNotes(remote.notes);
-        flagExternalConflict(false, false, remote.notes.length);
+        flagExternalConflict(
+          canChooseStoredPrimary(remote),
+          false,
+          remote.notes.length,
+        );
       } else {
         flagExternalConflict(false, true);
       }
@@ -188,7 +199,7 @@ export default function App() {
         const storedHasRecoveryCandidate = hasRecoveryCandidate(stored);
         // ここはローカル dirty 状態なので、remote の復元候補を勝手に画面へ適用しない。
         flagExternalConflict(
-          stored.ok,
+          canChooseStoredPrimary(stored),
           !stored.ok && !storedHasRecoveryCandidate,
         );
       }
@@ -288,10 +299,17 @@ export default function App() {
           const remoteHasRecoveryCandidate = hasRecoveryCandidate(remote);
           if (locallyClean && remoteHasRecoveryCandidate) {
             applyCleanRemoteNotes(remote.notes);
-            flagExternalConflict(false, false, remote.notes.length);
+            flagExternalConflict(
+              canChooseStoredPrimary(remote),
+              false,
+              remote.notes.length,
+            );
           } else {
             // dirty 中はローカル内容を守り、remote の復元候補を勝手に適用しない。
-            flagExternalConflict(false, !remoteHasRecoveryCandidate);
+            flagExternalConflict(
+              canChooseStoredPrimary(remote),
+              !remoteHasRecoveryCandidate,
+            );
           }
         } else if (!locallyClean) {
           // ローカル未保存編集がある間は、外部変更を勝手に採用も上書きもしない。
@@ -388,9 +406,10 @@ export default function App() {
   }, [lastDeleted, markNotesDirty]);
 
   const loadStoredNotes = useCallback(() => {
-    const result = loadNotes();
+    // pending candidate と正常 primary の両方がある場合は、候補を退避してから primary を明示採用する。
+    const result = loadNotes({ resolvePendingSave: "prefer_primary" });
     if (!result.ok) {
-      setCanLoadStoredNotes(false);
+      setCanLoadStoredNotes(canChooseStoredPrimary(result));
       setLoadError(!hasRecoveryCandidate(result));
       return;
     }
