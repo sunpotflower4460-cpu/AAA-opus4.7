@@ -1,0 +1,36 @@
+name: Phase 39 Canonical Recovery Clear
+
+on:
+  push:
+    branches: ["bugfix/phase39-cross-layer-recovery-choice"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Apply canonical recovery clear fix
+        run: python scripts/phase39_clear_recovery_after_canonical.py
+      - name: Validate fix
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high
+          npm run check
+          npx cap sync ios
+          git diff --exit-code -- ios
+          git diff --check
+      - name: Commit source and regression
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx src/__tests__/App.native-durable-snapshot.test.tsx
+          git commit -m "Phase 39: clear recovery state after canonical primary returns"
+          git push origin HEAD:bugfix/phase39-cross-layer-recovery-choice
