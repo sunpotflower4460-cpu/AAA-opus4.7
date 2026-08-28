@@ -8,7 +8,12 @@ import {
 } from "react";
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
-import { loadNotes, NOTES_STORAGE_KEY, saveNotes } from "./lib/storage";
+import {
+  isRetryableSaveFailure,
+  loadNotes,
+  NOTES_STORAGE_KEY,
+  saveNotes,
+} from "./lib/storage";
 import type { LoadResult, SaveResult } from "./lib/storage";
 import {
   REMOVE_ADS_PRODUCT,
@@ -20,6 +25,7 @@ import { PREMIUM_ENABLED } from "./lib/featureFlags";
 import { nowIso } from "./lib/date";
 import { createId } from "./lib/id";
 import { copy } from "./lib/i18n";
+import { getSaveFailureMessage } from "./lib/saveFailureUi";
 import { AppShell } from "./components/AppShell";
 import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
@@ -449,17 +455,17 @@ export default function App() {
   }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
 
   const retrySaveCurrentNotes = useCallback(() => {
-  clearPersistTimer();
-  // conflict/recovery は専用UIの明示選択でのみ解決する。通常Retryで force しない。
-  if (saveGuardRef.current || externalConflictRef.current) return;
+    clearPersistTimer();
+    // conflict/recovery は専用UIの明示選択でのみ解決する。通常Retryで force しない。
+    if (saveGuardRef.current || externalConflictRef.current) return;
 
-  const snapshot = latestNotesRef.current;
-  const result = saveNotes(snapshot, {
-    expectedNotes: baselineNotesRef.current,
-    writerId: persistenceWriterId,
-  });
-  applySaveResult(result, snapshot);
-}, [applySaveResult, clearPersistTimer, persistenceWriterId]);
+    const snapshot = latestNotesRef.current;
+    const result = saveNotes(snapshot, {
+      expectedNotes: baselineNotesRef.current,
+      writerId: persistenceWriterId,
+    });
+    applySaveResult(result, snapshot);
+  }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
 
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
@@ -500,6 +506,14 @@ export default function App() {
     return notes.find((note) => note.id === view.id);
   }, [view, notes]);
 
+  const globalSaveFailureMessage = getSaveFailureMessage(lastSaveResult);
+  const showGlobalSaveFailure =
+    globalSaveFailureMessage !== null && (view.kind !== "editor" || !currentNote);
+  const canRetryGlobalSave =
+    showGlobalSaveFailure &&
+    !externalConflict &&
+    isRetryableSaveFailure(lastSaveResult);
+
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -509,7 +523,7 @@ export default function App() {
 
   return (
     <AppShell>
-      {(loadError || externalConflict) && (
+      {(loadError || externalConflict || showGlobalSaveFailure) && (
         <div className="pointer-events-none fixed inset-x-gr-4 top-[max(env(safe-area-inset-top),12px)] z-30 flex flex-col gap-gr-2">
           {loadError && (
             <div
@@ -574,6 +588,30 @@ export default function App() {
                     : copy.storageRecoverySave}
                 </button>
               </div>
+            </div>
+          )}
+
+
+          {showGlobalSaveFailure && globalSaveFailureMessage && (
+            <div
+              data-testid="global-save-failure"
+              role="alert"
+              aria-live="assertive"
+              className="pointer-events-auto flex flex-wrap items-center justify-between gap-gr-3 border border-vermilion/30 bg-paper px-gr-4 py-gr-3 text-vermilion shadow-paper-hover animate-fadeIn"
+              style={{ borderRadius: "7px 13px 8px 11px" }}
+            >
+              <span className="font-mincho text-[12px] leading-ample jp-text-discipline">
+                {globalSaveFailureMessage}
+              </span>
+              {canRetryGlobalSave && (
+                <button
+                  type="button"
+                  onClick={retrySaveCurrentNotes}
+                  className="min-h-[44px] shrink-0 rounded-full border border-vermilion/30 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-vermilion transition-soft hover:bg-vermilion/5 active:scale-[0.98]"
+                >
+                  {copy.retrySave}
+                </button>
+              )}
             </div>
           )}
         </div>
