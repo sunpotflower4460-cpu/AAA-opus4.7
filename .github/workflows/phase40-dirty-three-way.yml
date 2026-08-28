@@ -18,7 +18,7 @@ jobs:
           node-version: "22"
           cache: "npm"
       - name: Apply dirty three-way recovery hardening
-        run: python scripts/phase40_dirty_three_way.py
+        run: python scripts/phase40_dirty_three_way_validate.py
       - name: Validate dirty three-way recovery hardening
         run: |
           npm ci
