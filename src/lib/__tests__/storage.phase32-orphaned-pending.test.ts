@@ -154,6 +154,46 @@ describe("Phase 32 orphaned pending-save protection", () => {
     expect(journal.nextRaw).toBe(pendingRaw);
   });
 
+  it("primary採用時にrecovery backup更新が失敗した場合もjournalを消さない", () => {
+    const { pending, pendingRaw, currentRaw } = seedOrphanedPending();
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    const result = loadNotes({ resolvePendingSave: "prefer_primary" });
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual(pending);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(currentRaw);
+    expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(pendingRaw);
+    const journal = JSON.parse(storage._store[PENDING_SAVE_KEY_FOR_TESTING]) as {
+      nextRaw: string;
+    };
+    expect(journal.nextRaw).toBe(pendingRaw);
+  });
+
+  it("primary採用時にjournal削除が失敗した場合も候補を再提示できる状態を維持する", () => {
+    const { pending, pendingRaw, currentRaw } = seedOrphanedPending();
+    storage.removeItem.mockImplementation((key: string) => {
+      if (key === PENDING_SAVE_KEY_FOR_TESTING) {
+        throw new DOMException("blocked", "SecurityError");
+      }
+      delete storage._store[key];
+    });
+
+    const result = loadNotes({ resolvePendingSave: "prefer_primary" });
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual(pending);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(currentRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(currentRaw);
+    expect(storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(pendingRaw);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeDefined();
+  });
+
   it("孤立pending中にローカル版をforceするとpendingとcurrent primaryの両方を退避する", () => {
     const { pendingRaw, currentRaw } = seedOrphanedPending();
     const local = [
