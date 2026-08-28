@@ -86,6 +86,12 @@ export const copy = {
   nativeRecoveryAlternativeActive: "端末内の別候補を表示しています。",
   nativeRecoveryShowAlternative: "端末内の別候補を見る",
   nativeRecoveryShowLocal: "元の復元候補に戻す",
+  dirtyRecoveryCandidateNotice:
+    "この画面の未保存編集・保存先の復元候補・端末内候補を別々に保持しています。自動では混ぜません。",
+  dirtyRecoveryScreenActive: "この画面の未保存編集を表示しています。",
+  dirtyRecoveryLocalActive: "保存先で見つかった復元候補を表示しています。",
+  dirtyRecoveryShowScreen: "未保存編集に戻る",
+  dirtyRecoveryShowLocal: "保存先の復元候補を見る",
   saveConflict: "別の変更と重なったため、保存を止めています",
   saveConflictEn: "Saving paused because another change was detected",
   saveRecovery: "復元内容を確認するまで、保存を止めています",

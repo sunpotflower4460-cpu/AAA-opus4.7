@@ -470,6 +470,162 @@ describe("App native durable snapshot", () => {
     expect(durable.persist).not.toHaveBeenCalled();
   });
 
+  it("dirty screen・remote recovery・native別世代を混ぜず3候補として切り替えられる", async () => {
+    const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
+    renderApp();
+    await flushPromises();
+    durable.persist.mockClear();
+
+    act(() => click(findButton(container, "同じメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    let textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    const dirtyTextarea = textarea;
+    act(() => {
+      setter?.call(dirtyTextarea, "screen dirty");
+      dirtyTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const localCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "local recovery" })];
+    const nativeCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "native recovery" })];
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localCandidate);
+    durable.read.mockResolvedValue({ status: "available", notes: nativeCandidate });
+
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    expect(container.querySelector('[data-testid="native-recovery-checking"]')).not.toBeNull();
+    textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    expect(textarea?.value).toBe("screen dirty");
+    await flushPromises();
+
+    expect(container.querySelector('[data-testid="dirty-recovery-candidates"]')).not.toBeNull();
+    expect(hasButton(container, copy.dirtyRecoveryShowLocal)).toBe(true);
+    expect(hasButton(container, copy.nativeRecoveryShowAlternative)).toBe(true);
+
+    act(() => click(findButton(container, copy.dirtyRecoveryShowLocal)));
+    textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    expect(textarea?.value).toBe("local recovery");
+    expect(hasButton(container, copy.dirtyRecoveryShowScreen)).toBe(true);
+
+    act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
+    textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    expect(textarea?.value).toBe("native recovery");
+
+    act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
+    textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    expect(textarea?.value).toBe("screen dirty");
+
+    act(() => click(findButton(container, copy.storageRecoverySave)));
+    await flushPromises();
+    const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
+    expect(saved[0]?.body).toBe("screen dirty");
+    expect(durable.persist).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ body: "screen dirty" })]),
+    );
+  });
+
+  it("dirty三者競合でnative読込失敗中は候補を保持したままforce確定を出さない", async () => {
+    const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
+    renderApp();
+    await flushPromises();
+
+    act(() => click(findButton(container, "同じメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    const dirtyTextarea = textarea;
+    act(() => {
+      setter?.call(dirtyTextarea, "絶対に守るdirty");
+      dirtyTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const localCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "local" })];
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localCandidate);
+    durable.read.mockResolvedValue({ status: "error" });
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    await flushPromises();
+
+    expect(container.textContent).toContain(copy.nativeRecoveryReadError);
+    expect(hasButton(container, copy.storageRecoverySave)).toBe(false);
+    expect(container.querySelector("textarea")?.value).toBe("絶対に守るdirty");
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
+
+    durable.read.mockResolvedValue({ status: "missing" });
+    act(() => click(findButton(container, copy.nativeRecoveryRetry)));
+    await flushPromises();
+
+    expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
+    expect(container.querySelector("textarea")?.value).toBe("絶対に守るdirty");
+    expect(hasButton(container, copy.dirtyRecoveryShowLocal)).toBe(true);
+    expect(hasButton(container, copy.storageRecoverySave)).toBe(true);
+  });
+
+  it("dirty三者probe中に正常primaryが戻っても未保存screenを自動破棄しない", async () => {
+    const initial = [makeNote({ id: "shared", title: "同じメモ", body: "初期" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(initial);
+    renderApp();
+    await flushPromises();
+
+    act(() => click(findButton(container, "同じメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    const textarea = container.querySelector("textarea");
+    if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    const dirtyTextarea = textarea;
+    act(() => {
+      setter?.call(dirtyTextarea, "probe中も守るscreen");
+      dirtyTextarea.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    let resolveNative: ((value: { status: "available"; notes: Note[] }) => void) | undefined;
+    durable.read.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveNative = resolve;
+        }),
+    );
+    const localCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "local recovery" })];
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localCandidate);
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
+    });
+    await flushPromises();
+    expect(resolveNative).toBeDefined();
+
+    const returnedPrimary = [makeNote({ id: "shared", title: "同じメモ", body: "戻ったprimary" })];
+    storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(returnedPrimary);
+    const nativeCandidate = [makeNote({ id: "shared", title: "同じメモ", body: "native別世代" })];
+    await act(async () => {
+      resolveNative?.({ status: "available", notes: nativeCandidate });
+      await Promise.resolve();
+    });
+    await flushPromises();
+
+    expect(container.querySelector("textarea")?.value).toBe("probe中も守るscreen");
+    expect(container.querySelector('[data-testid="dirty-recovery-candidates"]')).not.toBeNull();
+    expect(hasButton(container, copy.storageConflictLoad)).toBe(true);
+    expect(hasButton(container, copy.dirtyRecoveryShowLocal)).toBe(true);
+    expect(hasButton(container, copy.nativeRecoveryShowAlternative)).toBe(true);
+
+    act(() => click(findButton(container, copy.storageConflictLoad)));
+    await flushPromises();
+    expect(container.querySelector("textarea")?.value).toBe("戻ったprimary");
+  });
+
   it("初回loadNotesだけ一時失敗して直後にprimaryが読めてもnative safety probeで現在正本へ収束する", async () => {
     const existing = [makeNote({ title: "一時障害後の正本" })];
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(existing);

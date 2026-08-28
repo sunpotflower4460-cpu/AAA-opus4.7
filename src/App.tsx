@@ -41,6 +41,7 @@ import { PremiumSheet } from "./components/PremiumSheet";
 
 type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; id: string };
 type DeletedNote = Note & { deletedAt: string };
+type RecoveryCandidateSource = "screen" | "local" | "native";
 
 const AUTOSAVE_DEBOUNCE_MS = 500;
 const AUTOSAVE_MAX_WAIT_MS = 3_000;
@@ -112,9 +113,12 @@ export default function App() {
   const [nativeRecoveryAlternativeCount, setNativeRecoveryAlternativeCount] = useState<
     number | null
   >(null);
-  const [recoveryCandidateSource, setRecoveryCandidateSource] = useState<"local" | "native">(
-    "local",
-  );
+  const [recoveryCandidateSource, setRecoveryCandidateSource] =
+    useState<RecoveryCandidateSource>("local");
+  // null は dirty screen 候補なし。0 は「全削除済みの dirty screen」という正当な候補。
+  const [screenRecoveryCandidateCount, setScreenRecoveryCandidateCount] = useState<
+    number | null
+  >(null);
   const [runtimeRecoveryProbeVersion, setRuntimeRecoveryProbeVersion] = useState(0);
 
   const undoTimerRef = useRef<number | null>(null);
@@ -134,11 +138,12 @@ export default function App() {
   const externalConflictRef = useRef(initialLoad.recoveryPending);
   const nativeRecoveryGateRef = useRef(nativeRecoveryInitiallyRequired);
   const nativeRecoveryProbeIdRef = useRef(0);
+  const screenRecoveryCandidateRef = useRef<Note[] | null>(null);
   const localRecoveryCandidateRef = useRef<Note[] | null>(
     initialLoad.recoveryPending ? initialLoad.notes : null,
   );
   const nativeRecoveryAlternativeRef = useRef<Note[] | null>(null);
-  const recoveryCandidateSourceRef = useRef<"local" | "native">("local");
+  const recoveryCandidateSourceRef = useRef<RecoveryCandidateSource>("local");
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -169,6 +174,12 @@ export default function App() {
     if (!externalConflictRef.current) return;
 
     if (
+      recoveryCandidateSourceRef.current === "screen" &&
+      screenRecoveryCandidateRef.current !== null
+    ) {
+      screenRecoveryCandidateRef.current = notes;
+      setScreenRecoveryCandidateCount(notes.length);
+    } else if (
       recoveryCandidateSourceRef.current === "local" &&
       localRecoveryCandidateRef.current !== null
     ) {
@@ -235,10 +246,12 @@ export default function App() {
   }, []);
 
   const clearRecoveryCandidateSources = useCallback(() => {
+    screenRecoveryCandidateRef.current = null;
     localRecoveryCandidateRef.current = null;
     nativeRecoveryAlternativeRef.current = null;
     recoveryCandidateSourceRef.current = "local";
     setRecoveryCandidateSource("local");
+    setScreenRecoveryCandidateCount(null);
     setNativeRecoveryAlternativeCount(null);
   }, []);
 
@@ -256,6 +269,35 @@ export default function App() {
     setNativeRecoveryStatus("checking");
     setRuntimeRecoveryProbeVersion((version) => version + 1);
   }, [clearPersistTimer]);
+
+  const registerDirtyRecoveryCandidate = useCallback(
+    (remoteSnapshot: Note[]) => {
+      // dirty screen は remote candidate と絶対に同じ ref へ入れない。
+      // 既に三者競合中なら最初に捕捉した screen を維持し、表示中の local/native で上書きしない。
+      if (screenRecoveryCandidateRef.current === null) {
+        const screenSnapshot = latestNotesRef.current;
+        screenRecoveryCandidateRef.current = screenSnapshot;
+        recoveryCandidateSourceRef.current = "screen";
+        setRecoveryCandidateSource("screen");
+        setScreenRecoveryCandidateCount(screenSnapshot.length);
+      }
+
+      localRecoveryCandidateRef.current = remoteSnapshot;
+      if (recoveryCandidateSourceRef.current === "local") {
+        latestNotesRef.current = remoteSnapshot;
+        setNotes(remoteSnapshot);
+        setRecoveryCandidateCount(remoteSnapshot.length);
+      }
+
+      if (!isNativeDurableSnapshotAvailable()) return;
+      nativeRecoveryGateRef.current = true;
+      saveGuardRef.current = true;
+      clearPersistTimer();
+      setNativeRecoveryStatus("checking");
+      setRuntimeRecoveryProbeVersion((version) => version + 1);
+    },
+    [clearPersistTimer],
+  );
 
   const refreshCleanNotesFromStorage = useCallback(() => {
     if (
@@ -340,7 +382,57 @@ export default function App() {
     if (!mountedRef.current || nativeRecoveryProbeIdRef.current != probeId) return;
 
     const primaryHealth = getNotesPrimaryHealth();
+    const screenRecoveryCandidate = screenRecoveryCandidateRef.current;
     const localRecoveryCandidate = localRecoveryCandidateRef.current;
+
+    // dirty screen と remote local recovery を両方捕捉済みなら、clean recovery 用分岐へ入れない。
+    // probe中に正常primaryが戻っても screen を自動破棄せず、保存先版は既存のload actionで選択可能にする。
+    if (screenRecoveryCandidate !== null && localRecoveryCandidate !== null) {
+      const current = loadNotes();
+      let latestLocalCandidate = localRecoveryCandidate;
+
+      if (!current.ok && hasRecoveryCandidate(current)) {
+        latestLocalCandidate = current.notes;
+        localRecoveryCandidateRef.current = current.notes;
+        if (recoveryCandidateSourceRef.current === "local") {
+          latestNotesRef.current = current.notes;
+          setNotes(current.notes);
+          setRecoveryCandidateCount(current.notes.length);
+        }
+      }
+
+      setCanLoadStoredNotes(canChooseStoredPrimary(current));
+
+      if (primaryHealth === "unavailable" || nativeResult.status === "error") {
+        nativeRecoveryGateRef.current = true;
+        saveGuardRef.current = true;
+        setNativeRecoveryStatus("error");
+        setNativeBackupRetryAllowed(false);
+        setLoadError(false);
+        return;
+      }
+
+      if (nativeResult.status === "available") {
+        const duplicatesKnownCandidate =
+          notesSnapshotMatches(nativeResult.notes, screenRecoveryCandidate) ||
+          notesSnapshotMatches(nativeResult.notes, latestLocalCandidate) ||
+          (current.ok && notesSnapshotMatches(nativeResult.notes, current.notes));
+
+        if (!duplicatesKnownCandidate) {
+          nativeRecoveryAlternativeRef.current = nativeResult.notes;
+          setNativeRecoveryAlternativeCount(nativeResult.notes.length);
+        }
+      }
+
+      nativeRecoveryGateRef.current = false;
+      setNativeRecoveryStatus("idle");
+      saveGuardRef.current = true;
+      externalConflictRef.current = true;
+      setExternalConflict(true);
+      setNativeBackupRetryAllowed(false);
+      setLoadError(false);
+      return;
+    }
 
     // localStorage 側にも復元候補がある時は native を自動採用・自動mergeしない。
     // 現在の local 候補を再確認し、異なる native 世代があれば別候補として保持する。
@@ -642,8 +734,19 @@ export default function App() {
               false,
               remote.notes.length,
             );
+          } else if (notesDirtyRef.current && remoteHasRecoveryCandidate) {
+            // dirty screen / remote recovery / native を別候補として捕捉する。
+            // screen を remote で置換せず、native safety probe が完了するまで解決操作も止める。
+            const screenCount =
+              screenRecoveryCandidateRef.current?.length ?? latestNotesRef.current.length;
+            registerDirtyRecoveryCandidate(remote.notes);
+            flagExternalConflict(
+              canChooseStoredPrimary(remote),
+              false,
+              screenCount,
+            );
           } else {
-            // dirty 中はローカル内容を守り、remote の復元候補を勝手に適用しない。
+            // recovery candidate が無い通常競合でも dirty screen は守る。
             flagExternalConflict(
               canChooseStoredPrimary(remote),
               !remoteHasRecoveryCandidate,
@@ -671,6 +774,7 @@ export default function App() {
     applyCleanRemoteNotes,
     flagExternalConflict,
     persistDurableSnapshot,
+    registerDirtyRecoveryCandidate,
     registerLocalRecoveryCandidate,
   ]);
 
@@ -807,11 +911,13 @@ export default function App() {
     applySaveResult(result, snapshot);
   }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
 
-  const showRecoveryCandidateSource = useCallback((source: "local" | "native") => {
+  const showRecoveryCandidateSource = useCallback((source: RecoveryCandidateSource) => {
     const snapshot =
-      source === "local"
-        ? localRecoveryCandidateRef.current
-        : nativeRecoveryAlternativeRef.current;
+      source === "screen"
+        ? screenRecoveryCandidateRef.current
+        : source === "local"
+          ? localRecoveryCandidateRef.current
+          : nativeRecoveryAlternativeRef.current;
     if (snapshot === null) return;
 
     recoveryCandidateSourceRef.current = source;
@@ -971,36 +1077,88 @@ export default function App() {
                 {canLoadStoredNotes
                   ? copy.storageConflictBody
                   : copy.storageConflictRecoveryBody}
+                {screenRecoveryCandidateCount !== null && (
+                  <span
+                    data-testid="dirty-recovery-candidates"
+                    className="mt-gr-2 block text-sumi/80"
+                  >
+                    {copy.dirtyRecoveryCandidateNotice}
+                    <span className="mt-gr-1 block">
+                      {recoveryCandidateSource === "screen"
+                        ? copy.dirtyRecoveryScreenActive
+                        : recoveryCandidateSource === "local"
+                          ? copy.dirtyRecoveryLocalActive
+                          : copy.nativeRecoveryAlternativeActive}
+                    </span>
+                  </span>
+                )}
                 {nativeRecoveryAlternativeCount !== null && (
                   <span
                     data-testid="native-recovery-alternative"
                     className="mt-gr-2 block text-sumi/80"
                   >
                     {copy.nativeRecoveryAlternativeNotice(nativeRecoveryAlternativeCount)}
-                    {recoveryCandidateSource === "native" && (
-                      <span className="mt-gr-1 block">
-                        {copy.nativeRecoveryAlternativeActive}
-                      </span>
-                    )}
+                    {screenRecoveryCandidateCount === null &&
+                      recoveryCandidateSource === "native" && (
+                        <span className="mt-gr-1 block">
+                          {copy.nativeRecoveryAlternativeActive}
+                        </span>
+                      )}
                   </span>
                 )}
               </p>
               <div className="mt-gr-3 flex flex-wrap justify-end gap-gr-2">
-                {nativeRecoveryAlternativeCount !== null && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      showRecoveryCandidateSource(
-                        recoveryCandidateSource === "native" ? "local" : "native",
-                      )
-                    }
-                    className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
-                    style={{ borderRadius: "6px 10px 7px 9px" }}
-                  >
-                    {recoveryCandidateSource === "native"
-                      ? copy.nativeRecoveryShowLocal
-                      : copy.nativeRecoveryShowAlternative}
-                  </button>
+                {screenRecoveryCandidateCount !== null ? (
+                  <>
+                    {recoveryCandidateSource !== "screen" && (
+                      <button
+                        type="button"
+                        onClick={() => showRecoveryCandidateSource("screen")}
+                        className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                        style={{ borderRadius: "6px 10px 7px 9px" }}
+                      >
+                        {copy.dirtyRecoveryShowScreen}
+                      </button>
+                    )}
+                    {recoveryCandidateSource !== "local" && (
+                      <button
+                        type="button"
+                        onClick={() => showRecoveryCandidateSource("local")}
+                        className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                        style={{ borderRadius: "6px 10px 7px 9px" }}
+                      >
+                        {copy.dirtyRecoveryShowLocal}
+                      </button>
+                    )}
+                    {nativeRecoveryAlternativeCount !== null &&
+                      recoveryCandidateSource !== "native" && (
+                        <button
+                          type="button"
+                          onClick={() => showRecoveryCandidateSource("native")}
+                          className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                          style={{ borderRadius: "6px 10px 7px 9px" }}
+                        >
+                          {copy.nativeRecoveryShowAlternative}
+                        </button>
+                      )}
+                  </>
+                ) : (
+                  nativeRecoveryAlternativeCount !== null && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        showRecoveryCandidateSource(
+                          recoveryCandidateSource === "native" ? "local" : "native",
+                        )
+                      }
+                      className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                      style={{ borderRadius: "6px 10px 7px 9px" }}
+                    >
+                      {recoveryCandidateSource === "native"
+                        ? copy.nativeRecoveryShowLocal
+                        : copy.nativeRecoveryShowAlternative}
+                    </button>
+                  )
                 )}
                 {canLoadStoredNotes && (
                   <button
