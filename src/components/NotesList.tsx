@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Note } from "../types/note";
 import type { MonetizationState } from "../types/monetization";
 import { copy } from "../lib/i18n";
+import { matchesNote, normalizeSearchQuery, sortNotes } from "../lib/notesLogic";
 import { ADS_ENABLED, PREMIUM_ENABLED } from "../lib/featureFlags";
 import { NoteCard } from "./NoteCard";
 import { SearchBar } from "./SearchBar";
@@ -14,52 +15,39 @@ import { ZanshinPaperSlip } from "./ZanshinPaperSlip";
 type Props = {
   notes: Note[];
   monetization: MonetizationState;
+  query: string;
+  onQueryChange: (query: string) => void;
   onOpen: (id: string) => void;
   onCreate: () => void;
   onOpenPremium: () => void;
   onRestorePurchase: () => void | Promise<void>;
 };
 
-function sortNotes(notes: Note[]): Note[] {
-  return [...notes].sort((a, b) => {
-    if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
-    return b.updatedAt.localeCompare(a.updatedAt);
-  });
-}
-
 const MAX_STAGGERED_ITEMS = 6;
 const STAGGER_STEP_MS = 40;
 
-function matches(note: Note, q: string): boolean {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  return (
-    note.title.toLowerCase().includes(needle) ||
-    note.body.toLowerCase().includes(needle)
-  );
-}
-
 function countLabel(count: number, isSearching: boolean): string {
+  if (isSearching) return count === 0 ? "0件" : `${count}件 見つかりました`;
   if (count === 0) return copy.notesCountEmpty;
-  return isSearching ? `${count}件 見つかりました` : `${count}つの${copy.notesCount}`;
+  return `${count}つの${copy.notesCount}`;
 }
 
 export function NotesList({
   notes,
   monetization,
+  query,
+  onQueryChange,
   onOpen,
   onCreate,
   onOpenPremium,
   onRestorePurchase,
 }: Props) {
-  const [query, setQuery] = useState("");
-
   const visible = useMemo(() => {
-    return sortNotes(notes.filter((note) => matches(note, query)));
+    return sortNotes(notes.filter((note) => matchesNote(note, query)));
   }, [notes, query]);
 
   const isEmpty = visible.length === 0;
-  const isSearching = query.trim().length > 0;
+  const isSearching = normalizeSearchQuery(query).length > 0;
   const showAdSlot = ADS_ENABLED && !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
     PREMIUM_ENABLED && !isSearching && (visible.length > 1 || monetization.isPremium);
@@ -82,7 +70,7 @@ export function NotesList({
       </header>
 
       <div className="mx-auto w-full max-w-[430px] pt-gr-2">
-        <SearchBar value={query} onChange={setQuery} />
+        <SearchBar value={query} onChange={onQueryChange} />
         <div className="zanshin-list-status mt-gr-3 flex items-center justify-between gap-gr-3 px-gr-1">
           <p className="font-mincho text-[12px] tracking-[0.12em] text-ink-muted/72 jp-text-discipline">
             {countLabel(visible.length, isSearching)}

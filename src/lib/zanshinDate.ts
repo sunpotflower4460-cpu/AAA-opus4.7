@@ -7,13 +7,18 @@
  * - createdAt を基準に、そのメモが置かれた時の余白を示す
  */
 
+function toValidDate(isoString: string): Date | null {
+  const date = new Date(isoString);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 /**
  * ISO文字列を残心の日付表記に変換する。
  * 例: "2026-05-19T12:30:00.000Z" → "2026.05.19"
  */
 export function formatZanshinDate(isoString: string): string {
-  const date = new Date(isoString);
-  if (Number.isNaN(date.getTime())) return "";
+  const date = toValidDate(isoString);
+  if (!date) return "";
 
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -27,9 +32,14 @@ export function formatZanshinDate(isoString: string): string {
  * - 昼の余白: 11:00 - 15:59
  * - 夕の余白: 16:00 - 18:59
  * - 夜の余白: 19:00 - 4:59
+ *
+ * 不正な日時は「夜」と誤判定せず、空文字を返す。
  */
 export function getYohakuLabel(isoString: string): string {
-  const hour = new Date(isoString).getHours();
+  const date = toValidDate(isoString);
+  if (!date) return "";
+
+  const hour = date.getHours();
   if (hour >= 5 && hour < 11) return "朝の余白";
   if (hour >= 11 && hour < 16) return "昼の余白";
   if (hour >= 16 && hour < 19) return "夕の余白";

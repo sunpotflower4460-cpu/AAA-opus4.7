@@ -13,11 +13,6 @@ type ZanshinDateStampProps = {
 /**
  * 残心の日付印コンポーネント。
  * 日付を管理情報ではなく、紙に残ったしるしとして表示する。
- *
- * Phase 13:
- * - 「朝/昼/夕/夜の余白」ラベルと日付を控えめに表示
- * - compact=true で横並び、false（デフォルト）で縦並び
- * - 日付が主役になりすぎないよう、サイズと色を抑える
  */
 export function ZanshinDateStamp({
   isoString,
@@ -26,6 +21,9 @@ export function ZanshinDateStamp({
   ariaLabel,
 }: ZanshinDateStampProps) {
   const { label, date } = getZanshinStamp(isoString);
+
+  // 壊れた日時から「夜の余白」だけが残るような誤表示をしない。
+  if (!label || !date) return null;
 
   return (
     <div

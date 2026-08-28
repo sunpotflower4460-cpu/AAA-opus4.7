@@ -20,73 +20,104 @@ import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
 
 type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; id: string };
-
-/** 削除後のUndoキュー。deletedAt で管理し、将来のゴミ箱機能へ拡張しやすくする。 */
 type DeletedNote = Note & { deletedAt: string };
 
 const AUTOSAVE_DEBOUNCE_MS = 500;
 const UNDO_TIMEOUT_MS = 10_000;
 
 export default function App() {
-  // 初回ロード結果を一度だけ取得（loadNotes はマウント時に一度だけ呼ぶ）
   const [initialLoad] = useState(() => {
-    const r = loadNotes();
-    return { notes: r.notes, loadFailed: !r.ok };
+    const result = loadNotes();
+    return {
+      notes: result.notes,
+      loadFailed: !result.ok,
+      recoveredCount: result.ok ? 0 : result.notes.length,
+    };
   });
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
   const [view, setView] = useState<View>({ kind: "list" });
+  const [searchQuery, setSearchQuery] = useState("");
   const [monetization, setMonetization] = useState<MonetizationState>(() =>
     loadMonetizationState(),
   );
   const [isPremiumSheetOpen, setIsPremiumSheetOpen] = useState(false);
   const [lastSaveResult, setLastSaveResult] = useState<SaveResult | null>(null);
-
-  /** 削除Undo: 最後に削除したノートと自動削除タイマー */
   const [lastDeleted, setLastDeleted] = useState<DeletedNote | null>(null);
-  const undoTimerRef = useRef<number | null>(null);
-
-  /** 初回ロードがデータ破損だった場合の警告表示 */
   const [loadError, setLoadError] = useState<boolean>(initialLoad.loadFailed);
 
-  /** データ破損時に自動保存で空配列で上書きしないためのガード */
-  const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
+  const undoTimerRef = useRef<number | null>(null);
+  const persistTimerRef = useRef<number | null>(null);
 
-  const persistTimer = useRef<number | null>(null);
+  // 破損復旧中は、ユーザー自身の明示的な編集が入るまで保存禁止を維持する。
+  const saveGuardRef = useRef<boolean>(initialLoad.loadFailed);
+  // このタブ自身が変更したときだけ lifecycle flush を許可する。
+  const notesDirtyRef = useRef(false);
+  const latestNotesRef = useRef(notes);
+
   useEffect(() => {
-    if (persistTimer.current) window.clearTimeout(persistTimer.current);
-    persistTimer.current = window.setTimeout(() => {
-      // 破損ロード時は最初の自動保存をスキップ（空データで上書きしない）
-      if (saveGuardRef.current) {
-        saveGuardRef.current = false;
-        return;
-      }
+    latestNotesRef.current = notes;
+  }, [notes]);
+
+  const markNotesDirty = useCallback(() => {
+    saveGuardRef.current = false;
+    notesDirtyRef.current = true;
+    setLastSaveResult(null);
+  }, []);
+
+  useEffect(() => {
+    if (persistTimerRef.current) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+
+    if (saveGuardRef.current || !notesDirtyRef.current) return undefined;
+
+    persistTimerRef.current = window.setTimeout(() => {
+      persistTimerRef.current = null;
+      if (saveGuardRef.current || !notesDirtyRef.current) return;
+
       const result = saveNotes(notes);
       setLastSaveResult(result);
+      if (result.ok) notesDirtyRef.current = false;
     }, AUTOSAVE_DEBOUNCE_MS);
+
     return () => {
-      if (persistTimer.current) window.clearTimeout(persistTimer.current);
+      if (persistTimerRef.current) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
     };
   }, [notes]);
 
+  const flushPendingNotes = useCallback(() => {
+    if (saveGuardRef.current || !notesDirtyRef.current) return;
+
+    const result = saveNotes(latestNotesRef.current);
+    setLastSaveResult(result);
+    if (result.ok) notesDirtyRef.current = false;
+  }, []);
+
   useEffect(() => {
-    const flush = () => {
-      saveNotes(notes);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") flushPendingNotes();
     };
-    window.addEventListener("beforeunload", flush);
-    window.addEventListener("pagehide", flush);
+
+    window.addEventListener("beforeunload", flushPendingNotes);
+    window.addEventListener("pagehide", flushPendingNotes);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
-      window.removeEventListener("beforeunload", flush);
-      window.removeEventListener("pagehide", flush);
+      window.removeEventListener("beforeunload", flushPendingNotes);
+      window.removeEventListener("pagehide", flushPendingNotes);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [notes]);
+  }, [flushPendingNotes]);
 
   useEffect(() => {
     const syncMonetization = () => setMonetization(loadMonetizationState());
     window.addEventListener("storage", syncMonetization);
-    return () => {
-      window.removeEventListener("storage", syncMonetization);
-    };
+    return () => window.removeEventListener("storage", syncMonetization);
   }, []);
 
   useEffect(() => {
@@ -96,7 +127,9 @@ export default function App() {
   }, []);
 
   const createNote = useCallback(() => {
-    saveGuardRef.current = false; // 明示的な操作: 保存ガードを解除する
+    markNotesDirty();
+    setSearchQuery("");
+
     const iso = nowIso();
     const note: Note = {
       id: createId(),
@@ -107,20 +140,21 @@ export default function App() {
       isFavorite: false,
       locale: "ja",
     };
+
     setNotes((prev) => [note, ...prev]);
     setView({ kind: "editor", id: note.id });
-  }, []);
+  }, [markNotesDirty]);
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
-      saveGuardRef.current = false; // 明示的な編集: 保存ガードを解除する
+      markNotesDirty();
       setNotes((prev) =>
         prev.map((note) =>
           note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
         ),
       );
     },
-    [],
+    [markNotesDirty],
   );
 
   const deleteNote = useCallback(
@@ -131,11 +165,10 @@ export default function App() {
         return;
       }
 
-      // State updater の中でタイマーや別 setState を作らない。
-      // React StrictMode の updater 二重評価でも副作用が重複しないようにする。
       if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
       const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
 
+      markNotesDirty();
       setNotes((prev) => prev.filter((note) => note.id !== id));
       setLastDeleted(deleted);
       undoTimerRef.current = window.setTimeout(() => {
@@ -144,7 +177,7 @@ export default function App() {
       }, UNDO_TIMEOUT_MS);
       setView({ kind: "list" });
     },
-    [notes],
+    [markNotesDirty, notes],
   );
 
   const undoDelete = useCallback(() => {
@@ -156,9 +189,10 @@ export default function App() {
     }
 
     const { deletedAt: _, ...note } = lastDeleted;
+    markNotesDirty();
     setNotes((prev) => (prev.some((item) => item.id === note.id) ? prev : [note, ...prev]));
     setLastDeleted(null);
-  }, [lastDeleted]);
+  }, [lastDeleted, markNotesDirty]);
 
   const openNote = useCallback((id: string) => {
     setView({ kind: "read", id });
@@ -187,8 +221,7 @@ export default function App() {
   const handleRestore = useCallback(async () => {
     setMonetization((prev) => ({ ...prev, purchaseStatus: "loading" }));
     try {
-      const next = await restorePurchasesMock();
-      setMonetization(next);
+      setMonetization(await restorePurchasesMock());
     } catch (error) {
       console.error("Purchase restore failed", error);
       setMonetization((prev) => ({ ...prev, purchaseStatus: "error" }));
@@ -202,13 +235,10 @@ export default function App() {
 
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
-      // 開いていたノートが削除された場合に一覧へ戻す（意図的な setState in effect）
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setView({ kind: "list" });
     }
   }, [view, currentNote]);
-
-  const saveError = lastSaveResult?.ok === false;
 
   return (
     <AppShell>
@@ -220,7 +250,9 @@ export default function App() {
           style={{ borderRadius: "7px 13px 8px 11px" }}
         >
           <span className="font-mincho jp-text-discipline">
-            データの読み込みに問題がありました。メモが復元できない可能性があります。
+            {initialLoad.recoveredCount > 0
+              ? `保存データに問題がありました。復元できた${initialLoad.recoveredCount}件を表示しています。`
+              : "データの読み込みに問題がありました。メモが復元できない可能性があります。"}
           </span>
           <button
             type="button"
@@ -257,6 +289,8 @@ export default function App() {
           <NotesList
             notes={notes}
             monetization={monetization}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
             onOpen={openNote}
             onCreate={createNote}
             onOpenPremium={openPremiumSheet}
@@ -285,7 +319,7 @@ export default function App() {
           onChange={(patch) => updateNote(currentNote.id, patch)}
           onBack={() => setView({ kind: "list" })}
           onDelete={() => deleteNote(currentNote.id)}
-          saveError={saveError}
+          saveResult={lastSaveResult}
         />
       )}
     </AppShell>
