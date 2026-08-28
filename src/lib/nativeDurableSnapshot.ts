@@ -5,6 +5,7 @@ import { parseValidNotesSnapshot } from "./storage";
 
 const PRIMARY_PATH = "zanshin/notes.snapshot.v1.json";
 const BACKUP_PATH = "zanshin/notes.snapshot.backup.v1.json";
+const SECONDARY_BACKUP_PATH = "zanshin/notes.snapshot.backup.secondary.v1.json";
 const CORRUPT_PATH = "zanshin/notes.snapshot.corrupt.v1.json";
 const DIRECTORY = Directory.LibraryNoCloud;
 const FILE_NOT_FOUND_CODE = "OS-PLUG-FILE-0008";
@@ -71,8 +72,37 @@ async function writeSnapshotRaw(nextRaw: string): Promise<void> {
     if (current.raw === nextRaw) return;
 
     if (parseValidNotesSnapshot(current.raw) !== null) {
-      // 新しい primary に触る前に、直前の正常世代を確定する。
-      // ここが失敗した場合は current primary を残し、新版へ進まない。
+      // native 層は primary / backup / secondary の「最新3世代ローリング」とする。
+      // recovery/conflict 中の自動保存は App 側で停止しているため、通常保存で最古secondaryを
+      // 永久保存し続ける必要はない。そうしないと4世代目から保存不能になる。
+      const existingBackup = await readRaw(BACKUP_PATH);
+      if (existingBackup.status === "error") {
+        throw new Error("native snapshot backup read failed");
+      }
+
+      if (
+        existingBackup.status === "ok" &&
+        existingBackup.raw !== current.raw &&
+        existingBackup.raw !== nextRaw &&
+        parseValidNotesSnapshot(existingBackup.raw) !== null
+      ) {
+        // backupを更新する前に旧backupをsecondaryへ確定する。
+        // secondary書込が失敗した場合はprimary/backupへ進まず、直前2世代をそのまま守る。
+        await writeRaw(SECONDARY_BACKUP_PATH, existingBackup.raw);
+      } else if (
+        existingBackup.status === "ok" &&
+        parseValidNotesSnapshot(existingBackup.raw) === null
+      ) {
+        // 壊れた backup は診断余地だけ best-effort で残し、正常 current の確定を優先する。
+        try {
+          await writeRaw(CORRUPT_PATH, existingBackup.raw);
+        } catch {
+          // best effort
+        }
+      }
+
+      // secondary 退避が必要なら完了した後で初めて backup を更新する。
+      // ここが失敗した場合も current primary はまだ旧正本のまま残る。
       await writeRaw(BACKUP_PATH, current.raw);
     } else {
       // 破損した native snapshot も診断・救済余地を残すが、退避失敗は新版保存を妨げない。
@@ -134,20 +164,39 @@ export async function readNativeDurableSnapshot(): Promise<NativeDurableSnapshot
   }
 
   // primary が missing / corrupt / read error の場合でも backup は独立に読める可能性がある。
-  // ただし両方から正常候補を得られなければ、read error / corrupt の痕跡は error として保持する。
   const backup = await readRaw(BACKUP_PATH);
   if (backup.status === "ok") {
     const parsedBackup = parseValidNotesSnapshot(backup.raw);
     if (parsedBackup !== null) return { status: "available", notes: parsedBackup };
+  }
+
+  // rotation で退避した secondary も実際の復元経路へ含める。
+  // primary / backup の片方が I/O error や破損でも、secondary が正常なら読み取り専用候補として救済する。
+  const secondaryBackup = await readRaw(SECONDARY_BACKUP_PATH);
+  if (secondaryBackup.status === "ok") {
+    const parsedSecondaryBackup = parseValidNotesSnapshot(secondaryBackup.raw);
+    if (parsedSecondaryBackup !== null) {
+      return { status: "available", notes: parsedSecondaryBackup };
+    }
+  }
+
+  // 3層すべてから正常候補を得られなかった場合、I/O error または構造破損の痕跡が1つでもあれば
+  // fresh install と誤認せず error を返す。
+  if (
+    primary.status === "error" ||
+    backup.status === "error" ||
+    secondaryBackup.status === "error"
+  ) {
     return { status: "error" };
   }
 
-  if (primary.status === "error" || backup.status === "error") {
+  if (
+    primary.status === "ok" ||
+    backup.status === "ok" ||
+    secondaryBackup.status === "ok"
+  ) {
     return { status: "error" };
   }
-
-  // primary が読めたが構造破損していたのに backup が無い場合も、fresh install ではない。
-  if (primary.status === "ok") return { status: "error" };
 
   return { status: "missing" };
 }
@@ -159,5 +208,6 @@ export function resetNativeDurableSnapshotQueueForTesting(): void {
 export const NATIVE_SNAPSHOT_PATHS_FOR_TESTING = {
   primary: PRIMARY_PATH,
   backup: BACKUP_PATH,
+  secondaryBackup: SECONDARY_BACKUP_PATH,
   corrupt: CORRUPT_PATH,
 } as const;
