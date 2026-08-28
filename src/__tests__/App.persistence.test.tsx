@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import {
   BACKUP_KEY_FOR_TESTING,
+  CONFLICT_BACKUP_KEY_FOR_TESTING,
   STORAGE_KEY_FOR_TESTING,
 } from "../lib/storage";
 import { copy } from "../lib/i18n";
@@ -316,7 +317,7 @@ describe("App lifecycle persistence", () => {
     expect(container.textContent).toContain(copy.saveConflict);
   });
 
-  it("競合中に明示的な上書きを選ぶと、別タブ版をbackupへ残してローカル編集を保存する", () => {
+  it("競合中に明示的な上書きを選ぶと、別タブ版を専用退避しローカル版を二重保存する", () => {
     const baseline = [makeNote()];
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
     renderApp();
@@ -340,9 +341,46 @@ describe("App lifecycle persistence", () => {
 
     const saved = JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[];
     const backup = JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[];
+    const conflictBackup = JSON.parse(
+      storage._store[CONFLICT_BACKUP_KEY_FOR_TESTING],
+    ) as Note[];
     expect(saved[0].body).toBe("この画面で残したい本文");
-    expect(backup).toEqual(remote);
+    expect(backup).toEqual(saved);
+    expect(conflictBackup).toEqual(remote);
     expect(container.textContent).not.toContain(copy.storageConflictTitle);
+  });
+
+  it("競合上書き時に別タブ版の専用退避が失敗したらremoteを保持して競合状態を続ける", () => {
+    const baseline = [makeNote()];
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify(baseline));
+    renderApp();
+    openExistingNoteEditor(container);
+    act(() => changeTextarea(container, "退避できるまで保存しない本文"));
+
+    const remote = [
+      makeNote({
+        title: "絶対に消さない別タブ版",
+        body: "remoteを保持",
+        updatedAt: "2026-08-28T00:22:00.000Z",
+      }),
+    ];
+    const remoteRaw = JSON.stringify(remote);
+    storage.setItem(STORAGE_KEY_FOR_TESTING, remoteRaw);
+    act(() => dispatchStorageChange());
+
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === CONFLICT_BACKUP_KEY_FOR_TESTING) {
+        throw new DOMException("quota", "QuotaExceededError");
+      }
+      storage._store[key] = value;
+    });
+
+    act(() => click(findButton(container, copy.storageConflictOverwrite)));
+
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(remoteRaw);
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBeUndefined();
+    expect(container.textContent).toContain(copy.storageConflictTitle);
+    expect(container.textContent).toContain(copy.saveError);
   });
 
   it("競合中に保存先の内容を選ぶと、未保存ローカル編集を破棄して最新内容を読み込む", () => {
