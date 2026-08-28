@@ -56,6 +56,26 @@ describe("loadNotes", () => {
     expect(loadNotes()).toEqual({ ok: true, notes: [] });
   });
 
+  it("primary だけ消失して正常な backup が残っていれば復元候補として返す", () => {
+    const backup = [makeNote({ id: "backup-only", title: "救出できる言葉" })];
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify(backup));
+
+    const result = loadNotes();
+
+    expect(result.ok).toBe(false);
+    expect(result.notes).toEqual(backup);
+    if (!result.ok) {
+      expect(result.reason).toBe("missing_primary");
+      expect(result.recoveredFromBackup).toBe(true);
+    }
+  });
+
+  it("primary が無くても backup が空なら初回状態として空配列を返す", () => {
+    storage.setItem(BACKUP_KEY_FOR_TESTING, JSON.stringify([]));
+
+    expect(loadNotes()).toEqual({ ok: true, notes: [] });
+  });
+
   it("有効なメモを正しく読み込む", () => {
     storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote()]));
     const result = loadNotes();
