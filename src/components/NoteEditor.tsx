@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
 import { copy } from "../lib/i18n";
+import { getSaveFailureMessage } from "../lib/saveFailureUi";
 import { useSaveTrace } from "../hooks/useSaveTrace";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 import { SaveAfterglow } from "./SaveAfterglow";
@@ -122,21 +123,10 @@ export function NoteEditor({
   }
 
   const retryableSaveError = isRetryableSaveFailure(saveResult);
-  const saveErrorMessage = (() => {
-    if (saveResult?.ok !== false) return copy.saveError;
-    switch (saveResult.reason) {
-      case "conflict":
-        return conflictMessage;
-      case "quota":
-        return copy.saveErrorQuota;
-      case "unavailable":
-        return copy.saveErrorUnavailable;
-      case "invalid_data":
-        return copy.saveErrorInvalidData;
-      default:
-        return copy.saveError;
-    }
-  })();
+  const saveErrorMessage =
+    saveResult?.ok === false && saveResult.reason === "conflict"
+      ? conflictMessage
+      : getSaveFailureMessage(saveResult) ?? copy.saveError;
 
   function retrySave() {
     if (!retryableSaveError || !onRetrySave) return;
@@ -299,7 +289,7 @@ export function NoteEditor({
                     {copy.retrySave}
                   </button>
                 )}
-                            </span>
+              </span>
             )}
           </span>
         </div>
