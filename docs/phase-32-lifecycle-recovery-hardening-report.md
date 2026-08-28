@@ -6,7 +6,7 @@ Phase 31 では、複数タブ・複数画面からの stale overwrite を保存
 
 Phase 32 ではさらに、**保存処理そのものが途中で失敗・中断した場合**と、**iOS/WKWebView の suspend / resume や lifecycle 境界**で最新の言葉を失う可能性を重点的に潰す。
 
-残心では、保存成功率を上げるだけでなく、失敗したときに「どの版が残っているか」を追跡できることを品質基準にする。
+残心では、保存成功率を上げるだけでなく、失敗時に存在する版を黙って捨てず、ユーザーが選択できることを品質基準にする。
 
 ---
 
@@ -26,25 +26,54 @@ Phase 32 ではさらに、**保存処理そのものが途中で失敗・中断
 
 ### 3. force overwrite 時の別画面版を通常 backup と混ぜると役割が衝突する
 
-通常 backup は「現在採用されている最新版のミラー」であるべき。
+通常 backup は「現在採用されている最新版の mirror」であるべき。
 
-一方、競合時にユーザーが明示的にローカル版を優先した場合は、上書きされる remote 版も残したい。
+一方、競合時にユーザーがローカル版を明示優先した場合は、上書きされる remote 版も残したい。
 
-同じキーでは両方を同時に満たせないため、競合退避を専用領域へ分離した。
+そのため通常 mirror と競合退避を分離した。
 
-### 4. iOS/WKWebView では storage event だけに依存できない
+### 4. pending journal が current primary と無関係になるケース
 
-長時間 suspend や background / foreground 復帰では、Web の通常タブと同じタイミングで storage event を受け取ることを前提にしにくい。
+通常の中断では `primary == journal.baseRaw`、完了済みcleanup失敗では `primary == journal.nextRaw` になる。
 
-そのため `pageshow` / `visibilitychange` 復帰時にも、ローカル未編集なら保存先を再確認する。
+しかし旧バージョン混在、外部書換え、極めて近い複数writerの競合などでは、**primary が base / next のどちらとも一致しない孤立 journal** が残り得る。
 
-### 5. 連続入力で debounce が無限に後ろ倒しされる
+この状態を「正常primaryがあるから」と無視すると、次の保存が journal を上書きし、未確定候補を silent discard できてしまう。
+
+Phase 32 最終版では孤立 journal も recovery conflict として表へ出す。
+
+### 5. recovery candidate を優先表示するだけでは、正常な保存済み版を選べない
+
+保存途中の next を画面へ表示するのは安全側だが、ユーザーが「直前まで確定していた primary に戻したい」場合もある。
+
+そのため正常primaryが存在する中断保存では、
+
+- 中断候補を採用する
+- 保存済みprimaryを採用する
+
+の二択を出す。
+
+選ばれなかった版は退避してから解決を確定する。
+
+### 6. 3版競合では conflict backup 1枠だけでは不足する
+
+孤立 pending B、current primary C、画面上の local D が同時に存在し、Dをforce採用する場合、BとCの両方を残す必要がある。
+
+そのためsecondary conflict backupを追加した。
+
+### 7. iOS/WKWebView では storage event だけに依存できない
+
+長時間 suspend や background / foreground 復帰では、通常Webタブと同じタイミングで storage event を受け取ることを前提にしにくい。
+
+`pageshow` / `visibilitychange` 復帰時にも、ローカル未編集なら保存先を再確認する。
+
+### 8. 連続入力で debounce が無限に後ろ倒しされる
 
 500ms debounce だけだと、500ms未満の間隔で入力が続く限り保存されない。
 
-モバイルで長文入力中に突然 background / terminate が起きることを考えると、一定時間以内には途中保存した方が安全。
+モバイルで長文入力中に突然 background / terminate が起きることを考え、最大待機時間を設けた。
 
-### 6. Phase 31 の旧 backup semantics から安全に移行する必要がある
+### 9. Phase 31 の旧 backup semantics から安全に移行する必要がある
 
 Phase 31 の backup は「1世代前を退避する」意味を含んでいた。
 
@@ -52,11 +81,49 @@ Phase 32 では通常 backup を「最新正常状態の mirror」に変更し�
 
 ---
 
+## 保存領域
+
+### primary
+
+`zanshin.notes.v1`
+
+現在確定しているデータ。
+
+### latest-valid mirror
+
+`zanshin.notes.backup.v1`
+
+現在採用されている最新正常状態の mirror。
+
+### primary conflict backup
+
+`zanshin.notes.conflict.backup.v1`
+
+競合解決で採用しなかった最優先候補を保持する。
+
+### secondary conflict backup
+
+`zanshin.notes.conflict.secondary.backup.v1`
+
+pending候補とcurrent primaryの両方を退避する必要がある3版競合時に、もう一方の正常版を保持する。
+
+### pending save journal
+
+`zanshin.notes.pending.v1`
+
+保存開始時の `baseRaw` と保存予定の `nextRaw` を記録する。
+
+### corrupt raw backup
+
+`zanshin.notes.corrupt.backup`
+
+破損primaryのrawを可能な範囲で退避する。
+
+---
+
 ## 実装
 
 ### 1. 保存 journal
-
-`zanshin.notes.pending-save.v1` を追加した。
 
 保存開始前に以下を記録する。
 
@@ -65,161 +132,205 @@ Phase 32 では通常 backup を「最新正常状態の mirror」に変更し�
 - baseRaw
 - nextRaw
 
-これにより再起動時に、
+判定:
 
-- primary == baseRaw → 保存途中で止まった可能性が高い。nextRaw を復旧候補として提示
-- primary == nextRaw → primary 保存までは完了済み。backup を修復して journal を片付ける
-- primary がどちらとも違う → 別画面更新等の可能性があるため勝手に採用しない
+- primary == nextRaw → primary保存完了済み。backup修復 + journal cleanup
+- pendingが存在しprimary != nextRaw → nextをrecovery candidateとして表へ出す
+- primaryが正常なら `storedPrimaryAvailable=true` とし、保存済み版も選択可能にする
+- primaryがbase/nextのどちらとも違う孤立journalも黙って無視しない
 
-と判定できる。
+空配列の `nextRaw` も「全削除を保存しようとした」という正当な候補なので、件数ではなく `recoveryCandidate` フラグで扱う。
 
 ### 2. writerId による保存元の識別
 
 同じ画面自身が途中保存に失敗した後、さらに入力した場合まで永遠に conflict へ固定しないため、画面ごとの `writerId` を journal に保持する。
 
-- 同一 writer の中断 journal → 現在の編集の安全な再試行・更新を許可
-- 別 writer の中断 journal → silent overwrite を防ぐため conflict
-- Phase 32導入前の owner-less journal → 保守的に扱う
+- 同一 writer + active journal → より新しい編集への再試行を許可
+- 別 writer → conflict
+- owner-less journal → 保守的に扱う
+- orphaned journal → writerに関係なく通常保存では上書きしない
 
 ### 3. backup-first persistence
 
-通常保存の順序を概念的に以下へ整理した。
+通常保存の順序:
 
 1. journal を記録
-2. 最新正常 backup を確定
+2. latest-valid backup を確定
 3. primary を確定
 4. journal を削除
 
-backup の書き込みに失敗した場合は primary を変更しない。
+backup失敗時はprimaryへ進まない。
 
-primary の書き込みに失敗した場合は journal と backup に最新版候補が残る。
+primary失敗時はjournal + backupにnext候補が残る。
 
-journal cleanup のみ失敗した場合は、次回ロードで primary == nextRaw を確認して安全に後片付けできる。
+cleanupのみ失敗した場合は、次回ロードでprimary == nextRawを確認して自己修復する。
 
-### 4. 通常 backup と conflict backup を分離
+### 4. 中断保存の二択 recovery
 
-- `zanshin.notes.backup.v1`
-  - 現在採用されている最新正常状態の mirror
-- `zanshin.notes.conflict.backup.v1`
-  - 明示的な force overwrite 前に退避する別画面版
+正常primaryが存在する場合は、画面ではpending nextを先に見せながら、次の2択を出す。
 
-force overwrite では remote の退避に失敗した場合、上書きそのものを中止する。
+1. 保存済みprimaryを採用
+2. 表示中の中断候補を採用
 
-### 5. Phase 31 backup の安全な移行
+#### primary を採用する場合
 
-正常 primary をロードしたとき、通常 backup が primary と一致していなければ最新版 mirror へ更新する。
+確定順序:
 
-旧 backup が正常で、競合退避領域がまだ空いている場合は、旧版を conflict backup 側へ残してから mirror を更新する。
+1. pending next を conflict backupへ退避
+2. current primary を latest-valid backupへmirror
+3. pending journalを削除
+4. UIをprimaryへ切り替える
 
-これによりアップデート直後の端末でも、旧 recovery copy を無条件に捨てずに新 semantics へ移行できる。
+途中で失敗した場合はjournalを残し、候補を再提示できる状態を維持する。
 
-### 6. runtime recovery
+#### pending candidate を採用する場合
 
-実行中に primary だけ消えた場合も、clean な画面では backup を復元候補として表示する。
+force saveとして扱う。
 
-ただし自動保存は再開せず、ユーザーが復元候補を確認して明示保存するまで recovery guard を維持する。
+candidateと異なる正常primaryがあれば、それをconflict backupへ退避してからcandidateをprimary + latest mirrorへ確定する。
 
-### 7. resume refresh
+### 5. 3版競合の退避
 
-以下を追加・強化した。
+orphan pending B + current primary C + local D があり、Dをforce採用する場合:
+
+1. B → conflict backup
+2. C → secondary conflict backup
+3. D → pending journal
+4. D → latest-valid backup
+5. D → primary
+6. journal cleanup
+
+必要な退避に失敗した場合はDへの上書きを開始しない。
+
+### 6. Phase 31 backup の安全な移行
+
+正常primaryをロードしpendingが無い場合、通常backupがprimaryと一致していなければ最新版mirrorへ更新する。
+
+Phase31の旧backupが正常で、conflict backupが空なら旧版をそこへ残してからmirrorを更新する。
+
+### 7. runtime recovery
+
+実行中にprimaryだけ消えた場合も、clean画面ではbackupを復元候補として表示する。
+
+自動保存は再開せず、ユーザーが確認して明示保存するまでguardを維持する。
+
+### 8. resume refresh
 
 - `pageshow`
-- `visibilitychange` で visible に戻ったとき
+- `visibilitychange` でvisibleへ戻った時
 
-ローカルが clean の場合だけ `loadNotes()` を再実行し、suspend 中に取りこぼした remote 更新へ追従する。
+clean状態なら`loadNotes()`を再実行する。
 
-ローカル dirty の場合は remote を勝手に採用せず、保存境界で conflict とする。
+dirty状態ではremoteを勝手に採用せず、保存境界で競合を検知する。
 
-### 8. debounce max wait
+### 9. debounce max wait
 
-通常の autosave debounce は 500ms を維持しつつ、dirty 区間が長く続く場合は最大 3秒で一度保存する。
+通常debounceは500ms。
 
-これにより連続入力でも保存が永遠に延期されない。
+dirty区間が続いても最大3秒で途中保存を試す。
 
-### 9. lifecycle duplicate flush guard
+### 10. lifecycle duplicate flush guard
 
-`pagehide` / `beforeunload` 等が近接して複数回来ても、1回の成功保存後は dirty flag を落とし、同一 snapshot を重複保存しない。
+`pagehide` / `beforeunload` 等が近接しても、成功保存後にdirty flagを落とし、同一snapshotを重複保存しない。
 
 ---
 
-## 異常系の保存保証
+## 異常系の保証
 
-### journal 書き込み失敗
+### journal書き込み失敗
 
-backup / primary は変更しない。
+backup / primaryを変更しない。
 
-### backup 書き込み失敗
+### recovery backup書き込み失敗
 
-primary は変更しない。
-journal に next candidate を残す。
+primaryを変更しない。journalにnext候補を残す。
 
-### primary 書き込み失敗
+### primary書き込み失敗
 
-旧 primary を維持する。
-最新 backup と journal から次回起動時に復旧候補を提示できる。
+旧primaryを維持し、journal + backupからnextを復旧候補として提示する。
 
-### journal cleanup 失敗
+### completed journal cleanup失敗
 
-primary == nextRaw を確認できるため、次回ロードで「保存完了済み」と判定し、backup を修復して journal を削除できる。
+primary == nextRawを確認して次回ロードで再修復できる。
 
-### force overwrite の conflict backup 失敗
+### primary recovery時のcandidate退避失敗
 
-remote primary を上書きしない。
-remote は primary と通常 backup に残り、競合状態も継続する。
+primary採用を確定しない。journalを残す。
+
+### primary recovery時のmirror更新失敗
+
+primary採用を確定しない。journalを残す。
+
+### primary recovery時のjournal削除失敗
+
+candidate conflict backupとprimary mirrorを保持しつつ、journalも残すため再度候補を提示できる。
+
+### force時の競合退避失敗
+
+primary overwriteを開始しない。
 
 ---
 
 ## 回帰テスト
 
-Phase 32終了時点で CI 上 70 tests が通過する構成。
+Phase 32ではstorage / App / StrictModeの回帰テストを大幅追加した。
 
-### storage unit tests
+### storage
 
 以下を含む。
 
-- 正常保存後に journal が残らない
-- primary / backup が同じ最新版になる
-- journal 書き込み失敗時に primary / backup を変更しない
-- backup 失敗時に primary を変更しない
-- primary 失敗時に journal + backup から復旧候補を返す
-- empty array の保存途中中断でも「全削除」の意図を復旧候補として扱う
-- cleanup 失敗後に completed journal を自己修復
-- 不正 journal が正常 primary を壊さない
-- 別 writer の interrupted journal を通常保存で上書きしない
-- 同一 writer の journal を安全に再試行できる
-- force overwrite 前に remote を conflict backup へ退避
-- conflict backup 退避失敗時は primary を変更しない
-- Phase 31旧backupをPhase 32 mirror semanticsへ移行
-- 旧backupを可能な場合 conflict backupへ保持
+- 正常保存後にjournalが残らない
+- primary / backupが同じ最新版になる
+- journal書き込み失敗時にprimary / backupを変更しない
+- backup失敗時にprimaryを変更しない
+- primary失敗時にjournal + backupから復旧候補を返す
+- empty array保存中断でも全削除意図を保持
+- cleanup失敗後のcompleted journal自己修復
+- 不正journalが正常primaryを壊さない
+- 別writerのactive journalを通常保存で上書きしない
+- 同一writerのactive journalを安全に再試行
+- orphaned journalを正常primaryがあっても無視しない
+- orphaned journal存在中は通常保存でjournalを上書きしない
+- 保存済みprimary採用時にpending候補を退避
+- candidate退避失敗時は解決を確定しない
+- primary mirror失敗時もjournalを残す
+- journal削除失敗時も候補を再提示可能
+- 3版force時にpending/currentの両方を別backupへ保持
+- pending candidate採用時に直前primaryを退避
+- Phase31旧backupをPhase32 mirror semanticsへ移行
+- 将来unknown field差分も競合検知
 
-### App / StrictMode tests
+### App / StrictMode
 
 以下を含む。
 
 - 長時間連続入力でも3秒以内に途中保存
-- pagehide の連続発火で重複保存しない
-- clean画面は storage event でremoteへ追従
-- primary消失時は runtime recovery candidate を表示
+- pagehide連続発火で重複保存しない
+- clean画面はstorage eventでremoteへ追従
+- primary消失時はruntime recovery candidateを表示
 - pageshow復帰時に取りこぼしたremote更新へ追従
 - dirty状態の復帰ではremoteを勝手に採用しない
 - storage eventがなくても保存境界で競合検知
 - force overwrite時にremoteを専用退避
-- 専用退避失敗時にremoteをprimary/backupへ保持し競合状態を継続
-- interrupted save candidate を起動時UIへ表示
-- empty recovery candidate でも自動保存せず確認を求める
+- 専用退避失敗時にremoteを保持して競合状態を継続
+- interrupted candidateと保存済みprimaryの二択を表示
+- pending candidate採用時に旧primaryを退避
+- primary採用時にpending candidateを退避
+- empty candidateでも自動的に旧メモを復活させない
 
 ---
 
-## CI hygiene
+## CI hygiene / review
 
-GitHub Actions のアクションランタイムも更新した。
+GitHub Actions:
 
 - `actions/checkout@v4` → `actions/checkout@v7`
 - `actions/setup-node@v4` → `actions/setup-node@v7`
+- project Node 22を維持
+- production audit gateを維持
+- CodeRabbitの指摘を受け、checkoutに`persist-credentials: false`を追加
 
-プロジェクト本体の検証 Node は 22 を維持する。
-
-これにより GitHub Actions 側の Node 20 runtime deprecated 警告を除去した。
+repository-controlledな`npm ci` / `npm run check`へ不要なcheckout credentialを残さない。
 
 production dependency gate:
 
@@ -227,9 +338,11 @@ production dependency gate:
 npm audit --omit=dev --audit-level=high
 ```
 
-は継続し、最新CIで 0 vulnerabilities。
+は0 vulnerabilitiesで通過している。
 
-一方、dev/tooling を含む `npm ci` 全体では 12 vulnerabilities（2 low / 1 moderate / 9 high）が表示されるため、全依存が解消済みとは扱わない。
+一方、dev/toolingを含む`npm ci`全体では12 vulnerabilities（2 low / 1 moderate / 9 high）が表示されるため、全依存解消済みとは扱わない。
+
+CodeRabbitのレビューではmerge riskはLow。Docstring coverage警告は、TS/Reactの内部関数へ80% docstringを要求するreview設定由来であり、機能・安全性の問題ではないため、無意味なコメント増加は行わない。
 
 ---
 
@@ -237,23 +350,29 @@ npm audit --omit=dev --audit-level=high
 
 ### localStorage の完全な atomic transaction ではない
 
-journal により途中中断への復旧性は大幅に上がったが、localStorage 自体には複数タブ横断の compare-and-set transaction がない。
+journalにより途中中断への復旧性は大幅に上がったが、localStorage自体には複数タブ横断のcompare-and-set transactionがない。
 
-理論上は複数 writer が極めて近接して検証・書き込みする競合余地は残る。
+理論上は複数writerが極めて近接して検証・書き込みする競合余地は残る。
 
-Webで完全に閉じる候補:
+完全に閉じる候補:
 
 - Web Locks API
 - revision / generation token
 - IndexedDB transaction
 
+### localStorage容量コスト
+
+安全性のためprimary・mirror・pending・競合退避を持つため、単一コピーより容量を使う。
+
+現時点ではsilent loss回避を優先している。大規模データへ拡張する場合はIndexedDB等への移行が適切。
+
 ### iOS native project はまだ検証対象外
 
-現在のrepositoryには `ios/` native project がまだ存在せず、Web CI green は Xcode / WKWebView / TestFlight の再現性保証ではない。
+repositoryには`ios/` native projectがまだ存在せず、Web CI greenはXcode / WKWebView / TestFlightの再現性保証ではない。
 
 次フェーズでは以下を優先する。
 
-- Capacitor dependencies / config の再現可能性
+- Capacitor dependencies / configの再現可能性
 - `npx cap sync ios`
 - Xcode project generation
 - safe area
@@ -268,6 +387,6 @@ Webで完全に閉じる候補:
 
 ## Phase 32 の判断基準
 
-> 保存の途中でアプリが止まっても、「最後に書こうとした言葉」が残っているなら、次に開いたとき見つけられること。
+> 保存の途中でアプリが止まっても、存在する正常版・中断版を黙って捨てず、再起動後にユーザーが選べること。
 
-単に `setItem()` が成功する正常系だけでなく、**途中のどの書き込み点で止まっても silent loss を起こしにくい保存構造**へ進めた。
+単に`setItem()`が成功する正常系ではなく、**途中のどの書き込み点で止まっても silent loss を起こしにくく、複数候補がある場合は未採用版も退避してから確定する保存構造**へ進めた。
