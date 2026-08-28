@@ -64,6 +64,9 @@ export default function App() {
   );
   const [externalConflict, setExternalConflict] = useState(initialLoad.recoveryPending);
   const [canLoadStoredNotes, setCanLoadStoredNotes] = useState(!initialLoad.loadFailed);
+  const [recoveryCandidateCount, setRecoveryCandidateCount] = useState(
+    initialLoad.recoveredCount,
+  );
 
   const undoTimerRef = useRef<number | null>(null);
   const persistTimerRef = useRef<number | null>(null);
@@ -103,13 +106,19 @@ export default function App() {
   }, []);
 
   const flagExternalConflict = useCallback(
-    (storedReadable: boolean, alsoReportLoadError = false) => {
+    (
+      storedReadable: boolean,
+      alsoReportLoadError = false,
+      visibleRecoveryCount = 0,
+    ) => {
       clearPersistTimer();
       externalConflictRef.current = true;
       setExternalConflict(true);
       setCanLoadStoredNotes(storedReadable);
+      setRecoveryCandidateCount(storedReadable ? 0 : visibleRecoveryCount);
       setLastSaveResult({ ok: false, reason: "conflict" });
-      if (alsoReportLoadError) setLoadError(true);
+      // 復元候補をすでに画面へ出せている場合は、同じ内容の汎用エラーを重ねない。
+      if (alsoReportLoadError) setLoadError(visibleRecoveryCount === 0);
     },
     [clearPersistTimer],
   );
@@ -136,7 +145,13 @@ export default function App() {
 
     const remote = loadNotes();
     if (!remote.ok) {
-      flagExternalConflict(false, true);
+      if (remote.notes.length > 0) {
+        // この画面が clean なら、古い表示より復元候補を先に見せてから確定判断を求める。
+        applyCleanRemoteNotes(remote.notes);
+        flagExternalConflict(false, false, remote.notes.length);
+      } else {
+        flagExternalConflict(false, true);
+      }
       return;
     }
 
@@ -155,6 +170,7 @@ export default function App() {
         externalConflictRef.current = false;
         setExternalConflict(false);
         setCanLoadStoredNotes(true);
+        setRecoveryCandidateCount(0);
         return;
       }
 
@@ -162,6 +178,7 @@ export default function App() {
         // storage event が届く前に保存直前比較で競合した場合も、
         // 現在の保存先が読み込み可能かをここで判定する。
         const stored = loadNotes();
+        // ここはローカル dirty 状態なので、復元候補を勝手に画面へ適用しない。
         flagExternalConflict(stored.ok, !stored.ok);
       }
     },
@@ -245,14 +262,20 @@ export default function App() {
 
       if (notesStorageChanged) {
         const remote = loadNotes();
+        const locallyClean =
+          !notesDirtyRef.current &&
+          !saveGuardRef.current &&
+          !externalConflictRef.current;
 
         if (!remote.ok) {
-          flagExternalConflict(false, true);
-        } else if (
-          notesDirtyRef.current ||
-          saveGuardRef.current ||
-          externalConflictRef.current
-        ) {
+          if (locallyClean && remote.notes.length > 0) {
+            applyCleanRemoteNotes(remote.notes);
+            flagExternalConflict(false, false, remote.notes.length);
+          } else {
+            // dirty 中はローカル内容を守り、remote の復元候補を勝手に適用しない。
+            flagExternalConflict(false, true);
+          }
+        } else if (!locallyClean) {
           // ローカル未保存編集がある間は、外部変更を勝手に採用も上書きもしない。
           flagExternalConflict(true);
         } else {
@@ -373,6 +396,7 @@ export default function App() {
     setLastSaveResult({ ok: true });
     setExternalConflict(false);
     setCanLoadStoredNotes(true);
+    setRecoveryCandidateCount(0);
     setLoadError(false);
   }, [clearPersistTimer]);
 
@@ -442,9 +466,7 @@ export default function App() {
               style={{ borderRadius: "7px 13px 8px 11px" }}
             >
               <span className="font-mincho jp-text-discipline">
-                {initialLoad.recoveredCount > 0
-                  ? `保存データに問題がありました。復元できた${initialLoad.recoveredCount}件を表示しています。`
-                  : "データの読み込みに問題がありました。メモが復元できない可能性があります。"}
+                "データの読み込みに問題がありました。メモが復元できない可能性があります。"
               </span>
               <button
                 type="button"
@@ -468,9 +490,9 @@ export default function App() {
                 {canLoadStoredNotes ? copy.storageConflictTitle : copy.storageRecoveryTitle}
               </p>
               <p className="mt-gr-2 text-[12px] leading-ample text-ink-muted jp-text-discipline">
-                {!canLoadStoredNotes && initialLoad.recoveredCount > 0 && (
+                {!canLoadStoredNotes && recoveryCandidateCount > 0 && (
                   <span className="mb-gr-1 block">
-                    復元候補を{initialLoad.recoveredCount}件表示しています。
+                    復元候補を{recoveryCandidateCount}件表示しています。
                   </span>
                 )}
                 {canLoadStoredNotes
