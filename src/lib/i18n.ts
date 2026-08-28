@@ -69,6 +69,7 @@ export const copy = {
   saveErrorEn: "Could not save",
   saveConflict: "別の変更と重なったため、保存を止めています",
   saveConflictEn: "Saving paused because another change was detected",
+  saveRecovery: "復元内容を確認するまで、保存を止めています",
   storageConflictTitle: "保存先の内容が変わっています",
   storageConflictBody:
     "別の画面で更新されたか、復元中のデータがあります。自動保存を止めています。保存先を読み込むと、この画面の未保存編集は破棄されます。",
