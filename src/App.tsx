@@ -617,7 +617,6 @@ export default function App() {
     saveGuardRef.current = false;
     setLoadError(false);
   }, [
-    applyCleanRemoteNotes,
     clearPersistTimer,
     clearRecoveryCandidateSources,
     flagExternalConflict,
