@@ -1,4 +1,4 @@
-import { act } from "react";
+import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
@@ -69,7 +69,11 @@ describe("App lifecycle persistence", () => {
   function renderApp() {
     root = createRoot(container);
     act(() => {
-      root?.render(<App />);
+      root?.render(
+        <StrictMode>
+          <App />
+        </StrictMode>,
+      );
     });
   }
 
