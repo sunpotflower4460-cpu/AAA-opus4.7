@@ -70,7 +70,7 @@ describe("native durable snapshot secondary recovery", () => {
     });
   });
 
-  it("primaryとbackupがI/O失敗でも正常secondaryがあれば救済する", async () => {
+  it("primaryがI/O失敗なら正常secondaryがあっても安全確認未完了としてerrorにする", async () => {
     const secondary = [makeNote("secondary after io error")];
     files.set(
       NATIVE_SNAPSHOT_PATHS_FOR_TESTING.secondaryBackup,
@@ -88,10 +88,26 @@ describe("native durable snapshot secondary recovery", () => {
       return { data };
     });
 
-    expect(await readNativeDurableSnapshot()).toEqual({
-      status: "available",
-      notes: secondary,
+    expect(await readNativeDurableSnapshot()).toEqual({ status: "error" });
+    expect(mocks.readFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("primary不存在でもbackupがI/O失敗なら正常secondaryへ降りずerrorにする", async () => {
+    const secondary = [makeNote("secondary behind unreadable backup")];
+    files.set(
+      NATIVE_SNAPSHOT_PATHS_FOR_TESTING.secondaryBackup,
+      JSON.stringify(secondary),
+    );
+    mocks.readFile.mockImplementation(async ({ path }: { path: string }) => {
+      if (path === NATIVE_SNAPSHOT_PATHS_FOR_TESTING.primary) throw FILE_NOT_FOUND;
+      if (path === NATIVE_SNAPSHOT_PATHS_FOR_TESTING.backup) throw IO_ERROR;
+      const data = files.get(path);
+      if (data === undefined) throw FILE_NOT_FOUND;
+      return { data };
     });
+
+    expect(await readNativeDurableSnapshot()).toEqual({ status: "error" });
+    expect(mocks.readFile).toHaveBeenCalledTimes(2);
   });
 
   it("primaryとbackup不存在でもsecondary読込失敗はfresh install扱いしない", async () => {
