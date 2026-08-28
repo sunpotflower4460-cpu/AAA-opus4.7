@@ -1,0 +1,148 @@
+# Phase 40 — Dirty three-way recovery and native snapshot hardening
+
+## Scope
+
+Phase 40 focuses on recovery states where the app can simultaneously have:
+
+1. unsaved edits currently visible on screen,
+2. a different localStorage recovery candidate, and
+3. a different native Filesystem recovery candidate.
+
+The safety rule is that these candidates must never be silently merged or silently overwrite one another. The user must be able to inspect the candidates and explicitly choose what to commit.
+
+## Changes
+
+### 1. Screen / local / native candidates are independent
+
+`App.tsx` now models recovery candidates as three independent sources:
+
+- `screen` — the dirty, unsaved contents that were visible when the conflict was detected
+- `local` — the recovery candidate found in localStorage
+- `native` — the alternative candidate found in the Capacitor Filesystem snapshot
+
+Each source has its own ref. Switching the visible candidate changes only the displayed snapshot and active source; candidates are not automatically merged.
+
+### 2. Dirty screen is not replaced by asynchronous recovery
+
+When a dirty screen detects a local recovery state, the screen snapshot is captured before the local candidate is registered. Native recovery probing then runs with saving gated.
+
+If a normal primary appears while the native probe is still running, the dirty screen is not automatically replaced by that primary. The stored primary may still be chosen explicitly through the existing load action.
+
+### 3. Native recovery read errors gate destructive actions
+
+While native recovery is being checked, or when the native snapshot cannot be read safely:
+
+- autosave remains stopped,
+- editing that could make the unresolved state harder to reason about is gated where applicable,
+- force-overwrite is not offered,
+- the recovery candidates already captured remain available,
+- the user can retry the native safety check.
+
+A native I/O problem is never treated as an empty/fresh installation.
+
+### 4. Presented local and native candidates stay stable
+
+Once a local or native recovery candidate has been presented, a later storage event or native probe does not silently replace that candidate.
+
+This matters because a user may switch to a recovery candidate and edit it before deciding which version to commit. Without this rule, a later asynchronous event could erase those edits while the conflict banner was still visible.
+
+Regression coverage now verifies both:
+
+- edited local candidate survives later remote recovery events and probes,
+- edited native candidate survives later native probe results.
+
+Newer remote data is not destroyed by this UI stability rule; it remains in the persistence layer and the existing forced-save preservation path protects competing stored versions before overwrite.
+
+### 5. Recovery count follows the visible candidate
+
+The recovery banner count is now derived from the snapshot currently visible to the user. A later storage event no longer resets the displayed count to the original dirty-screen count after the user has switched to a local or native candidate.
+
+### 6. Native snapshots keep a bounded latest-three rolling window
+
+The native Filesystem persistence layer now maintains:
+
+- primary — newest successfully committed native snapshot
+- backup — previous native snapshot
+- secondary backup — the generation before backup
+
+The write order is intentionally:
+
+1. old backup -> secondary backup
+2. current primary -> backup
+3. new snapshot -> primary
+
+This prevents a failed later write from first destroying the newer committed generation.
+
+The three files are a bounded rolling recovery window, not permanent version history. Earlier Phase 40 experiments treated all three slots as immutable archives; that would have caused the fourth distinct autosave to fail permanently once all three slots were occupied. That behavior was removed.
+
+### 7. Secondary native backup is an actual recovery source
+
+The secondary backup is now included in `readNativeDurableSnapshot()`.
+
+Read order is:
+
+1. primary
+2. backup
+3. secondary backup
+
+If primary or backup is missing, corrupt, or experiences an I/O error but a later recovery source is valid, the valid snapshot can still be returned. Only when all three sources are truly missing is the result `missing`. If no valid candidate exists and any source is unreadable or malformed, the result is `error` rather than a false fresh-install state.
+
+### 8. Native rotation failure ordering is covered
+
+Regression tests cover:
+
+- preserving an older backup into secondary before rotation,
+- continuing beyond three distinct saves by rolling the latest three generations,
+- aborting before primary/backup mutation when the secondary write fails,
+- aborting when an existing backup cannot be read safely,
+- recovering from secondary when primary and backup are corrupt,
+- recovering from secondary when primary and backup reads fail,
+- returning `error` instead of `missing` when secondary cannot be read,
+- returning `missing` only when all native snapshot files are absent.
+
+## Verification
+
+Final clean branch head before this report:
+
+`1d2c2de0bfb4cf79b44d9486b6744e4bfbbd3d40`
+
+GitHub Actions `Check` run `33167765150` completed successfully with:
+
+- `npm ci`
+- `npm audit --omit=dev --audit-level=high` — 0 production vulnerabilities
+- TypeScript typecheck
+- ESLint
+- Vitest — 20 files, 161 tests passed
+- production build
+- `npx cap sync ios`
+- committed iOS project drift check
+- iPhone-only target/orientation guards in the workflow
+
+`npm ci` still reports 12 vulnerabilities in the broader dependency/dev-tool graph (2 low, 1 moderate, 9 high). Phase 40 does not claim those are resolved; the production high-severity audit remains clean.
+
+## Known limits / follow-up
+
+### Atomic multi-tab CAS is still not guaranteed
+
+localStorage does not provide an atomic compare-and-swap transaction across tabs. The existing journaling, expected-baseline checks, writer identity, conflict gates, and preservation slots substantially reduce silent overwrite risk, but an exact simultaneous interleaving remains a theoretical race.
+
+### Native snapshots are recovery, not full version history
+
+The native primary/backup/secondary files intentionally retain only the latest three generations. Older generations age out during normal successful saves.
+
+### Hidden preservation slots are not yet a user-facing recovery history
+
+Several local persistence slots preserve competing/recovery generations for safety. Phase 40 does not add a UI that browses all historical preservation slots. A future Recovery History flow could make those emergency copies user-selectable.
+
+### Real iOS validation is still pending
+
+CI confirms Capacitor sync and committed iOS project consistency, but the Linux runner does not have CocoaPods or `xcodebuild`; the workflow explicitly logs those steps as unavailable. Phase 40 therefore does **not** verify:
+
+- Xcode build/signing
+- iOS Simulator behavior
+- real-device background/suspend/terminate behavior
+- keyboard and safe-area behavior on 375 / 390 / 430 point widths
+- WKWebView vertical read-mode behavior
+- TestFlight installation or App Store submission metadata
+
+Those remain part of the iOS/TestFlight preflight work tracked separately.
