@@ -306,13 +306,16 @@ function resolvePendingSaveWithPrimary(
   try {
     // ユーザーが primary を選んでも、中断していた next を即座には捨てない。
     window.localStorage.setItem(CONFLICT_BACKUP_KEY, pendingSave.nextRaw);
+    // primary 採用を確定する前に recovery backup も primary へ揃える。
+    // ここで失敗したら journal を残し、次回も二択を提示できる状態を維持する。
+    window.localStorage.setItem(BACKUP_KEY, raw);
+    // candidate退避とprimary mirrorの両方が成功して初めて中断journalを解消する。
     window.localStorage.removeItem(PENDING_SAVE_KEY);
   } catch {
-    // 退避または journal 解消に失敗したら選択を確定せず、候補をそのまま残す。
+    // 退避・mirror・journal解消のどこかに失敗したら選択を確定しない。
     return interruptedSaveResult(pendingSave, true);
   }
 
-  mirrorValidPrimaryForPhase32(raw);
   return { ok: true, notes: primary };
 }
 
