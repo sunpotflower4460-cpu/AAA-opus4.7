@@ -73,7 +73,7 @@ export const copy = {
   retrySave: "もう一度保存する",
   retrySaveEn: "Try saving again",
   nativeBackupError:
-    "メモ本体は保存されていますが、端末内の予備保存を更新できませんでした。",
+    "最新の変更は保存済みです。端末内の予備保存を更新できませんでした。",
   nativeBackupRetry: "予備保存をもう一度作る",
   nativeRecoveryChecking: "端末内の復元データを確認しています…",
   nativeRecoveryReadError:

@@ -104,6 +104,12 @@ export default function App() {
     initialLoad.recoveredCount,
   );
   const [nativeBackupError, setNativeBackupError] = useState(false);
+  // 編集の世代。保存・予備保存の結果が「いま表示している版」に対するものか判定する（R35）。
+  // 日時や件数ではなく、この画面が受け取った変更の通し番号。永続化しない。
+  const editVersionRef = useRef(0);
+  const [editVersion, setEditVersion] = useState(0);
+  // 端末内の予備保存の更新に失敗した版。現在の版と一致する間だけ警告にする。
+  const [nativeBackupErrorVersion, setNativeBackupErrorVersion] = useState<number | null>(null);
   const [nativeBackupRetryAllowed, setNativeBackupRetryAllowed] = useState(false);
   const [nativeRecoveryStatus, setNativeRecoveryStatus] = useState<
     "idle" | "checking" | "error"
@@ -154,8 +160,13 @@ export default function App() {
   const persistDurableSnapshot = useCallback((snapshot: readonly Note[]) => {
     if (!isNativeDurableSnapshotAvailable()) return;
 
+    const versionAtRequest = editVersionRef.current;
     void persistNativeDurableSnapshot(snapshot).then((ok) => {
       if (!mountedRef.current) return;
+      // 結果が返るまでに新しい入力があれば、その結果は古い版のもの。
+      // 新しい版の保存・予備保存が自分の結果を出すので、ここでは表示を動かさない。
+      if (editVersionRef.current !== versionAtRequest) return;
+      setNativeBackupErrorVersion(ok ? null : versionAtRequest);
       setNativeBackupError(!ok);
       setNativeBackupRetryAllowed(
         !ok &&
@@ -204,6 +215,9 @@ export default function App() {
     // native復旧の確認中/読込障害中は、旧データを上書きし得る編集自体を開始させない。
     setNativeBackupRetryAllowed(false);
     if (nativeRecoveryGateRef.current) return false;
+
+    editVersionRef.current += 1;
+    setEditVersion(editVersionRef.current);
 
     if (externalConflictRef.current) {
       // recovery/conflict 中の編集は自動保存を再開せず、エディタにも停止理由を即時通知する。
@@ -1044,8 +1058,15 @@ export default function App() {
     showGlobalSaveFailure &&
     !externalConflict &&
     isRetryableSaveFailure(lastSaveResult);
-  const canRetryNativeBackup =
-    nativeBackupError && nativeBackupRetryAllowed && !externalConflict;
+  // 予備保存の警告は「最新の変更は保存済み」と言える時だけ出す。
+  // 本体の保存が失敗・停止している間や、警告の対象より新しい入力がある間は出さない（R35）。
+  const latestChangeSaved = lastSaveResult === null || lastSaveResult.ok;
+  const showNativeBackupWarning =
+    nativeBackupError &&
+    latestChangeSaved &&
+    !externalConflict &&
+    (nativeBackupErrorVersion === null || nativeBackupErrorVersion === editVersion);
+  const canRetryNativeBackup = showNativeBackupWarning && nativeBackupRetryAllowed;
 
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
@@ -1059,7 +1080,7 @@ export default function App() {
       {(loadError ||
         externalConflict ||
         showGlobalSaveFailure ||
-        nativeBackupError ||
+        showNativeBackupWarning ||
         nativeRecoveryStatus !== "idle") && (
         <div className="pointer-events-none fixed inset-x-gr-4 top-[max(env(safe-area-inset-top),12px)] z-30 flex flex-col gap-gr-2">
           {nativeRecoveryStatus === "checking" && (
@@ -1243,7 +1264,7 @@ export default function App() {
           )}
 
 
-          {nativeBackupError && (
+          {showNativeBackupWarning && (
             <div
               data-testid="native-backup-failure"
               role="alert"

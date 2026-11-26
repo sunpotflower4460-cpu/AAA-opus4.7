@@ -123,6 +123,11 @@ export function NoteEditor({
     window.requestAnimationFrame(() => deleteButtonRef.current?.focus());
   }
 
+  // 保存の失敗・競合は、この画面だけの演出ではなく「いまの編集版が保存されていない」という事実。
+  // 再入場で saveState が idle に戻っても、App が保持する結果が失敗である間は表示し続ける。
+  // 失敗が解消するのは、保存が成功した結果が届いた時（または新しい入力で未確定に戻った時）だけ。
+  const displayedSaveState: SaveState = saveResult?.ok === false ? "error" : saveState;
+
   const retryableSaveError = isRetryableSaveFailure(saveResult);
   const saveErrorMessage =
     saveResult?.ok === false && saveResult.reason === "conflict"
@@ -231,7 +236,7 @@ export function NoteEditor({
 
       <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
-          <SaveAfterglow active={saveState === "saved"} token={note.updatedAt} />
+          <SaveAfterglow active={displayedSaveState === "saved"} token={note.updatedAt} />
 
           <div className="mb-gr-5 self-start">
             <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
@@ -265,13 +270,13 @@ export function NoteEditor({
 
         <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/72">
           <span aria-live="polite" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
-            {saveState === "saving" && (
+            {displayedSaveState === "saving" && (
               <span className="zanshin-save-status zanshin-save-status--saving flex items-center gap-gr-2">
                 <span className="zanshin-breath-dot" aria-hidden="true" />
                 <span className="font-mincho">{copy.saving}</span>
               </span>
             )}
-            {saveState === "saved" && (
+            {displayedSaveState === "saved" && (
               <span
                 key={`saved-${note.updatedAt}`}
                 className="zanshin-save-status zanshin-save-status--saved flex items-center gap-gr-2"
@@ -279,7 +284,7 @@ export function NoteEditor({
                 <span className="font-mincho">{copy.saved}</span>
               </span>
             )}
-            {saveState === "error" && (
+            {displayedSaveState === "error" && (
               <span className="zanshin-save-status flex flex-wrap items-center gap-gr-2 text-vermilion">
                 <span className="font-mincho">{saveErrorMessage}</span>
                 {retryableSaveError && onRetrySave && (

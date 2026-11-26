@@ -457,8 +457,17 @@ describe("App native durable snapshot", () => {
       textarea.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
-    expect(container.querySelector('[data-testid="native-backup-failure"]')).not.toBeNull();
+    // 新しい入力が始まった時点で、古い版に対する予備保存の警告は出さない（R35）。
+    // 「最新の変更は保存済み」と言えない間に、無効なretryボタンも残さない。
+    expect(container.querySelector('[data-testid="native-backup-failure"]')).toBeNull();
     expect(hasButton(container, copy.nativeBackupRetry)).toBe(false);
+
+    // 新しい版が保存され、その予備保存が再び失敗した時は、その版の警告として再表示する。
+    durable.persist.mockResolvedValueOnce(false);
+    act(() => vi.advanceTimersByTime(1_000));
+    await flushPromises();
+    expect(container.querySelector('[data-testid="native-backup-failure"]')).not.toBeNull();
+    expect(hasButton(container, copy.nativeBackupRetry)).toBe(true);
   });
 
 
