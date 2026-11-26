@@ -198,7 +198,7 @@ Cloudflare Pages 接続済みであれば、現状の `main` ブランチから�
 ## App Store 提出
 
 **提出内容・手順・残タスクは [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) に集約しています。**
-スクリーンショットは `store/screenshots/` にあります。初回リリースは無料・広告なし・課金なし・外部SDKなしです。
+スクリーンショットは `store/screenshots/` にあります。書いた言葉の字体は「筆あと」（明朝・筆・墨・手書き）から選べます。初回リリースは無料・広告なし・課金なし・外部SDKなしです。
 
 ## （旧）App Store申請前 TODO（初回リリースでは広告・課金は対象外）
 

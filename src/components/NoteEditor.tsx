@@ -4,6 +4,7 @@ import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
 import { copy } from "../lib/i18n";
 import { getSaveFailureMessage } from "../lib/saveFailureUi";
 import { useSaveTrace } from "../hooks/useSaveTrace";
+import { BrushPicker } from "./BrushPicker";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 import { SaveAfterglow } from "./SaveAfterglow";
 
@@ -170,6 +171,7 @@ export function NoteEditor({
         </button>
 
         <div className="flex items-center gap-gr-2">
+          <BrushPicker variant="icon" />
           <button
             type="button"
             onClick={toggleFavorite}

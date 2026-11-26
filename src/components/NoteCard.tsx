@@ -56,7 +56,7 @@ export function NoteCard({ note, onOpen }: Props) {
 
           <h3
             className={[
-              "font-mincho text-[17px] leading-snug tracking-mincho jp-text-discipline",
+              "zanshin-note-card__title font-mincho text-[17px] leading-snug tracking-mincho jp-text-discipline",
               note.title.trim() ? "text-sumi" : "text-ink-muted",
             ].join(" ")}
           >
@@ -65,7 +65,7 @@ export function NoteCard({ note, onOpen }: Props) {
 
           {bodyPreview && (
             <div className="mt-gr-2">
-              <p className="line-clamp-2 text-[14px] leading-ample text-ink-muted/92 jp-text-discipline">
+              <p className="zanshin-note-card__preview line-clamp-2 text-[14px] leading-ample text-ink-muted/92 jp-text-discipline">
                 {bodyPreview}
               </p>
             </div>

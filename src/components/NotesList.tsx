@@ -4,6 +4,7 @@ import type { MonetizationState } from "../types/monetization";
 import { copy } from "../lib/i18n";
 import { matchesNote, normalizeSearchQuery, sortNotes } from "../lib/notesLogic";
 import { ADS_ENABLED, PREMIUM_ENABLED } from "../lib/featureFlags";
+import { BrushPicker } from "./BrushPicker";
 import { NoteCard } from "./NoteCard";
 import { SearchBar } from "./SearchBar";
 import { EmptyState } from "./EmptyState";
@@ -75,9 +76,12 @@ export function NotesList({
           <p className="font-mincho text-[12px] tracking-[0.12em] text-ink-muted/72 jp-text-discipline">
             {countLabel(visible.length, isSearching)}
           </p>
-          <p className="text-[10px] tracking-[0.14em] text-ink-muted/80">
-            {copy.localOnly}
-          </p>
+          <div className="flex items-center gap-gr-2">
+            <BrushPicker variant="list" className="-my-gr-2" />
+            <p className="text-[10px] tracking-[0.14em] text-ink-muted/80">
+              {copy.localOnly}
+            </p>
+          </div>
         </div>
       </div>
 

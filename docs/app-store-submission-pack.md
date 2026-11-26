@@ -55,6 +55,7 @@
 ・お気に入り（金のしるし）
 ・日付印
 ・縦書きの読み返しモード
+・筆あと（明朝・筆・墨・手書きから字の表情を選べます）
 ・端末内保存
 
 【安心してお使いいただくために】
@@ -64,9 +65,9 @@
 ・トラッキングや分析は行いません
 ```
 
-**キーワード**（100字以内 / 52字）
+**キーワード**（100字以内 / 約50字）
 ```text
-メモ,メモ帳,日記,日記帳,ノート,記録,創作,文章,和紙,和風,余白,シンプル,縦書き,日付,読み返し
+メモ,メモ帳,日記,日記帳,ノート,記録,創作,文章,和紙,和風,余白,縦書き,筆,毛筆,手書き
 ```
 
 **新機能（What's New）**: 初回リリースのため不要。
@@ -97,6 +98,7 @@ FEATURES
 • Favorites
 • Subtle date marks
 • Vertical reading mode
+• Choice of writing styles: Mincho, Brush, Ink, and Handwriting
 • Stored on your device
 
 PRIVATE BY DESIGN
@@ -162,17 +164,17 @@ The UI is in Japanese. "残心" (zanshin) is a Japanese term meaning a lingering
 
 ## 7. スクリーンショット
 
-`store/screenshots/` に生成済み（キャプション付き・JPEG・alphaなし）。
+`store/screenshots/` に生成済み（各サイズ5枚・キャプション付き・JPEG・alphaなし）。
 
 | 用途 | ファイル | サイズ |
 |------|----------|--------|
-| 6.9インチ（iPhone 16/17 Pro Max 等・必須） | `6.9inch-1320x2868-{home,edit,read,search}.jpg` | 1320×2868 |
-| 6.5インチ（任意） | `6.5inch-1284x2778-{home,edit,read,search}.jpg` | 1284×2778 |
+| 6.9インチ（iPhone 16/17 Pro Max 等・必須） | `6.9inch-1320x2868-{home,edit,read,brush,search}.jpg` | 1320×2868 |
+| 6.5インチ（任意） | `6.5inch-1284x2778-{home,edit,read,brush,search}.jpg` | 1284×2778 |
 
-推奨アップロード順: `home` → `edit` → `read` → `search`。
+推奨アップロード順: `home` → `read` → `brush` → `edit` → `search`。
 
 > **注意**: これらは Web ビルドをモバイル幅で撮影した画像です（フォントは実機の Hiragino 明朝に近い Noto Serif JP）。
-> 審査上は問題になりにくいものの、可能なら Xcode Simulator（iPhone 17 Pro Max）で同じ4画面を撮り直して差し替えると最も確実です。
+> 審査上は問題になりにくいものの、可能なら Xcode Simulator（iPhone 17 Pro Max）で同じ5画面を撮り直して差し替えると最も確実です。
 > 再生成は `store/tools/capture-screenshots.cjs` のコメントを参照。
 
 ## 8. ビルド・アップロード手順（Mac / Xcode が必要）
@@ -203,6 +205,11 @@ Xcode で:
 - [ ] 著作権表記・審査連絡先の入力
 - [ ] （推奨）スクリーンショットを Simulator 撮影に差し替え
 
+## 9.5 同梱フォントのライセンス
+
+「筆あと」用に Yuji Syuku / Yuji Boku / Klee One（いずれも SIL Open Font License 1.1）をアプリへ同梱しています（通信なしで動くため端末内に持たせています）。
+ライセンス全文は `public/licenses/fonts-OFL.txt`（サポートページからリンク）。アプリ容量は Web 資産が約 20MB 増えます。
+
 ## 10. 提出前の最終確認
 
 - [x] 広告・課金・mock Premium が UI に出ない
@@ -213,4 +220,5 @@ Xcode で:
 - [x] iPhone のみ・縦向きのみ
 - [x] 入力欄は 16px 以上（iOS の自動ズーム回避）
 - [x] 誇大表現・医療/治療表現なし
+- [x] `npm audit --omit=dev` が 0 件（`@capacitor/*` を 7.6.11 へ更新して critical 脆弱性を解消）
 - [x] `npm run check` 成功（typecheck / lint / 164 tests / build）

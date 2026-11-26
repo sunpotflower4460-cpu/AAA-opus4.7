@@ -46,6 +46,7 @@ const CAPTIONS = {
   edit: ["心の余白に、", "言葉を置く。"],
   read: ["縦書きで、", "静かに読み返す。"],
   search: ["残した言葉を、", "手繰り寄せる。"],
+  brush: ["字の表情を、", "選べる。"],
 };
 
 async function shimFonts(ctx) {
@@ -59,9 +60,12 @@ async function shimFonts(ctx) {
   }));
 }
 
-async function capture(browser, size, key, steps) {
+async function capture(browser, size, key, steps, brush = "mincho") {
   const ctx = await browser.newContext({ viewport: { width: size.w, height: size.h }, deviceScaleFactor: 3, isMobile: true, hasTouch: true, locale: "ja-JP" });
-  await ctx.addInitScript((n) => { if (!localStorage.getItem("zanshin.notes.v1")) localStorage.setItem("zanshin.notes.v1", JSON.stringify(n)); }, NOTES);
+  await ctx.addInitScript(([n, b]) => {
+    if (!localStorage.getItem("zanshin.notes.v1")) localStorage.setItem("zanshin.notes.v1", JSON.stringify(n));
+    localStorage.setItem("zanshin.prefs.brush.v1", b);
+  }, [NOTES, brush]);
   await shimFonts(ctx);
   const p = await ctx.newPage();
   await p.goto(BASE); await p.waitForTimeout(1600);
@@ -101,14 +105,16 @@ async function compose(browser, size, key, rawPath) {
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
   for (const size of SIZES) {
+    // [操作, 筆あと]。読み返しは筆、書く画面は手書き調、ほかは標準の明朝。
     const shots = {
-      home: async () => {},
-      edit: async (p) => { await p.getByText("朝の庭").first().click(); await p.waitForTimeout(700); await p.getByRole("button", { name: "言葉を直す" }).click(); },
-      read: async (p) => { await p.getByText("朝の庭").first().click(); },
-      search: async (p) => { await p.locator(".zanshin-search-input").fill("雨"); },
+      home: [async () => {}, "mincho"],
+      edit: [async (p) => { await p.getByText("朝の庭").first().click(); await p.waitForTimeout(700); await p.getByRole("button", { name: "言葉を直す" }).click(); }, "mincho"],
+      read: [async (p) => { await p.getByText("朝の庭").first().click(); }, "fude"],
+      brush: [async (p) => { await p.getByRole("button", { name: /筆あと/ }).click(); }, "fude"],
+      search: [async (p) => { await p.locator(".zanshin-search-input").fill("雨"); }, "mincho"],
     };
-    for (const [key, steps] of Object.entries(shots)) {
-      const raw = await capture(browser, size, key, steps);
+    for (const [key, [steps, brush]] of Object.entries(shots)) {
+      const raw = await capture(browser, size, key, steps, brush);
       await compose(browser, size, key, raw);
       console.log("ok", size.name, key);
     }

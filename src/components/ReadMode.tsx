@@ -1,5 +1,6 @@
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
+import { BrushPicker } from "./BrushPicker";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
@@ -47,6 +48,8 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
           <span className="font-mincho tracking-mincho">{copy.back}</span>
         </button>
 
+        <div className="flex items-center gap-gr-2">
+        <BrushPicker variant="icon" />
         <button
           type="button"
           onClick={onEdit}
@@ -60,6 +63,7 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
         >
           {copy.editNote}
         </button>
+        </div>
       </header>
 
       <main className="read-mode-stage flex min-h-0 flex-1 flex-col pt-gr-3 pb-gr-5">
@@ -83,6 +87,32 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
             </p>
           )}
         </article>
+        <svg
+          className="read-mode-seal"
+          viewBox="0 0 34 34"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <defs>
+            <filter id="zanshin-seal-rough" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n" />
+              <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" />
+            </filter>
+          </defs>
+          <g filter="url(#zanshin-seal-rough)">
+            <rect x="3" y="3" width="28" height="28" rx="2.5" fill="#b14a36" />
+            <text
+              x="17"
+              y="25.5"
+              textAnchor="middle"
+              fontSize="21"
+              fill="#f7f1e5"
+              style={{ fontFamily: '"Yuji Boku", "Hiragino Mincho ProN", serif' }}
+            >
+              残
+            </text>
+          </g>
+        </svg>
       </main>
     </div>
   );

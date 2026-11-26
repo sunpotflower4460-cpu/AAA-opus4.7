@@ -2,6 +2,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
+import "@fontsource/yuji-syuku/japanese-400.css";
+import "@fontsource/yuji-syuku/latin-400.css";
+import "@fontsource/yuji-boku/japanese-400.css";
+import "@fontsource/yuji-boku/latin-400.css";
+import "@fontsource/klee-one/japanese-400.css";
+import "@fontsource/klee-one/latin-400.css";
+import { initBrush } from "./lib/brushPreference";
 import "./index.css";
 import "./phase19.css";
 import "./phase21.css";
@@ -14,6 +21,10 @@ import "./phase28.css";
 import "./phase29.css";
 import "./phase30.css";
 import "./phase31.css";
+import "./phase32.css";
+
+// 描画前に筆あとを反映し、字体の切り替わりでちらつかないようにする。
+initBrush();
 
 const root = document.getElementById("root");
 

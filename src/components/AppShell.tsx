@@ -15,6 +15,7 @@ type Props = {
 export function AppShell({ children }: Props) {
   return (
     <div className="relative min-h-screen min-h-[100dvh] w-full">
+      <div className="zanshin-fibers" aria-hidden="true" />
       <ZanshinMoon />
       <div className="zanshin-ma-axis" aria-hidden="true" />
       <div
