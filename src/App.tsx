@@ -28,6 +28,7 @@ import { createId } from "./lib/id";
 import { copy } from "./lib/i18n";
 import { getSaveFailureMessage } from "./lib/saveFailureUi";
 import { subscribeToNativeAppState } from "./lib/nativeAppLifecycle";
+import { recordDraftRescue } from "./lib/draftRescue";
 import {
   isNativeDurableSnapshotAvailable,
   persistNativeDurableSnapshot,
@@ -204,6 +205,12 @@ export default function App() {
       setRecoveryCandidateCount(notes.length);
     }
   }, [notes]);
+
+  // 描画例外で App が破棄されても、最後に受け取った内容へ届けるための控え（R33）。
+  // 保存層には一切書かない。取り出し専用で、保存先で確認できている版との差も一緒に持つ。
+  useLayoutEffect(() => {
+    recordDraftRescue(notes, baselineNotesRef.current);
+  }, [notes, lastSaveResult]);
 
   const clearPersistTimer = useCallback(() => {
     if (!persistTimerRef.current) return;

@@ -196,3 +196,59 @@ describe("保存失敗の継続（R02）", () => {
     expect(container.textContent).toContain(copy.saveErrorQuota);
   });
 });
+
+describe("保存失敗中の本文の取り出し（R24）", () => {
+  let storage: ReturnType<typeof mockLocalStorage>;
+  let container: HTMLDivElement;
+  let root: Root | null = null;
+  const writeText = vi.fn();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    writeText.mockReset();
+    writeText.mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    storage = mockLocalStorage();
+    Object.defineProperty(window, "localStorage", { value: storage, writable: true, configurable: true });
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote({ title: "取り出す題名" })]));
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => root?.render(<App />));
+  });
+
+  afterEach(() => {
+    if (root) act(() => root?.unmount());
+    container.remove();
+    vi.useRealTimers();
+  });
+
+  it("保存に失敗している時、最新の本文と題名を原文のままコピーでき、コピーしても保存済みにならない", async () => {
+    act(() => click(findButton(container, "取り出す題名")));
+    act(() => click(findButton(container, copy.editNote)));
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === PENDING_SAVE_KEY_FOR_TESTING) throw new DOMException("quota", "QuotaExceededError");
+      storage._store[key] = value;
+    });
+    const raw = "  行頭の空白\n\n空行と絵文字🌙  ";
+    changeTextarea(container, raw);
+    act(() => vi.advanceTimersByTime(1_000));
+    expect(container.textContent).toContain(copy.saveErrorQuota);
+
+    await act(async () => {
+      click(findButton(container, copy.copyBody));
+      await Promise.resolve();
+    });
+    expect(writeText).toHaveBeenCalledWith(raw); // trim・整形をしない
+    expect(container.textContent).toContain(copy.copied);
+    // コピーの成功は保存の成功ではない。
+    expect(container.textContent).toContain(copy.saveErrorQuota);
+    expect(container.textContent).not.toContain(copy.saved);
+
+    await act(async () => {
+      click(findButton(container, copy.copyTitle));
+      await Promise.resolve();
+    });
+    expect(writeText).toHaveBeenLastCalledWith("取り出す題名");
+  });
+});

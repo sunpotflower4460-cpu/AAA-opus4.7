@@ -5,6 +5,7 @@ import { copy } from "../lib/i18n";
 import { getSaveFailureMessage } from "../lib/saveFailureUi";
 import { useSaveTrace } from "../hooks/useSaveTrace";
 import { BrushPicker } from "./BrushPicker";
+import { CopyTextButton } from "./CopyTextButton";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 import { SaveAfterglow } from "./SaveAfterglow";
 
@@ -296,6 +297,9 @@ export function NoteEditor({
                     {copy.retrySave}
                   </button>
                 )}
+                {/* 保存できていない最新の文章を、保存の成否と無関係に取り出せる出口（R24）。原文のまま渡す。 */}
+                {note.body !== "" && <CopyTextButton label={copy.copyBody} text={note.body} />}
+                {note.title !== "" && <CopyTextButton label={copy.copyTitle} text={note.title} />}
               </span>
             )}
           </span>

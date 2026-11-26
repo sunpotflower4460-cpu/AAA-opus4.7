@@ -74,6 +74,20 @@ export const copy = {
   retrySaveEn: "Try saving again",
   nativeBackupError:
     "最新の変更は保存済みです。端末内の予備保存を更新できませんでした。",
+  // 救済（本文・題名の取り出し）
+  copyBody: "本文をコピー",
+  copyTitle: "タイトルをコピー",
+  copied: "コピーしました",
+  copyFailed: "コピーできませんでした。下の文章を選択してコピーしてください。",
+  renderFailureTitle: "表示に問題が起きました",
+  renderFailureUnsaved:
+    "保存できていない変更があります。再読み込みする前に、下の文章をコピーしてください。",
+  renderFailureNoUnsaved:
+    "保存できていない変更は確認されませんでした。再読み込みして開き直せます。",
+  renderFailureUnknown:
+    "保存の状況を確認できませんでした。再読み込みすると、保存されていない内容は失われることがあります。",
+  renderFailureReload: "再読み込みして開き直す",
+  unsavedNoteLabel: "保存できていない内容",
   nativeBackupRetry: "予備保存をもう一度作る",
   nativeRecoveryChecking: "端末内の復元データを確認しています…",
   nativeRecoveryReadError:
