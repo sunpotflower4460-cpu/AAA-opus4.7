@@ -1,4 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { copy } from "../lib/i18n";
+import { getDraftRescue, getUnsavedNotes } from "../lib/draftRescue";
+import { CopyTextButton } from "./CopyTextButton";
 
 type Props = {
   children: ReactNode;
@@ -8,6 +11,13 @@ type State = {
   hasError: boolean;
 };
 
+/**
+ * 描画例外の受け皿。
+ *
+ * 再読み込みを促す前に、最後に受け取った「保存できていない内容」を読み取り専用で示し、
+ * コピーへ進める（R33）。取り出した事実は保存成功とは別で、ここから保存先へは何も書かない
+ * （競合判定を飛ばす force-save や、保存データの初期化は行わない）。
+ */
 export class AppErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
@@ -20,41 +30,77 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex min-h-dvh items-center justify-center px-gr-5 text-center">
-          <div
-            className="max-w-[420px] border border-[color:var(--color-line)] bg-paper px-gr-5 py-gr-6 shadow-paper-soft"
-            style={{ borderRadius: "8px 16px 9px 14px" }}
-            role="alert"
-            aria-live="assertive"
-          >
-            <span
-              aria-hidden="true"
-              className="mx-auto mb-gr-4 block h-px w-gr-5 bg-gradient-to-r from-transparent via-vermilion/45 to-transparent"
-            />
-            <h1 className="font-mincho text-[22px] leading-[1.7] tracking-[0.06em] text-sumi">
-              余白を、もう一度ひらきます。
-            </h1>
-            <p className="mt-gr-3 text-[14px] leading-ample text-ink-muted jp-text-discipline">
-              予期しない問題が起きました。再読み込みすると、残心を開き直せます。
-            </p>
-            <p className="mt-gr-2 text-[11px] leading-ample tracking-[0.08em] text-ink-muted/62">
-              Something unexpected happened. Reload to open Zanshin again.
-            </p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-gr-5 min-h-[48px] bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] tracking-[0.08em] text-washi transition-soft hover:bg-indigo active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sumi/35 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-              style={{ borderRadius: "7px 12px 8px 10px" }}
-            >
-              余白をひらき直す
-            </button>
-          </div>
-        </div>
-      );
-    }
+    if (!this.state.hasError) return this.props.children;
 
-    return this.props.children;
+    const snapshot = getDraftRescue();
+    const unsavedNotes = getUnsavedNotes(snapshot);
+    const known = snapshot !== null;
+
+    return (
+      <div className="flex min-h-dvh items-start justify-center px-gr-4 py-gr-6 text-center sm:items-center">
+        <div
+          className="w-full max-w-[460px] border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-5 shadow-paper-soft sm:px-gr-5"
+          style={{ borderRadius: "8px 16px 9px 14px" }}
+          role="alert"
+        >
+          <h1 className="font-mincho text-[20px] leading-[1.7] tracking-[0.06em] text-sumi">
+            {copy.renderFailureTitle}
+          </h1>
+
+          <p className="mt-gr-3 text-[14px] leading-ample text-sumi jp-text-discipline">
+            {!known
+              ? copy.renderFailureUnknown
+              : unsavedNotes.length > 0
+                ? copy.renderFailureUnsaved
+                : copy.renderFailureNoUnsaved}
+          </p>
+
+          {unsavedNotes.length > 0 && (
+            <ul className="mt-gr-4 flex flex-col gap-gr-4 text-left">
+              {unsavedNotes.map((note) => (
+                <li
+                  key={note.id}
+                  className="flex flex-col gap-gr-2 border-t border-[color:var(--color-line)] pt-gr-3"
+                >
+                  <span className="text-[12px] text-ink-muted">{copy.unsavedNoteLabel}</span>
+                  {note.title !== "" && (
+                    <input
+                      readOnly
+                      aria-label={copy.titlePlaceholder}
+                      value={note.title}
+                      onFocus={(event) => event.currentTarget.select()}
+                      className="w-full rounded-[8px] border border-[color:var(--color-line)] bg-paper px-gr-3 py-gr-2 text-[16px] text-sumi"
+                    />
+                  )}
+                  <textarea
+                    readOnly
+                    aria-label={copy.bodyPlaceholder}
+                    value={note.body}
+                    rows={Math.min(12, Math.max(4, note.body.split("\n").length + 1))}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="w-full rounded-[8px] border border-[color:var(--color-line)] bg-paper px-gr-3 py-gr-2 text-[16px] leading-ample text-sumi"
+                  />
+                  <div className="flex flex-wrap gap-gr-3">
+                    <CopyTextButton label={copy.copyBody} text={note.body} />
+                    {note.title !== "" && (
+                      <CopyTextButton label={copy.copyTitle} text={note.title} />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-gr-5 min-h-[48px] bg-sumi px-gr-5 py-gr-3 font-mincho text-[14px] tracking-[0.08em] text-washi transition-soft hover:bg-indigo active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sumi/35 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
+            style={{ borderRadius: "7px 12px 8px 10px" }}
+          >
+            {copy.renderFailureReload}
+          </button>
+        </div>
+      </div>
+    );
   }
 }

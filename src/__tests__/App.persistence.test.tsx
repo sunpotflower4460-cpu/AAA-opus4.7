@@ -70,7 +70,7 @@ function openExistingNoteEditor(container: HTMLElement) {
 }
 
 function changeTextarea(container: HTMLElement, value: string) {
-  const textarea = container.querySelector("textarea");
+  const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) {
     throw new Error("textarea not found");
   }
@@ -278,7 +278,7 @@ describe("App lifecycle persistence", () => {
       window.dispatchEvent(new Event("pageshow"));
     });
 
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
     expect((textarea as HTMLTextAreaElement).value).toBe("復帰後も守るローカル本文");
 
@@ -402,7 +402,7 @@ describe("App lifecycle persistence", () => {
     act(() => dispatchStorageChange());
     act(() => click(findButton(container, copy.storageConflictLoad)));
 
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     expect(textarea).toBeInstanceOf(HTMLTextAreaElement);
     expect((textarea as HTMLTextAreaElement).value).toBe("採用する本文");
     expect(container.textContent).not.toContain(copy.storageConflictTitle);

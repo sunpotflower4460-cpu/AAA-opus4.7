@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   loadNotes,
   saveNotes,
+  listProtectedRecoveryCandidates,
+  discardProtectedRecoveryCandidate,
   STORAGE_KEY_FOR_TESTING,
   BACKUP_KEY_FOR_TESTING,
   CONFLICT_BACKUP_KEY_FOR_TESTING,
@@ -677,12 +679,147 @@ describe("saveNotes", () => {
 
     const result = saveNotes(forced, { force: true });
 
-    expect(result).toEqual({ ok: false, reason: "conflict" });
+    // 満杯は通常の版競合とは別の結果（R34）。保護の不変条件（何も消さない）は従来どおり。
+    expect(result).toEqual({ ok: false, reason: "recovery_archive_full" });
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(corruptRaw);
     expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(hiddenRaw);
     expect(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(archive1Raw);
     expect(storage._store[RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING]).toBe(archive2Raw);
     expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
+  });
+
+  describe("保存の各段階での失敗の区別（R36 / F07）", () => {
+    const oldNotes = [makeNote({ id: "n", title: "旧確定版" })];
+    const nextNotes = [makeNote({ id: "n", title: "未保存の新しい版" })];
+    const oldRaw = JSON.stringify(oldNotes);
+
+    function failOn(target: string) {
+      storage.setItem.mockImplementation((key: string, value: string) => {
+        if (key === target) throw new DOMException("quota", "QuotaExceededError");
+        storage._store[key] = value;
+      });
+    }
+
+    it("journalの書込みで失敗: 何も変わらず、旧確定版がそのまま残る", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      storage.setItem(BACKUP_KEY_FOR_TESTING, oldRaw);
+      failOn(PENDING_SAVE_KEY_FOR_TESTING);
+
+      expect(saveNotes(nextNotes, { expectedNotes: oldNotes })).toEqual({ ok: false, reason: "quota" });
+      expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
+    });
+
+    it("復旧コピーの書込みで失敗: primaryは旧確定版のまま。未保存版はjournalにだけ残り、旧版も失われない", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      storage.setItem(BACKUP_KEY_FOR_TESTING, oldRaw);
+      failOn(BACKUP_KEY_FOR_TESTING);
+
+      expect(saveNotes(nextNotes, { expectedNotes: oldNotes })).toEqual({ ok: false, reason: "quota" });
+      expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(JSON.parse(storage._store[PENDING_SAVE_KEY_FOR_TESTING])).toMatchObject({
+        baseRaw: oldRaw,
+        nextRaw: JSON.stringify(nextNotes),
+      });
+    });
+
+    it("primaryの書込みで失敗: 旧確定版はprimaryに、未保存版は復旧コピーとjournalに残り、再起動後に候補として拾える", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      storage.setItem(BACKUP_KEY_FOR_TESTING, oldRaw);
+      failOn(STORAGE_KEY_FOR_TESTING);
+
+      const result = saveNotes(nextNotes, { expectedNotes: oldNotes });
+      expect(result.ok).toBe(false);
+      expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(JSON.stringify(nextNotes));
+      expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeDefined();
+
+      // 次回読込では、旧版を正本のまま、中断した新しい版を候補として提示する（自動採用しない）。
+      storage.setItem.mockImplementation((key: string, value: string) => {
+        storage._store[key] = value;
+      });
+      const reloaded = loadNotes();
+      expect(JSON.stringify(reloaded.notes)).toContain("未保存の新しい版");
+      expect(reloaded.ok).toBe(false);
+    });
+
+    it("容量不足を示す結果は retry 可能な失敗で、別の理由（競合・満杯）と区別される", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      failOn(PENDING_SAVE_KEY_FOR_TESTING);
+      const result = saveNotes(nextNotes, { expectedNotes: oldNotes });
+      expect(result).toEqual({ ok: false, reason: "quota" });
+    });
+  });
+
+  describe("保護候補が満杯の時の確認と整理（R34）", () => {
+    const archive1 = [makeNote({ id: "archive-1", title: "退避1" })];
+    const archive2 = [makeNote({ id: "archive-2", title: "退避2" })];
+    const hidden = [makeNote({ id: "archive-3", title: "今回の復元候補" })];
+    const forced = [makeNote({ id: "forced", title: "この画面" })];
+    const raws = {
+      archive1: JSON.stringify(archive1),
+      archive2: JSON.stringify(archive2),
+      hidden: JSON.stringify(hidden),
+    };
+
+    function seedFull() {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, "{ broken primary");
+      storage.setItem(BACKUP_KEY_FOR_TESTING, raws.hidden);
+      storage.setItem(RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING, raws.archive1);
+      storage.setItem(RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING, raws.archive2);
+    }
+
+    it("保護している候補を、内容を読める形で一覧できる", () => {
+      seedFull();
+      const listed = listProtectedRecoveryCandidates();
+      expect(listed.map((c) => c.slot)).toEqual(["recovery_primary", "recovery_secondary"]);
+      expect(listed[0].notes).toEqual(archive1);
+      expect(listed[1].raw).toBe(raws.archive2);
+    });
+
+    it("読めない保護枠は一覧にも整理にも出さない（保護を維持）", () => {
+      seedFull();
+      storage.setItem(RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING, "{ not json");
+      expect(listProtectedRecoveryCandidates().map((c) => c.slot)).toEqual(["recovery_primary"]);
+    });
+
+    it("確認した内容と一致する枠だけを整理し、変わっていたら何も消さない", () => {
+      seedFull();
+      const [first] = listProtectedRecoveryCandidates();
+
+      // 確認後に別の内容へ変わった場合は、消さない。
+      storage.setItem(RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING, JSON.stringify(archive2));
+      expect(discardProtectedRecoveryCandidate(first.slot, first.raw)).toBe("changed");
+      expect(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(JSON.stringify(archive2));
+
+      // 一致していれば、選ばれた枠だけを整理する。他の枠・BACKUPには触れない。
+      const current = listProtectedRecoveryCandidates().find((c) => c.slot === "recovery_secondary");
+      expect(current).toBeDefined();
+      expect(discardProtectedRecoveryCandidate("recovery_secondary", current!.raw)).toBe("discarded");
+      expect(storage._store[RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING]).toBeUndefined();
+      expect(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(JSON.stringify(archive2));
+      expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(raws.hidden);
+    });
+
+    it("利用者が選んだ候補を整理した後は、残りの候補を守ったまま現在の内容を保存し直せる", () => {
+      seedFull();
+      expect(saveNotes(forced, { force: true })).toEqual({ ok: false, reason: "recovery_archive_full" });
+
+      const secondary = listProtectedRecoveryCandidates().find((c) => c.slot === "recovery_secondary")!;
+      expect(discardProtectedRecoveryCandidate("recovery_secondary", secondary.raw)).toBe("discarded");
+
+      expect(saveNotes(forced, { force: true })).toEqual({ ok: true });
+      expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(forced);
+      // 整理を選んでいない候補（退避1と今回の復元候補）は、どちらも保護されたまま残っている。
+      const preserved = [
+        storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING],
+        storage._store[RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING],
+      ];
+      expect(preserved).toContain(raws.archive1);
+      expect(preserved).toContain(raws.hidden);
+    });
   });
 
   it("force 保存で hidden recovery backup の退避に失敗したら元候補とprimaryを上書きしない", () => {

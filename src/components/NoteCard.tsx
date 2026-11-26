@@ -1,32 +1,50 @@
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
+import { cardImperfection } from "../lib/inkJitter";
+import { getCardDisplay } from "../lib/noteDisplay";
+import { getZanshinStamp } from "../lib/zanshinDate";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
   note: Note;
   onOpen: (id: string) => void;
+  /** 検索中の語。一致した理由を抜粋で示すために使う（保存内容は変えない） */
+  query?: string;
 };
 
-function preview(body: string): string {
-  const lines = body
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const lastLine = lines.length > 0 ? lines[lines.length - 1] : "";
-  const flat = lastLine.replace(/\s+/g, " ").trim();
-  if (!flat) return "";
-  return flat.length > 72 ? `${flat.slice(0, 72)}…` : flat;
+/** 「2026.11.26」→「2026年11月26日」。読み上げで意味が伝わる形にする。 */
+function spokenDate(createdAt: string): string | null {
+  const { date } = getZanshinStamp(createdAt);
+  const match = /^(\d{4})\.(\d{2})\.(\d{2})$/.exec(date ?? "");
+  if (!match) return null;
+  return `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日`;
 }
 
-export function NoteCard({ note, onOpen }: Props) {
-  const title = note.title.trim() || copy.untitled;
-  const bodyPreview = preview(note.body);
+export function NoteCard({ note, onOpen, query = "" }: Props) {
+  const { heading, excerpt } = getCardDisplay(note, query);
+  const imperfection = cardImperfection(note.id);
+  const dateLabel = spokenDate(note.createdAt);
+  // カードの名前: 識別できる見出し + 作成日 + 固定状態。全カードを同じ名前にしない。
+  const accessibleName = [
+    heading,
+    dateLabel ? `作成日 ${dateLabel}` : null,
+    note.isFavorite ? "先頭に固定" : null,
+  ]
+    .filter(Boolean)
+    .join("、");
 
   return (
     <button
       type="button"
+      data-note-id={note.id}
       onClick={() => onOpen(note.id)}
-      aria-label={`${title}、${copy.openReadMode}`}
+      aria-label={accessibleName}
+      style={
+        {
+          "--card-tilt": `${imperfection.tiltDeg}deg`,
+          "--card-radius": imperfection.radius,
+        } as React.CSSProperties
+      }
       className="
         group relative block w-full text-left
         rounded-[13px] paper-card zanshin-note-card
@@ -56,33 +74,24 @@ export function NoteCard({ note, onOpen }: Props) {
 
           <h3
             className={[
-              "font-mincho text-[17px] leading-snug tracking-mincho jp-text-discipline",
-              note.title.trim() ? "text-sumi" : "text-ink-muted",
+              "zanshin-note-card__title line-clamp-2 font-mincho text-[17px] leading-snug tracking-mincho jp-text-discipline",
+              heading === copy.untitled && note.title.trim() === "" ? "text-ink-muted" : "text-sumi",
             ].join(" ")}
           >
-            {title}
+            {heading}
           </h3>
 
-          {bodyPreview && (
+          {excerpt !== "" && (
             <div className="mt-gr-2">
-              <p className="line-clamp-2 text-[14px] leading-ample text-ink-muted/92 jp-text-discipline">
-                {bodyPreview}
+              <p className="zanshin-note-card__preview line-clamp-2 text-[14px] leading-ample text-ink-muted jp-text-discipline">
+                {excerpt}
               </p>
             </div>
           )}
-
-          <div className="mt-gr-4 flex items-center gap-gr-2 text-[11px] tracking-[0.12em] text-ink-muted/54">
-            <span className="h-px w-gr-4 bg-gradient-to-r from-gold/28 to-transparent" aria-hidden="true" />
-            <span className="font-mincho">{copy.openReadMode}</span>
-          </div>
         </div>
 
         {note.isFavorite && (
-          <span
-            aria-label={copy.favoriteBadge}
-            title={copy.favoriteBadge}
-            className="mt-[6px] shrink-0 text-gold/82"
-          >
+          <span aria-hidden="true" className="mt-[6px] shrink-0 text-gold/82">
             <svg
               width="9"
               height="9"

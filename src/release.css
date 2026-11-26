@@ -1,0 +1,799 @@
+/*
+ * 残心 — 仕上げ層（release.css）
+ *
+ * 旧 phase31〜36 を、追記の連鎖ではなく1ファイルへ統合したもの（R27）。
+ * main.tsx の最後に読み込む。上書きの競合を増やさないため、新しい phase ファイルは足さず、
+ * 変更はこのファイルの該当セクションへ入れる。
+ *
+ * 構成
+ *   0. トークン（:root）— 同名の変数は最後の定義だけを残している
+ *   1. 紙面ノイズ・繊維
+ *   2. 入力欄・フォーカス・iOS 向け補正
+ *   3. 筆あと（書体）と墨
+ *   4. 読み返し・余白
+ *   5. 背景・補助文字の読みやすさ・長文／小さい画面
+ */
+
+/* ───────── 0. トークン ───────── */
+:root {
+  --phase28-paper-noise: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='360'%20height='360'%3E%3Cfilter%20id='n'%20color-interpolation-filters='sRGB'%20x='0'%20y='0'%20width='100%25'%20height='100%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.5%200.28'%20numOctaves='2'%20seed='28'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.36%200%200%200%200%200.27%200%200%200%200%200.16%200.34%200%200%200%20-0.12'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url%28%23n%29'/%3E%3C/svg%3E");
+  --phase28-surface-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n' color-interpolation-filters='sRGB' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.14 0.3' numOctaves='2' seed='32' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.36 0 0 0 0 0.27 0 0 0 0 0.16 0.13 0 0 0 -0.045'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");
+  --phase31-fiber-noise: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='260'%20height='260'%3E%3Cfilter%20id='n'%20color-interpolation-filters='sRGB'%20x='0'%20y='0'%20width='100%25'%20height='100%25'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.75'%20numOctaves='2'%20seed='9'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='matrix'%20values='0%200%200%200%200.36%200%200%200%200%200.27%200%200%200%200%200.16%200.3%200%200%200%20-0.12'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url%28%23n%29'/%3E%3C/svg%3E");
+  --phase32-fibers-card: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420' viewBox='0 0 420 420'%3E%3Cdefs%3E%3Cg id='t' fill='none' stroke-linecap='round'%3E%3Cpath d='M195.6 213.3Q168.2 211.0 153.7 187.7' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.74'/%3E%3Cpath d='M39.5 127.4Q52.2 148.5 76.7 151.2' stroke='%23fffaf0' stroke-opacity='0.70' stroke-width='0.78'/%3E%3Cpath d='M405.2 274.6Q376.7 268.1 366.8 240.6' stroke='%23fffaf0' stroke-opacity='0.78' stroke-width='0.43'/%3E%3Cpath d='M79.9 101.6Q88.0 102.7 95.9 104.7' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.72'/%3E%3Cpath d='M268.9 209.9Q259.1 196.1 251.3 181.2' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.91'/%3E%3Cpath d='M352.9 297.3Q352.8 325.5 332.2 344.8' stroke='%23fffaf0' stroke-opacity='0.61' stroke-width='1.00'/%3E%3Cpath d='M168.2 355.6Q141.5 357.7 135.6 383.8' stroke='%23fffaf0' stroke-opacity='0.62' stroke-width='0.44'/%3E%3Cpath d='M382.3 197.4Q393.0 194.3 404.1 194.7' stroke='%23fffaf0' stroke-opacity='0.84' stroke-width='0.40'/%3E%3Cpath d='M113.3 36.6Q88.4 47.5 91.7 74.4' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.78'/%3E%3Cpath d='M42.4 25.2Q40.1 12.2 49.2 2.8' stroke='%23fffaf0' stroke-opacity='0.80' stroke-width='0.47'/%3E%3Cpath d='M307.4 55.0Q295.7 50.7 294.2 38.3' stroke='%23fffaf0' stroke-opacity='0.72' stroke-width='0.67'/%3E%3Cpath d='M407.8 337.4Q396.7 346.4 399.7 360.3' stroke='%23fffaf0' stroke-opacity='0.67' stroke-width='0.53'/%3E%3Cpath d='M269.6 42.1Q292.0 29.9 315.9 39.0' stroke='%23fffaf0' stroke-opacity='0.58' stroke-width='0.64'/%3E%3Cpath d='M124.5 30.8Q134.7 39.4 146.8 45.0' stroke='%23fffaf0' stroke-opacity='0.60' stroke-width='0.86'/%3E%3Cpath d='M190.3 402.8Q176.2 402.6 162.4 405.7' stroke='%23fffaf0' stroke-opacity='0.60' stroke-width='0.76'/%3E%3Cpath d='M381.5 343.5Q386.5 353.4 381.6 363.3' stroke='%23fffaf0' stroke-opacity='0.85' stroke-width='0.51'/%3E%3Cpath d='M399.1 370.5Q389.7 365.1 382.0 357.5' stroke='%23fffaf0' stroke-opacity='0.80' stroke-width='0.96'/%3E%3Cpath d='M100.1 295.9Q85.9 320.6 97.9 346.5' stroke='%23fffaf0' stroke-opacity='0.54' stroke-width='0.42'/%3E%3Cpath d='M302.5 28.9Q303.0 39.3 305.3 49.4' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.58'/%3E%3Cpath d='M385.3 85.7Q398.0 82.4 409.8 88.2' stroke='%23fffaf0' stroke-opacity='0.84' stroke-width='0.77'/%3E%3Cpath d='M154.9 240.3Q163.6 246.4 168.9 255.5' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.44'/%3E%3Cpath d='M290.3 245.5Q313.9 251.3 315.1 275.5' stroke='%23fffaf0' stroke-opacity='0.86' stroke-width='0.99'/%3E%3Cpath d='M404.4 8.9Q390.6 -6.0 377.7 -21.8' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.95'/%3E%3Cpath d='M31.6 229.4Q46.1 202.1 27.4 177.6' stroke='%23fffaf0' stroke-opacity='0.79' stroke-width='0.59'/%3E%3Cpath d='M384.3 147.8Q388.6 121.9 366.8 107.2' stroke='%23fffaf0' stroke-opacity='0.79' stroke-width='0.82'/%3E%3Cpath d='M362.7 240.6Q344.2 227.9 331.5 209.4' stroke='%23fffaf0' stroke-opacity='0.85' stroke-width='0.65'/%3E%3Cpath d='M268.5 417.2Q276.9 413.6 281.0 405.5' stroke='%23fffaf0' stroke-opacity='0.73' stroke-width='0.77'/%3E%3Cpath d='M185.0 352.1Q197.0 367.4 216.2 370.2' stroke='%23fffaf0' stroke-opacity='0.66' stroke-width='0.84'/%3E%3Cpath d='M96.7 293.3Q80.5 290.6 64.4 293.9' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.76'/%3E%3Cpath d='M126.4 284.8Q132.2 290.6 130.7 298.6' stroke='%23fffaf0' stroke-opacity='0.87' stroke-width='0.55'/%3E%3Cpath d='M374.5 137.3Q360.3 127.8 359.0 110.7' stroke='%23fffaf0' stroke-opacity='0.86' stroke-width='0.80'/%3E%3Cpath d='M369.7 161.5Q345.0 155.5 327.5 137.1' stroke='%23fffaf0' stroke-opacity='0.67' stroke-width='0.88'/%3E%3Cpath d='M356.5 298.7Q375.7 283.9 400.0 284.6' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.70'/%3E%3Cpath d='M89.9 173.9Q81.2 165.3 72.7 156.5' stroke='%23fffaf0' stroke-opacity='0.57' stroke-width='0.67'/%3E%3Cpath d='M190.0 31.4Q212.2 51.4 240.4 41.5' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.90'/%3E%3Cpath d='M129.8 332.4Q148.8 324.3 165.2 336.7' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.83'/%3E%3Cpath d='M99.7 59.2Q120.1 70.3 143.3 72.4' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.41'/%3E%3Cpath d='M339.1 402.6Q322.7 388.5 323.5 366.9' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.78'/%3E%3Cpath d='M198.3 300.0Q203.8 305.3 204.5 313.0' stroke='%23fffaf0' stroke-opacity='0.69' stroke-width='0.51'/%3E%3Cpath d='M258.1 317.6Q239.9 321.9 231.6 338.6' stroke='%23fffaf0' stroke-opacity='0.64' stroke-width='0.82'/%3E%3Cpath d='M303.4 54.6Q278.3 56.9 256.1 68.8' stroke='%23fffaf0' stroke-opacity='0.86' stroke-width='0.45'/%3E%3Cpath d='M369.3 334.6Q385.7 327.6 402.8 322.4' stroke='%23fffaf0' stroke-opacity='0.86' stroke-width='0.63'/%3E%3Cpath d='M343.7 269.5Q330.2 251.1 335.3 228.9' stroke='%23fffaf0' stroke-opacity='0.76' stroke-width='0.52'/%3E%3Cpath d='M225.5 332.1Q199.4 348.1 203.6 378.3' stroke='%23fffaf0' stroke-opacity='0.86' stroke-width='0.99'/%3E%3Cpath d='M185.2 231.1Q186.0 222.6 187.1 214.1' stroke='%23fffaf0' stroke-opacity='0.84' stroke-width='0.61'/%3E%3Cpath d='M335.9 72.6Q328.5 77.8 327.6 86.8' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.89'/%3E%3Cpath d='M303.9 352.8Q308.8 332.7 291.4 321.6' stroke='%23fffaf0' stroke-opacity='0.56' stroke-width='0.49'/%3E%3Cpath d='M93.0 221.2Q87.8 228.8 88.7 237.9' stroke='%23fffaf0' stroke-opacity='0.70' stroke-width='0.97'/%3E%3Cpath d='M235.2 130.9Q209.6 137.2 201.4 162.2' stroke='%23fffaf0' stroke-opacity='0.76' stroke-width='0.71'/%3E%3Cpath d='M406.7 220.2Q381.1 219.9 365.2 199.7' stroke='%23fffaf0' stroke-opacity='0.86' stroke-width='0.52'/%3E%3Cpath d='M11.7 407.2Q-7.0 408.2 -25.2 403.4' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.70'/%3E%3Cpath d='M290.2 27.7Q273.8 25.9 258.5 19.8' stroke='%23fffaf0' stroke-opacity='0.82' stroke-width='0.74'/%3E%3Cpath d='M198.7 53.3Q185.2 52.6 176.6 63.1' stroke='%23fffaf0' stroke-opacity='0.88' stroke-width='0.95'/%3E%3Cpath d='M80.4 259.5Q88.5 246.7 103.6 247.7' stroke='%23fffaf0' stroke-opacity='0.86' stroke-width='0.69'/%3E%3Cpath d='M95.4 288.6Q93.0 299.2 86.1 307.8' stroke='%23fffaf0' stroke-opacity='0.81' stroke-width='0.41'/%3E%3Cpath d='M51.6 214.4Q61.6 235.3 51.4 256.2' stroke='%23fffaf0' stroke-opacity='0.75' stroke-width='0.46'/%3E%3Cpath d='M173.6 222.3Q186.9 230.7 188.8 246.2' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.66'/%3E%3Cpath d='M357.5 256.9Q362.4 239.0 378.7 230.2' stroke='%23fffaf0' stroke-opacity='0.75' stroke-width='0.78'/%3E%3Cpath d='M132.7 132.3Q148.9 111.4 175.4 109.8' stroke='%23fffaf0' stroke-opacity='0.80' stroke-width='0.89'/%3E%3Cpath d='M100.5 305.2Q106.1 315.1 99.4 324.2' stroke='%23fffaf0' stroke-opacity='0.90' stroke-width='0.93'/%3E%3Cpath d='M52.9 169.2Q28.6 155.7 35.5 128.7' stroke='%23fffaf0' stroke-opacity='0.83' stroke-width='0.65'/%3E%3Cpath d='M406.7 48.5Q382.8 37.6 358.1 46.7' stroke='%23fffaf0' stroke-opacity='0.58' stroke-width='0.81'/%3E%3Cpath d='M29.6 44.6Q39.7 47.9 50.2 49.5' stroke='%23fffaf0' stroke-opacity='0.70' stroke-width='0.81'/%3E%3Cpath d='M77.5 85.6Q89.2 81.5 88.0 69.1' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.74'/%3E%3Cpath d='M399.6 194.1Q398.1 185.7 401.1 177.8' stroke='%23fffaf0' stroke-opacity='0.87' stroke-width='0.46'/%3E%3Cpath d='M252.4 5.6Q255.8 -11.4 243.2 -23.4' stroke='%23fffaf0' stroke-opacity='0.69' stroke-width='0.71'/%3E%3Cpath d='M170.2 82.0Q180.6 100.3 191.6 118.2' stroke='%23fffaf0' stroke-opacity='0.57' stroke-width='0.67'/%3E%3Cpath d='M296.0 361.5Q278.2 347.7 265.4 329.2' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.94'/%3E%3Cpath d='M338.0 108.5Q365.1 103.4 381.6 81.3' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.70'/%3E%3Cpath d='M376.5 369.5Q377.5 353.6 366.6 341.9' stroke='%23fffaf0' stroke-opacity='0.81' stroke-width='0.89'/%3E%3Cpath d='M29.6 143.5Q12.5 163.5 -11.0 151.6' stroke='%23fffaf0' stroke-opacity='0.81' stroke-width='0.64'/%3E%3Cpath d='M97.5 396.8Q83.8 382.9 78.5 364.2' stroke='%23fffaf0' stroke-opacity='0.64' stroke-width='0.78'/%3E%3Cpath d='M163.6 420.0Q157.2 403.1 142.2 393.2' stroke='%23fffaf0' stroke-opacity='0.76' stroke-width='0.74'/%3E%3Cpath d='M258.5 310.3Q259.3 317.8 257.8 325.1' stroke='%23fffaf0' stroke-opacity='0.80' stroke-width='0.99'/%3E%3Cpath d='M41.3 105.4Q53.7 98.4 64.8 89.6' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.52'/%3E%3Cpath d='M417.9 268.0Q413.2 247.0 430.9 234.8' stroke='%23fffaf0' stroke-opacity='0.70' stroke-width='0.98'/%3E%3Cpath d='M390.7 67.2Q383.7 72.7 375.2 69.9' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.86'/%3E%3Cpath d='M397.0 176.7Q389.2 174.1 381.0 174.0' stroke='%23fffaf0' stroke-opacity='0.70' stroke-width='0.77'/%3E%3Cpath d='M235.5 119.1Q225.2 101.4 227.4 81.0' stroke='%23fffaf0' stroke-opacity='0.65' stroke-width='0.57'/%3E%3Cpath d='M65.8 317.0Q56.6 318.1 53.7 326.9' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.55'/%3E%3Cpath d='M396.7 30.9Q416.4 14.0 439.4 2.0' stroke='%23fffaf0' stroke-opacity='0.80' stroke-width='0.43'/%3E%3Cpath d='M219.8 393.7Q217.2 382.3 215.8 370.7' stroke='%23fffaf0' stroke-opacity='0.69' stroke-width='0.98'/%3E%3Cpath d='M48.3 262.2Q33.0 275.7 12.8 272.3' stroke='%23fffaf0' stroke-opacity='0.89' stroke-width='0.89'/%3E%3Cpath d='M186.0 280.5Q178.0 286.5 168.0 285.7' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.72'/%3E%3Cpath d='M222.9 419.0Q246.1 420.4 264.6 406.2' stroke='%23fffaf0' stroke-opacity='0.73' stroke-width='0.65'/%3E%3Cpath d='M329.4 262.5Q321.0 286.6 299.1 299.6' stroke='%23fffaf0' stroke-opacity='0.60' stroke-width='0.47'/%3E%3Cpath d='M265.9 316.4Q279.4 330.7 279.4 350.3' stroke='%23fffaf0' stroke-opacity='0.77' stroke-width='0.74'/%3E%3Cpath d='M16.6 25.5Q16.3 49.4 10.4 72.5' stroke='%23fffaf0' stroke-opacity='0.89' stroke-width='0.95'/%3E%3Cpath d='M30.4 36.3Q24.0 20.2 15.0 5.4' stroke='%23fffaf0' stroke-opacity='0.75' stroke-width='0.46'/%3E%3Cpath d='M88.5 144.4Q96.7 128.0 87.4 112.2' stroke='%23fffaf0' stroke-opacity='0.75' stroke-width='0.62'/%3E%3Cpath d='M262.0 322.9Q269.7 344.0 272.2 366.4' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.47'/%3E%3Cpath d='M274.5 415.5Q267.2 427.4 261.8 440.4' stroke='%23fffaf0' stroke-opacity='0.60' stroke-width='0.89'/%3E%3Cpath d='M155.1 40.7Q158.6 22.8 176.5 19.4' stroke='%23fffaf0' stroke-opacity='0.80' stroke-width='0.95'/%3E%3Cpath d='M287.8 125.5Q279.6 107.8 293.0 93.5' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.74'/%3E%3Cpath d='M127.6 304.5Q121.9 297.5 121.7 288.4' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.80'/%3E%3Cpath d='M153.9 49.3Q150.9 28.6 143.4 9.1' stroke='%23fffaf0' stroke-opacity='0.56' stroke-width='0.61'/%3E%3Cpath d='M184.0 337.3Q182.4 362.6 167.5 383.1' stroke='%23fffaf0' stroke-opacity='0.87' stroke-width='0.96'/%3E%3Cpath d='M104.3 151.9Q92.3 173.3 72.4 187.8' stroke='%23fffaf0' stroke-opacity='0.66' stroke-width='0.96'/%3E%3Cpath d='M236.8 334.8Q227.9 326.5 216.1 329.4' stroke='%23fffaf0' stroke-opacity='0.66' stroke-width='0.63'/%3E%3Cpath d='M370.0 118.2Q391.1 121.7 412.4 124.2' stroke='%23fffaf0' stroke-opacity='0.73' stroke-width='0.51'/%3E%3Cpath d='M273.5 337.8Q289.4 346.0 306.3 351.8' stroke='%238a6b40' stroke-opacity='0.08' stroke-width='0.44'/%3E%3Cpath d='M309.6 377.6Q315.5 383.1 323.2 385.6' stroke='%238a6b40' stroke-opacity='0.09' stroke-width='0.32'/%3E%3Cpath d='M103.1 92.6Q105.0 78.4 105.8 64.2' stroke='%238a6b40' stroke-opacity='0.06' stroke-width='0.49'/%3E%3Cpath d='M406.7 282.4Q395.9 282.2 385.1 283.3' stroke='%238a6b40' stroke-opacity='0.09' stroke-width='0.40'/%3E%3Cpath d='M172.5 347.0Q172.3 327.2 155.2 317.1' stroke='%238a6b40' stroke-opacity='0.09' stroke-width='0.48'/%3E%3Cpath d='M402.3 268.9Q386.4 260.7 368.7 263.9' stroke='%238a6b40' stroke-opacity='0.09' stroke-width='0.51'/%3E%3Cpath d='M61.4 311.3Q73.0 308.3 84.8 310.0' stroke='%238a6b40' stroke-opacity='0.09' stroke-width='0.41'/%3E%3Cpath d='M122.7 407.3Q134.9 408.2 144.6 415.8' stroke='%238a6b40' stroke-opacity='0.06' stroke-width='0.35'/%3E%3Cpath d='M75.4 26.2Q59.7 28.2 45.0 34.2' stroke='%238a6b40' stroke-opacity='0.06' stroke-width='0.46'/%3E%3Cellipse cx='381.9' cy='15.3' rx='0.45' ry='0.31' fill='%237a5c34' fill-opacity='0.09'/%3E%3Cellipse cx='98.9' cy='301.2' rx='0.70' ry='0.48' fill='%237a5c34' fill-opacity='0.08'/%3E%3Cellipse cx='118.0' cy='72.5' rx='0.78' ry='0.56' fill='%237a5c34' fill-opacity='0.11'/%3E%3Cellipse cx='343.2' cy='201.4' rx='0.53' ry='0.51' fill='%237a5c34' fill-opacity='0.14'/%3E%3C/g%3E%3C/defs%3E%3Cuse href='%23t' x='-420' y='-420'/%3E%3Cuse href='%23t' x='-420' y='0'/%3E%3Cuse href='%23t' x='-420' y='420'/%3E%3Cuse href='%23t' x='0' y='-420'/%3E%3Cuse href='%23t' x='0' y='0'/%3E%3Cuse href='%23t' x='0' y='420'/%3E%3Cuse href='%23t' x='420' y='-420'/%3E%3Cuse href='%23t' x='420' y='0'/%3E%3Cuse href='%23t' x='420' y='420'/%3E%3C/svg%3E");
+  --phase32-fibers-page: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640'%3E%3Cdefs%3E%3Cg id='t' fill='none' stroke-linecap='round'%3E%3Cpath d='M184.7 326.6Q177.4 339.9 167.9 351.8' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.51'/%3E%3Cpath d='M143.9 223.7Q154.2 221.9 164.5 223.6' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.40'/%3E%3Cpath d='M286.2 109.1Q274.1 115.8 261.0 120.2' stroke='%23fffaf0' stroke-opacity='0.61' stroke-width='0.54'/%3E%3Cpath d='M431.3 191.0Q423.8 192.5 416.6 189.9' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.60'/%3E%3Cpath d='M481.5 484.3Q472.8 477.1 462.4 472.7' stroke='%23fffaf0' stroke-opacity='0.54' stroke-width='0.70'/%3E%3Cpath d='M63.5 600.1Q57.7 614.2 44.2 621.3' stroke='%23fffaf0' stroke-opacity='0.54' stroke-width='0.63'/%3E%3Cpath d='M254.6 265.7Q251.2 260.9 248.1 256.0' stroke='%23fffaf0' stroke-opacity='0.45' stroke-width='0.50'/%3E%3Cpath d='M559.9 447.4Q569.0 447.6 577.3 443.8' stroke='%23fffaf0' stroke-opacity='0.73' stroke-width='0.65'/%3E%3Cpath d='M622.3 14.0Q631.3 13.2 637.1 6.3' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.44'/%3E%3Cpath d='M614.2 556.6Q615.8 540.1 609.1 525.0' stroke='%23fffaf0' stroke-opacity='0.45' stroke-width='0.42'/%3E%3Cpath d='M564.6 607.3Q551.6 612.3 539.7 605.0' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.35'/%3E%3Cpath d='M17.7 123.3Q10.0 126.2 2.2 123.3' stroke='%23fffaf0' stroke-opacity='0.46' stroke-width='0.55'/%3E%3Cpath d='M501.5 554.0Q502.4 559.4 504.7 564.3' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.42'/%3E%3Cpath d='M564.1 487.6Q559.4 479.5 551.1 475.2' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.46'/%3E%3Cpath d='M501.7 35.5Q498.4 48.6 490.1 59.3' stroke='%23fffaf0' stroke-opacity='0.60' stroke-width='0.49'/%3E%3Cpath d='M278.3 242.1Q265.2 237.0 252.1 242.1' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.48'/%3E%3Cpath d='M220.4 301.4Q219.0 293.9 212.2 290.5' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.53'/%3E%3Cpath d='M283.5 142.2Q278.4 158.7 286.7 173.9' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.77'/%3E%3Cpath d='M107.0 20.1Q94.4 14.0 90.5 0.5' stroke='%23fffaf0' stroke-opacity='0.46' stroke-width='0.64'/%3E%3Cpath d='M199.7 68.0Q198.1 78.6 192.9 88.0' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.79'/%3E%3Cpath d='M459.4 68.6Q454.2 80.8 459.4 93.0' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.67'/%3E%3Cpath d='M146.5 140.8Q134.0 132.0 127.2 118.3' stroke='%23fffaf0' stroke-opacity='0.40' stroke-width='0.52'/%3E%3Cpath d='M421.8 470.2Q426.5 461.9 423.0 453.0' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.53'/%3E%3Cpath d='M510.7 486.7Q519.8 502.2 516.6 519.8' stroke='%23fffaf0' stroke-opacity='0.43' stroke-width='0.47'/%3E%3Cpath d='M234.9 421.5Q230.6 407.9 232.3 393.7' stroke='%23fffaf0' stroke-opacity='0.50' stroke-width='0.75'/%3E%3Cpath d='M516.6 475.4Q506.1 484.1 498.7 495.6' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.72'/%3E%3Cpath d='M445.8 221.7Q452.3 219.9 456.8 214.7' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.76'/%3E%3Cpath d='M615.2 491.7Q610.9 484.9 611.0 476.7' stroke='%23fffaf0' stroke-opacity='0.46' stroke-width='0.36'/%3E%3Cpath d='M394.4 38.3Q398.3 27.2 407.0 19.4' stroke='%23fffaf0' stroke-opacity='0.47' stroke-width='0.55'/%3E%3Cpath d='M557.3 138.8Q548.8 135.4 540.2 138.4' stroke='%23fffaf0' stroke-opacity='0.65' stroke-width='0.49'/%3E%3Cpath d='M401.5 303.0Q396.8 309.7 396.2 317.9' stroke='%23fffaf0' stroke-opacity='0.69' stroke-width='0.67'/%3E%3Cpath d='M92.1 173.5Q93.5 163.3 90.8 153.3' stroke='%23fffaf0' stroke-opacity='0.64' stroke-width='0.75'/%3E%3Cpath d='M44.0 58.0Q43.7 45.2 52.1 35.6' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.53'/%3E%3Cpath d='M502.1 565.5Q501.5 573.0 496.4 578.4' stroke='%23fffaf0' stroke-opacity='0.62' stroke-width='0.48'/%3E%3Cpath d='M15.2 325.9Q30.8 335.7 32.3 354.1' stroke='%23fffaf0' stroke-opacity='0.56' stroke-width='0.40'/%3E%3Cpath d='M492.6 503.6Q483.6 493.3 471.8 486.5' stroke='%23fffaf0' stroke-opacity='0.75' stroke-width='0.66'/%3E%3Cpath d='M470.4 472.4Q457.6 464.9 453.9 450.5' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.40'/%3E%3Cpath d='M5.7 169.2Q-8.2 160.4 -24.5 162.7' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.39'/%3E%3Cpath d='M133.0 214.7Q121.1 222.6 115.5 235.8' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.41'/%3E%3Cpath d='M154.7 137.9Q150.2 145.5 142.2 149.1' stroke='%23fffaf0' stroke-opacity='0.47' stroke-width='0.50'/%3E%3Cpath d='M446.1 151.5Q434.4 154.3 423.5 159.4' stroke='%23fffaf0' stroke-opacity='0.49' stroke-width='0.40'/%3E%3Cpath d='M604.8 516.0Q607.6 522.0 606.7 528.6' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.78'/%3E%3Cpath d='M260.8 346.6Q251.4 348.3 243.9 342.2' stroke='%23fffaf0' stroke-opacity='0.58' stroke-width='0.48'/%3E%3Cpath d='M91.8 84.1Q85.3 99.2 72.4 109.5' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.45'/%3E%3Cpath d='M388.3 473.2Q387.2 489.4 386.6 505.5' stroke='%23fffaf0' stroke-opacity='0.69' stroke-width='0.37'/%3E%3Cpath d='M165.7 199.2Q177.6 195.6 188.6 201.6' stroke='%23fffaf0' stroke-opacity='0.48' stroke-width='0.69'/%3E%3Cpath d='M213.0 222.1Q203.5 209.5 194.2 196.7' stroke='%23fffaf0' stroke-opacity='0.61' stroke-width='0.80'/%3E%3Cpath d='M602.5 183.5Q598.3 174.9 595.0 165.9' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.44'/%3E%3Cpath d='M364.0 634.8Q364.9 651.7 360.0 667.9' stroke='%23fffaf0' stroke-opacity='0.57' stroke-width='0.72'/%3E%3Cpath d='M97.7 545.0Q95.9 528.2 90.5 512.1' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.50'/%3E%3Cpath d='M596.2 235.6Q599.3 240.6 597.1 246.2' stroke='%23fffaf0' stroke-opacity='0.57' stroke-width='0.73'/%3E%3Cpath d='M146.8 625.3Q140.2 610.1 124.1 605.9' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.36'/%3E%3Cpath d='M24.0 194.2Q13.7 207.7 2.7 220.7' stroke='%23fffaf0' stroke-opacity='0.42' stroke-width='0.50'/%3E%3Cpath d='M213.2 240.2Q213.0 230.1 206.1 222.8' stroke='%23fffaf0' stroke-opacity='0.64' stroke-width='0.52'/%3E%3Cpath d='M182.0 446.8Q181.1 430.2 179.9 413.6' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.48'/%3E%3Cpath d='M618.9 588.8Q605.3 591.3 592.8 597.4' stroke='%23fffaf0' stroke-opacity='0.50' stroke-width='0.50'/%3E%3Cpath d='M393.3 210.9Q400.7 224.4 412.5 234.3' stroke='%23fffaf0' stroke-opacity='0.56' stroke-width='0.47'/%3E%3Cpath d='M563.8 41.5Q568.5 45.2 574.5 44.5' stroke='%23fffaf0' stroke-opacity='0.41' stroke-width='0.70'/%3E%3Cpath d='M463.3 98.2Q471.3 96.6 477.4 91.1' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.56'/%3E%3Cpath d='M567.4 9.7Q562.5 26.8 547.5 36.4' stroke='%23fffaf0' stroke-opacity='0.67' stroke-width='0.79'/%3E%3Cpath d='M363.2 207.1Q376.3 214.8 391.1 217.9' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.73'/%3E%3Cpath d='M529.3 97.2Q531.3 102.3 532.9 107.4' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.54'/%3E%3Cpath d='M330.4 8.2Q314.9 3.8 299.0 6.0' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.52'/%3E%3Cpath d='M480.9 359.4Q490.9 343.9 486.1 326.0' stroke='%23fffaf0' stroke-opacity='0.72' stroke-width='0.65'/%3E%3Cpath d='M345.0 483.7Q334.3 470.5 334.0 453.5' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.44'/%3E%3Cpath d='M134.8 38.0Q124.1 34.8 113.2 32.5' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.36'/%3E%3Cpath d='M361.2 207.4Q344.9 210.8 328.4 209.9' stroke='%23fffaf0' stroke-opacity='0.42' stroke-width='0.65'/%3E%3Cpath d='M162.5 618.1Q176.3 615.6 190.4 615.3' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.68'/%3E%3Cpath d='M441.4 453.8Q437.4 457.6 432.2 459.3' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.50'/%3E%3Cpath d='M172.4 128.1Q179.4 118.9 178.6 107.3' stroke='%23fffaf0' stroke-opacity='0.62' stroke-width='0.37'/%3E%3Cpath d='M557.5 368.5Q564.5 366.3 567.6 359.6' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.69'/%3E%3Cpath d='M382.0 475.1Q377.0 490.0 368.1 502.8' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.61'/%3E%3Cpath d='M258.2 46.0Q255.1 40.5 257.5 34.6' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.48'/%3E%3Cpath d='M401.8 330.2Q406.2 322.4 413.5 317.2' stroke='%23fffaf0' stroke-opacity='0.61' stroke-width='0.40'/%3E%3Cpath d='M52.4 141.4Q43.9 149.7 37.0 159.3' stroke='%23fffaf0' stroke-opacity='0.43' stroke-width='0.63'/%3E%3Cpath d='M397.9 423.7Q393.6 410.9 395.5 397.5' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.44'/%3E%3Cpath d='M30.5 315.4Q41.4 324.2 46.7 337.2' stroke='%23fffaf0' stroke-opacity='0.54' stroke-width='0.48'/%3E%3Cpath d='M397.6 169.5Q384.6 161.6 382.3 146.5' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.62'/%3E%3Cpath d='M126.7 1.1Q121.7 2.1 117.1 4.0' stroke='%23fffaf0' stroke-opacity='0.47' stroke-width='0.76'/%3E%3Cpath d='M28.3 111.1Q32.7 123.5 33.9 136.6' stroke='%23fffaf0' stroke-opacity='0.72' stroke-width='0.44'/%3E%3Cpath d='M496.9 464.6Q492.9 468.9 487.2 470.7' stroke='%238a6b40' stroke-opacity='0.07' stroke-width='0.37'/%3E%3Cpath d='M133.1 138.4Q136.2 128.6 145.7 124.5' stroke='%238a6b40' stroke-opacity='0.07' stroke-width='0.37'/%3E%3Cpath d='M383.8 173.9Q373.8 180.1 363.1 184.9' stroke='%238a6b40' stroke-opacity='0.05' stroke-width='0.35'/%3E%3Cpath d='M419.1 250.3Q414.7 255.4 408.3 257.4' stroke='%238a6b40' stroke-opacity='0.05' stroke-width='0.40'/%3E%3Cpath d='M401.3 223.0Q392.6 224.2 386.1 230.0' stroke='%238a6b40' stroke-opacity='0.07' stroke-width='0.39'/%3E%3Cpath d='M428.2 187.8Q428.9 177.8 424.2 169.0' stroke='%238a6b40' stroke-opacity='0.05' stroke-width='0.41'/%3E%3Cellipse cx='35.4' cy='605.2' rx='0.74' ry='0.51' fill='%237a5c34' fill-opacity='0.07'/%3E%3Cellipse cx='490.5' cy='596.8' rx='0.59' ry='0.45' fill='%237a5c34' fill-opacity='0.06'/%3E%3Cellipse cx='62.3' cy='482.1' rx='0.63' ry='0.39' fill='%237a5c34' fill-opacity='0.08'/%3E%3C/g%3E%3C/defs%3E%3Cuse href='%23t' x='-640' y='-640'/%3E%3Cuse href='%23t' x='-640' y='0'/%3E%3Cuse href='%23t' x='-640' y='640'/%3E%3Cuse href='%23t' x='0' y='-640'/%3E%3Cuse href='%23t' x='0' y='0'/%3E%3Cuse href='%23t' x='0' y='640'/%3E%3Cuse href='%23t' x='640' y='-640'/%3E%3Cuse href='%23t' x='640' y='0'/%3E%3Cuse href='%23t' x='640' y='640'/%3E%3C/svg%3E");
+  --font-brush: var(--font-writing);
+  --ink: #231c16;
+  --phase33-ink-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n' color-interpolation-filters='sRGB' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.045 0.07' numOctaves='3' seed='41' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.96 0 0 0 0 0.92 0 0 0 0 0.83 1.4 0 0 0 -0.76'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");
+  --phase33-ink-fine: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' color-interpolation-filters='sRGB' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='3' seed='43' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.96 0 0 0 0 0.92 0 0 0 0 0.83 1.0 0 0 0 -0.56'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");
+  --phase33-stain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='720' height='720'%3E%3Cfilter id='n' color-interpolation-filters='sRGB' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.005' numOctaves='3' seed='17' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.55 0 0 0 0 0.4 0 0 0 0 0.22 0.3 0 0 0 -0.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23n%29'/%3E%3C/svg%3E");
+  --text-soft: #6a6055;
+  --text-body: #4a423a;
+  --text-hint: #766b5e;
+}
+
+/* ───────── 旧 phase31.css ───────── */
+/* 地の紙: 単色ノイズなので、不透明度で見え方を決められる。 */
+body::after {
+  opacity: 0.7 !important;
+  filter: none !important;
+}
+
+@media (max-width: 430px) {
+  body::after {
+    opacity: 0.4 !important;
+  }
+}
+
+/* 紙面と検索札: 重ね塗りの ::before は不要になったので、ごく薄く保つ。 */
+.paper-card::before,
+.editor-paper::before,
+.paper-surface::before,
+.zanshin-note-card::before,
+.zanshin-paper-slip::before,
+.read-mode-paper::before,
+.zanshin-search-bar::before {
+  opacity: 0.34 !important;
+  filter: none !important;
+  background-image: var(--phase31-fiber-noise) !important;
+  background-size: 260px 260px !important;
+}
+
+/* 入力欄: 書いている最中に灰色の枠で囲わない。キャレットを金に寄せて「ここにいる」を示す。 */
+.note-title-input:focus-visible,
+.writing-textarea:focus-visible,
+.zanshin-search-input:focus-visible {
+  outline: none !important;
+  border-radius: 0;
+}
+
+.note-title-input,
+.writing-textarea,
+.zanshin-search-input {
+  caret-color: #a98a34;
+}
+
+/* iOS の長押し・選択で、紙面の疑似要素が選択範囲を邪魔しないように。 */
+.paper-card::before,
+.editor-paper::before,
+.paper-surface::before,
+.zanshin-note-card::before,
+.zanshin-paper-slip::before,
+.read-mode-paper::before,
+.zanshin-search-bar::before {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/*
+ * iOS (WKWebView) は 16px 未満の入力欄にフォーカスすると画面を勝手に拡大する。
+ * 検索欄だけ 15px だったので、見た目を変えずに 16px へ揃える。
+ */
+.zanshin-search-input {
+  font-size: 16px !important;
+}
+
+/* ホームへ戻るときなどのゴムバンド時に、白い地が見えないよう紙色を敷く。 */
+html {
+  background-color: #f7f1e5;
+}
+
+/* ───────── 旧 phase32.css ───────── */
+/* ─────────── 1. 筆あと ─────────── */
+html[data-brush="fude"] {
+  --font-brush: "Yuji Syuku", var(--font-writing);
+}
+html[data-brush="boku"] {
+  --font-brush: "Yuji Boku", var(--font-writing);
+}
+html[data-brush="tegaki"] {
+  --font-brush: "Klee One", var(--font-writing);
+}
+
+/* 書いた言葉・ロゴ・詩的コピーにだけ適用。ボタンや補助文は読みやすさ優先で据え置く。 */
+.note-title-input,
+.writing-textarea,
+.read-mode-title,
+.read-mode-body,
+.zanshin-note-card__title,
+.zanshin-note-card__preview,
+.zanshin-app-title-block h1,
+.zanshin-main-copy,
+.zanshin-empty-state .poetic-lines,
+.zanshin-brush-sample {
+  font-family: var(--font-brush) !important;
+}
+
+.zanshin-brush-sample[data-sample-brush="mincho"] { font-family: var(--font-writing) !important; }
+.zanshin-brush-sample[data-sample-brush="fude"] { font-family: "Yuji Syuku", var(--font-writing) !important; }
+.zanshin-brush-sample[data-sample-brush="boku"] { font-family: "Yuji Boku", var(--font-writing) !important; }
+.zanshin-brush-sample[data-sample-brush="tegaki"] { font-family: "Klee One", var(--font-writing) !important; }
+
+/* 字体ごとの目の大きさ・行の呼吸を揃える。 */
+html[data-brush="tegaki"] .writing-textarea,
+html[data-brush="tegaki"] .read-mode-body {
+  letter-spacing: 0.03em;
+}
+html[data-brush="fude"] .writing-textarea,
+html[data-brush="boku"] .writing-textarea {
+  letter-spacing: 0.05em;
+}
+
+/* 墨がわずかに紙へ滲む。textarea でも効き、保存や選択には影響しない。 */
+.note-title-input,
+.writing-textarea,
+.read-mode-title,
+.read-mode-body,
+.zanshin-note-card__title,
+.zanshin-note-card__preview,
+.zanshin-main-copy,
+.zanshin-brush-sample {
+  color: var(--ink);
+  text-shadow:
+    0 0 0.6px rgba(35, 29, 24, 0.42),
+    0 0.6px 0 rgba(255, 250, 238, 0.35);
+}
+
+.note-title-input::placeholder,
+.writing-textarea::placeholder {
+  text-shadow: none;
+}
+
+/* ─────────── 2. 和紙 ─────────── */
+
+/* 背景全体に敷く楮の繊維。固定して、紙の上に手を滑らせても地が動かないようにする。 */
+.zanshin-fibers {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--phase32-fibers-page);
+  background-size: 640px 640px;
+  opacity: 0.9;
+}
+
+/* 紙片: 繊維・グラデーション・面ノイズの3層。縁は少し沈めて、手漉きの厚みを出す。 */
+.paper-card,
+.editor-paper,
+.paper-surface,
+.zanshin-note-card,
+.zanshin-paper-slip,
+.read-mode-paper {
+  background-image:
+    var(--phase32-fibers-card),
+    linear-gradient(180deg, rgba(251, 246, 234, 0.42), rgba(232, 220, 196, 0.14)),
+    var(--phase28-surface-noise) !important;
+  background-blend-mode: normal, normal, multiply !important;
+  background-size: 420px 420px, auto, 300px 300px !important;
+  background-repeat: repeat, no-repeat, repeat !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 252, 244, 0.35),
+    inset 0 0 18px rgba(120, 92, 54, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 1px rgba(92, 70, 42, 0.07),
+    0 5px 12px rgba(92, 70, 42, 0.07) !important;
+}
+
+.zanshin-search-bar {
+  background-image:
+    var(--phase32-fibers-card),
+    linear-gradient(180deg, rgba(251, 246, 234, 0.5), rgba(232, 220, 196, 0.14)),
+    var(--phase28-surface-noise) !important;
+  background-blend-mode: normal, normal, multiply !important;
+  background-size: 420px 420px, auto, 300px 300px !important;
+  background-repeat: repeat, no-repeat, repeat !important;
+}
+
+/* ─────────── 3. 落款 ─────────── */
+.read-mode-seal {
+  align-self: flex-start;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 26px;
+  position: relative;
+  z-index: 2;
+  transform: rotate(-4deg);
+  opacity: 0.92;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .zanshin-brush-sheet {
+    animation-duration: 420ms;
+  }
+}
+
+/* 筆あとボタン: 文字だけでも「押せるもの」と分かるよう、細い輪を添える。 */
+.zanshin-brush-trigger--icon .zanshin-brush-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(92, 70, 42, 0.22);
+  border-radius: 9999px;
+  font-size: 14px;
+  line-height: 1;
+  background: rgba(251, 248, 241, 0.5);
+}
+
+.zanshin-brush-trigger--list .zanshin-brush-glyph {
+  border-bottom: 1px solid rgba(201, 166, 70, 0.45);
+  padding-bottom: 1px;
+}
+
+/* ───────── 旧 phase33.css ───────── */
+/* ─────────── 1. 字を紙に沈める ─────────── */
+
+/* 白い縁取りは「浮き」の原因、ぼかしや影は「滲み」の原因。字の輪郭はくっきり保ち、なじませるのは墨の濃淡（下）と乗算だけにする。 */
+.note-title-input,
+.writing-textarea,
+.read-mode-title,
+.read-mode-body,
+.zanshin-note-card__title,
+.zanshin-note-card__preview,
+.zanshin-main-copy,
+.zanshin-app-title-block h1,
+.zanshin-empty-state .poetic-lines {
+  color: var(--ink);
+  text-shadow: none !important;
+}
+
+/* 紙の濃淡が墨を透かして見えるように、紙の上へ乗算で重ねる。 */
+.note-title-input,
+.writing-textarea,
+.read-mode-title,
+.read-mode-body,
+.zanshin-note-card__title,
+.zanshin-note-card__preview,
+.zanshin-main-copy {
+  mix-blend-mode: multiply;
+}
+
+/*
+ * 読むだけの文字は、墨の濃淡（かすれ・溜まり）を字の内側にだけ出す。
+ * 紙色の斑点を墨の上に重ね、-webkit-background-clip:text で字の形に切り抜く。
+ * 入力欄には使わない（選択範囲・プレースホルダ・キャレットを壊さないため）。
+ */
+.read-mode-title,
+.read-mode-body,
+.zanshin-note-card__title,
+.zanshin-note-card__preview,
+.zanshin-main-copy,
+.zanshin-app-title-block h1,
+.zanshin-empty-state .poetic-lines {
+  background-image:
+    var(--phase33-ink-mottle),
+    var(--phase33-ink-fine),
+    linear-gradient(172deg, #1f1913 0%, #2d241c 46%, #1f1913 100%);
+  background-size: 260px 260px, 180px 180px, 100% 100%;
+  background-repeat: repeat, repeat, no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 背景を持つ要素の中でだけ有効。ボタン内のカードは、押下時も濃淡が崩れないようにする。 */
+/* 見出し・抜粋は表示だけ原則2行（保存原文は短縮しない）。-webkit-box でないと行数制限が効かない。 */
+.zanshin-note-card__title,
+.zanshin-note-card__preview {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* 入力中の文字は少しだけ柔らかく。 */
+.writing-textarea,
+.note-title-input {
+  color: #2f261e;
+}
+
+/* ─────────── 2. 手で書いた行の揺れ（読み返し） ─────────── */
+.read-line {
+  display: block;
+  transform: translate(var(--jx, 0), var(--jy, 0)) rotate(var(--jr, 0deg));
+  transform-origin: 50% 0;
+  opacity: var(--jo, 1);
+}
+
+/* ─────────── 3. カードの不揃い ─────────── */
+.zanshin-note-card {
+  /* rotate は個別プロパティ。hover の transform と競合せず、未対応の iOS では単に傾かないだけ。 */
+  rotate: var(--card-tilt, 0deg);
+  border-radius: var(--card-radius, 13px) !important;
+}
+
+.zanshin-paper-slip {
+  rotate: -0.35deg;
+}
+
+/* ─────────── 4. 紙の焼け・縁の暗がり ─────────── */
+.zanshin-fibers {
+  background-image:
+    var(--phase33-stain),
+    var(--phase32-fibers-page);
+  background-size: 720px 720px, 640px 640px;
+  /* 四辺をわずかに焼く。画面端ほど古い紙の色に寄る。 */
+  box-shadow:
+    inset 0 0 50px rgba(120, 88, 48, 0.035),
+    inset 0 0 10px rgba(120, 88, 48, 0.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zanshin-note-card {
+    rotate: 0deg;
+  }
+}
+
+/*
+ * 背景の雲状ムラ（phase28 由来）を、気配だけに弱める。
+ * 紙の「地」は静かに、ムラは紙片と繊維で感じさせる。
+ */
+body {
+  background-image:
+    radial-gradient(118% 92% at 17% 10%, rgba(251, 246, 234, 0.72) 0%, transparent 54%),
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.028), transparent 70%),
+    radial-gradient(70% 60% at 78% 20%, rgba(120, 92, 54, 0.022), transparent 72%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.026), transparent 75%),
+    radial-gradient(45% 60% at 12% 70%, rgba(92, 70, 42, 0.018), transparent 70%),
+    linear-gradient(135deg, rgba(251, 246, 234, 0.34) 0%, rgba(243, 234, 215, 0.10) 48%, rgba(232, 220, 196, 0.18) 100%) !important;
+}
+
+body::before {
+  background-image:
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.028), transparent 70%),
+    radial-gradient(70% 60% at 78% 20%, rgba(120, 92, 54, 0.022), transparent 72%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.026), transparent 75%),
+    radial-gradient(45% 60% at 12% 70%, rgba(92, 70, 42, 0.018), transparent 70%) !important;
+}
+
+body::after {
+  opacity: 0.4 !important;
+}
+
+@media (max-width: 430px) {
+  body::after {
+    opacity: 0.36 !important;
+  }
+}
+
+/* ───────── 旧 phase34.css ───────── */
+/* ─────────── 1. 補助文字を読みやすく ─────────── */
+.zanshin-yohaku-label,
+.zanshin-date,
+.english-subcopy,
+.read-mode-hint,
+.zanshin-list-status p:last-child,
+.zanshin-note-card__cta,
+.zanshin-note-card__cta span {
+  color: var(--text-soft) !important;
+  opacity: 1 !important;
+}
+
+.zanshin-list-status p:first-child {
+  color: var(--text-body) !important;
+  opacity: 1 !important;
+}
+
+.read-mode-date {
+  opacity: 1 !important;
+}
+
+.zanshin-search-input::placeholder,
+.note-title-input::placeholder,
+.writing-textarea::placeholder {
+  color: var(--text-hint) !important;
+  opacity: 1 !important;
+}
+
+/* 小さな補助文字は、墨の濃淡（かすれ）を使わない。 */
+.zanshin-list-status p,
+.zanshin-date-stamp,
+.zanshin-note-card__cta {
+  background-image: none;
+}
+
+/* ─────────── 2. 紙面を清潔に ─────────── */
+/* 白い繊維は残す。汚れに見えるのは濃い点・茶の線なので、そちらだけ減らした。 */
+.zanshin-fibers {
+  opacity: 0.9;
+}
+
+/* 日付印: 容器の 0.88 を外し、文字色を少し深く。定着アニメーション（.settling）はそのまま。 */
+.zanshin-date-stamp:not(.settling) {
+  opacity: 1;
+}
+
+.zanshin-yohaku-label,
+.zanshin-date {
+  color: #5c5349 !important;
+}
+
+/* ───────── 旧 phase35.css ───────── */
+/*
+ * 筆あとシート: 画面が低い・狭いときに、上端が画面外へはみ出して見出しが切れていた。
+ * 画面内に収め、足りなければシート内だけをスクロールさせる。
+ */
+.zanshin-brush-sheet {
+  max-height: calc(100dvh - 2 * max(env(safe-area-inset-top), 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.zanshin-brush-sample {
+  font-size: clamp(16px, 5.2vw, 20px) !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 359px) {
+  .zanshin-brush-sheet {
+    padding: 21px 18px;
+  }
+}
+
+/* 320px 幅: 件数・筆あと・端末内保存が2段に折れるとき、左端を揃える。 */
+@media (max-width: 359px) {
+  .zanshin-list-status {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .zanshin-list-status .zanshin-brush-trigger--list {
+    margin-left: -13px;
+  }
+}
+
+/* ───────── 旧 phase36.css ───────── */
+/* ─────────── 2. 「元に戻す」バー ─────────── */
+.zanshin-undo-toast {
+  /* 入場アニメーション（softUp）が transform を使うので、中央寄せは margin:auto で行う。 */
+  left: 21px !important;
+  right: 21px !important;
+  margin-inline: auto;
+  width: min(calc(100% - 42px), 340px);
+  background: rgba(251, 248, 241, 0.94) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  padding-block: 4px !important;
+  box-shadow:
+    0 1px 2px rgba(92, 70, 42, 0.06),
+    0 10px 28px rgba(92, 70, 42, 0.12) !important;
+}
+
+/* ─────────── 3. 背景をさらに静かに ─────────── */
+body {
+  background-image:
+    radial-gradient(118% 92% at 17% 10%, rgba(251, 246, 234, 0.78) 0%, transparent 56%),
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.014), transparent 70%),
+    radial-gradient(70% 60% at 78% 20%, rgba(120, 92, 54, 0.012), transparent 72%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.014), transparent 75%),
+    linear-gradient(135deg, rgba(251, 246, 234, 0.4) 0%, rgba(243, 234, 215, 0.10) 48%, rgba(232, 220, 196, 0.14) 100%) !important;
+}
+
+body::before {
+  background-image:
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.014), transparent 70%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.014), transparent 75%) !important;
+}
+
+body::after {
+  opacity: 0.26 !important;
+}
+
+@media (max-width: 430px) {
+  body::after {
+    opacity: 0.22 !important;
+  }
+}
+
+.zanshin-fibers {
+  opacity: 0.7;
+  /* 暗がりは気配だけ。上から明るい光を落として、画面全体を清潔に見せる。 */
+  box-shadow:
+    inset 0 0 44px rgba(120, 88, 48, 0.02),
+    inset 0 0 8px rgba(120, 88, 48, 0.02);
+  background-image:
+    radial-gradient(120% 60% at 50% 0%, rgba(255, 251, 240, 0.4), transparent 62%),
+    var(--phase33-stain),
+    var(--phase32-fibers-page);
+  background-size: 100% 100%, 720px 720px, 640px 640px;
+}
+
+/* 画面左端の「間」の基準線は、傷に見えることがあるので、さらに淡く。 */
+.zanshin-ma-axis {
+  opacity: 0.22;
+}
+
+
+/* ───────── 4. 読み返しの文書構造（R01 / R31 / R12） ─────────
+ *
+ * 以前は .read-mode-paper 自体が display:flex + writing-mode:vertical-rl だった。
+ * flex-direction の既定値 row は、縦書きでは主軸が「上下」になるため、日付・題・区切り・本文が
+ * 一列の高さを分け合い、長い題が本文の行長を潰した。さらに紙の overflow:hidden !important が
+ * 横スクロールを殺し、長文の続きへ指でも届かなかった。
+ *
+ * 現在の構造:
+ *   article.read-mode-paper（横書きの外枠・装飾の切り抜きはここだけ）
+ *     ├ .read-mode-date            横書きの日付印（本文の行長を圧迫しない）
+ *     └ .read-mode-scroll          縦書きの文書。ここだけが横スクロールを持つ
+ *         ├ h1.read-mode-title     右端の列から始まる
+ *         ├ .read-mode-divider     細い線（ブロック境界）
+ *         └ p.read-mode-body       右から左へ流れる
+ * 縦書きの物理方向: inline = 上→下（行の長さ）、block = 右→左（次の列）。
+ */
+.read-mode-paper {
+  display: flex !important;
+  flex-direction: column !important;
+  writing-mode: horizontal-tb !important;
+  flex: 1 1 auto;
+  min-height: 56svh !important;
+  max-height: none !important;
+  padding: 21px 13px 21px !important;
+  /* 紙端の装飾を切り抜くだけ。スクロールは子の .read-mode-scroll が持つ。 */
+  overflow: hidden !important;
+}
+
+.read-mode-date {
+  writing-mode: horizontal-tb;
+  margin: 0 0 21px 13px;
+  opacity: 1 !important;
+  flex: none;
+}
+
+.read-mode-scroll {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: block;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  line-break: strict;
+  /* 連続スクロール。題と本文の2点だけへ snap して「ページ送り」に見せない。 */
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: none;
+  /* block-start = 右端、block-end = 左端。右は題の余白、左は末尾の余白。 */
+  padding-block: 8px 34px;
+  scrollbar-width: thin;
+}
+
+.read-mode-scroll:focus-visible {
+  outline: 2px solid var(--zanshin-focus, rgba(36, 59, 83, 0.45));
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.read-mode-title {
+  margin: 0 0 0 0;
+  margin-block-end: 26px;
+  line-height: 2.1;
+  letter-spacing: 0.12em;
+  /* 長い題は縦に上限（行の長さ）を置かず、列の高さいっぱいで自然に次の列へ折り返す。 */
+  text-wrap: balance;
+}
+
+.read-mode-divider {
+  display: block;
+  /* vertical-rl では inline-size が縦、block-size が横。細い縦線。 */
+  inline-size: 48px;
+  block-size: 1px;
+  margin-block-end: 26px;
+  background: linear-gradient(to bottom, transparent, rgba(201, 166, 70, 0.28), transparent);
+}
+
+.read-mode-body {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 2.2;
+  letter-spacing: 0.08em;
+}
+
+/* 続きの案内は、実際に続きがある時だけ。補助にすぎず、読めなくても内容へ届く。 */
+.read-mode-stage {
+  position: relative;
+}
+
+/* 案内の出入りで本文の高さが変わると、折り返しが再計算されて読んでいる位置がずれる。
+   通常フローには置かず、紙の左下へ重ねる（レイアウトに影響しない）。 */
+.read-mode-more {
+  position: absolute;
+  left: 76px;
+  bottom: 52px;
+  z-index: 3;
+  margin: 0;
+  pointer-events: none;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-soft, #6a6055);
+}
+
+/* ───────── 5. 保存演出は通常フローを占めない（R05） ─────────
+ * .editor-paper > * { position: relative !important } が、位置を持つ装飾まで通常フローへ戻していた。
+ */
+.editor-paper > .save-enso-afterglow {
+  position: absolute !important;
+  z-index: 0 !important;
+}
+
+/* ───────── 6. 文字の役割（R09）─────────
+ * 補助文字（日付・件数・保存状態・CTA）は、小ささと薄さを重ねない。下限を 12px にそろえる。
+ * 色は読める濃さの実色（上の可読性セクション）で決め、不透明度を重ねない。
+ */
+.zanshin-yohaku-label,
+.zanshin-date,
+.zanshin-list-status p,
+.zanshin-note-card__cta,
+.zanshin-note-card__cta span,
+.english-subcopy,
+.zanshin-save-status {
+  font-size: max(12px, 0.75rem) !important;
+  line-height: 1.6;
+}
+
+.zanshin-save-status {
+  font-size: 13px !important;
+}
+
+/* ───────── 7. 保存失敗の専用表示（R07 / R24）─────────
+ * 以前は .zanshin-save-status（成功演出用の rgba(31,27,24,.42)）が失敗の朱色を上書きして薄く読めなかった。
+ * 失敗は別クラスで、実色・十分な大きさ・色以外の手がかり（左の太い線と文章）を持たせる。
+ */
+.zanshin-save-failure {
+  margin: 13px 2px 0;
+  padding: 13px 16px;
+  border: 1px solid rgba(154, 59, 41, 0.35);
+  border-left: 4px solid #9a3b29;
+  border-radius: 4px 10px 6px 9px;
+  background: rgba(251, 248, 241, 0.96);
+  color: #7a2f20;
+  text-align: left;
+}
+
+.zanshin-save-failure__message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #7a2f20;
+}
+
+.zanshin-save-failure__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 13px;
+  margin-top: 10px;
+}
+
+/* ───────── 8. ホーム（R14）─────────
+ * 作成操作は「メモを書く」と読めることを優先し、プラス記号だけにしない（どの幅でも文字を出す）。
+ */
+.zanshin-compose-label {
+  display: inline !important;
+}
+
+.zanshin-compose-button {
+  padding-inline: 18px 20px;
+}
+
+/* ───────── 9. 削除確認（R25）─────────
+ * 小さい画面・大きな文字でも、本文・両方の操作へ届く。高さを画面内に収め、足りなければダイアログ内でスクロール。
+ */
+.zanshin-delete-dialog {
+  max-height: calc(100dvh - 2 * max(env(safe-area-inset-top), 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.zanshin-delete-target {
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ───────── 10. 題名の入力（R11）───────── */
+textarea.note-title-input {
+  display: block;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  min-height: 1.6em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ───────── 11. キーボード表示中の編集領域（R32）─────────
+ * 画面キーボードが開いている間は、日付・題名まわりの上下の余白と装飾を詰め、本文の入力と選択に場所を譲る。
+ * 本文の最低高さ（42dvh）も外す。実際の見える行数は実機で測る（要実機）。
+ */
+.zanshin-editor[data-keyboard="open"] .editor-paper {
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+}
+
+.zanshin-editor[data-keyboard="open"] .editor-paper > div:first-of-type {
+  margin-bottom: 8px !important;
+}
+
+.zanshin-editor[data-keyboard="open"] .zanshin-date-stamp {
+  transform: scale(0.92);
+  transform-origin: left top;
+}
+
+.zanshin-editor[data-keyboard="open"] .editor-paper > [aria-hidden="true"] {
+  display: none;
+}
+
+.zanshin-editor[data-keyboard="open"] .writing-textarea {
+  margin-top: 8px !important;
+}
+
+/* ───────── 12. このアプリについて（R04）───────── */
+.zanshin-about-section {
+  margin-top: 21px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(92, 70, 42, 0.14);
+}
+
+.zanshin-about-section h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: var(--ink, #231c16);
+}
+
+.zanshin-about-section p,
+.zanshin-about-section li {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--text-body, #4a423a);
+}
+
+.zanshin-about-section ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.zanshin-about-section a {
+  display: inline-block;
+  min-height: 44px;
+  padding: 10px 0;
+  color: var(--ink, #231c16);
+  text-decoration: underline;
+  text-decoration-color: rgba(201, 166, 70, 0.7);
+  text-underline-offset: 4px;
+}
+
+/* 「このアプリについて」への入口は、作成操作より弱く、いつも同じ場所に。 */
+.zanshin-about-entry {
+  z-index: 2;
+}

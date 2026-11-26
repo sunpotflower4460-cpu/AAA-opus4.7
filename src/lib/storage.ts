@@ -21,7 +21,15 @@ export type SaveResult =
   | { ok: true }
   | {
       ok: false;
-      reason: "quota" | "unavailable" | "unknown" | "conflict" | "invalid_data";
+      reason:
+        | "quota"
+        | "unavailable"
+        | "unknown"
+        | "conflict"
+        | "invalid_data"
+        // 保護している復元候補の枠がいっぱいで、確認なしには新しい候補を退避できない（R34）。
+        // 通常の版競合とは理由も解決方法も異なるので、別の結果として返す。
+        | "recovery_archive_full";
     };
 
 export function isRetryableSaveFailure(
@@ -614,7 +622,8 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
             } else {
               // primary/secondary archive の両方に別世代が残っている。
               // 3世代目を落とさず、現在の BACKUP_KEY も残したまま force-save を止める。
-              return { ok: false, reason: "conflict" };
+              // 通常の競合とは区別し、利用者が確認した候補を明示的に整理して進める（R34）。
+              return { ok: false, reason: "recovery_archive_full" };
             }
           }
 
@@ -657,6 +666,64 @@ export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult 
     return { ok: true };
   } catch (error) {
     return saveFailureFromError(error);
+  }
+}
+
+/**
+ * 保護している復元候補（force 保存の前に退避された別世代）。
+ * 満杯の時に、利用者が内容を確認して整理するための閲覧用データ。
+ */
+export type ProtectedRecoverySlot = "recovery_primary" | "recovery_secondary";
+
+export type ProtectedRecoveryCandidate = {
+  slot: ProtectedRecoverySlot;
+  /** 整理の直前に「確認した時から変わっていない」ことを照合するための原文 */
+  raw: string;
+  notes: Note[];
+};
+
+const PROTECTED_SLOT_KEYS: Record<ProtectedRecoverySlot, string> = {
+  recovery_primary: RECOVERY_CONFLICT_BACKUP_KEY,
+  recovery_secondary: RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY,
+};
+
+/** 内容を読める保護候補だけを返す。読めない候補は表示も整理もしない（保護を維持）。 */
+export function listProtectedRecoveryCandidates(): ProtectedRecoveryCandidate[] {
+  if (typeof window === "undefined") return [];
+  const result: ProtectedRecoveryCandidate[] = [];
+  for (const slot of Object.keys(PROTECTED_SLOT_KEYS) as ProtectedRecoverySlot[]) {
+    try {
+      const raw = window.localStorage.getItem(PROTECTED_SLOT_KEYS[slot]);
+      if (raw === null) continue;
+      const notes = parseValidNotesSnapshot(raw);
+      if (notes !== null) result.push({ slot, raw, notes });
+    } catch {
+      // 読めない保護枠は触らない。
+    }
+  }
+  return result;
+}
+
+export type DiscardProtectedResult = "discarded" | "changed" | "failed";
+
+/**
+ * 利用者が内容を確認して選んだ保護候補だけを整理する。
+ * 確認した時の原文（expectedRaw）と現在の中身が一致する時だけ削除し、
+ * 確認後に別の内容へ変わっていたら何も消さない（"changed"）。
+ */
+export function discardProtectedRecoveryCandidate(
+  slot: ProtectedRecoverySlot,
+  expectedRaw: string,
+): DiscardProtectedResult {
+  if (typeof window === "undefined") return "failed";
+  const key = PROTECTED_SLOT_KEYS[slot];
+  try {
+    const current = window.localStorage.getItem(key);
+    if (current !== expectedRaw) return "changed";
+    window.localStorage.removeItem(key);
+    return window.localStorage.getItem(key) === null ? "discarded" : "failed";
+  } catch {
+    return "failed";
   }
 }
 

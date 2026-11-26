@@ -209,7 +209,12 @@ npm run preview
 
 ---
 
-## App Store申請前 TODO
+## App Store 提出
+
+**提出内容・手順・残タスクは [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) に集約しています。**
+スクリーンショットは `store/screenshots/` にあります。書いた言葉の字体は「筆あと」（明朝・筆・墨・手書き）から選べます。初回リリースは無料・広告なし・課金なし・外部SDKなしです。
+
+## （旧）App Store申請前 TODO（初回リリースでは広告・課金は対象外）
 
 - [全37項目の受入条件](docs/store-release-polish/ACCEPTANCE.md) に沿い、対応状況と証拠を記録する
 - 保存・復旧・縦書き・キーボード・文字拡大・VoiceOverを、最終ビルドで確認する
@@ -238,6 +243,9 @@ npm run preview
 | [docs/uiux-integrity-review-phase-8.md](docs/uiux-integrity-review-phase-8.md) | Phase 8 UI/UX監査レポート |
 | [docs/app-store-monetization-checklist.md](docs/app-store-monetization-checklist.md) | App Store monetization 申請チェックリスト |
 | [docs/app-store-preparation-phase-18.md](docs/app-store-preparation-phase-18.md) | Phase 18 App Store 申請準備レポート |
+| [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | ストア公開前の品質改善（設計・実装指示・受入／実装記録） |
+| [docs/ui-release-polish-report.md](docs/ui-release-polish-report.md) | UI磨き込み（紙・書体・余白）の記録。仕上げCSSは `src/release.css` に統合 |
+| [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) | **App Store 提出パック（最終版）** |
 | [docs/app-store-submission-checklist.md](docs/app-store-submission-checklist.md) | App Store 提出全体チェックリスト |
 | [docs/app-store-metadata-draft.md](docs/app-store-metadata-draft.md) | App Store Connect 用メタデータ草案 |
 | [docs/privacy-and-tracking-notes.md](docs/privacy-and-tracking-notes.md) | App Privacy / ATT / SDK確認メモ |

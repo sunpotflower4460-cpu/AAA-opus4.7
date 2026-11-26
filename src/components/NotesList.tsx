@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Note } from "../types/note";
 import type { MonetizationState } from "../types/monetization";
 import { copy } from "../lib/i18n";
 import { matchesNote, normalizeSearchQuery, sortNotes } from "../lib/notesLogic";
 import { ADS_ENABLED, PREMIUM_ENABLED } from "../lib/featureFlags";
+import { BrushPicker } from "./BrushPicker";
 import { NoteCard } from "./NoteCard";
 import { SearchBar } from "./SearchBar";
 import { EmptyState } from "./EmptyState";
@@ -20,16 +21,19 @@ type Props = {
   onOpen: (id: string) => void;
   onCreate: () => void;
   onOpenPremium: () => void;
+  /** 「このアプリについて」を開く */
+  onOpenAbout?: () => void;
   onRestorePurchase: () => void | Promise<void>;
 };
 
 const MAX_STAGGERED_ITEMS = 6;
 const STAGGER_STEP_MS = 40;
+const RESULT_ANNOUNCE_DELAY_MS = 600;
 
 function countLabel(count: number, isSearching: boolean): string {
-  if (isSearching) return count === 0 ? "0件" : `${count}件 見つかりました`;
+  if (isSearching) return copy.searchResultCountLabel(count);
   if (count === 0) return copy.notesCountEmpty;
-  return `${count}つの${copy.notesCount}`;
+  return copy.notesCountLabel(count);
 }
 
 export function NotesList({
@@ -41,6 +45,7 @@ export function NotesList({
   onCreate,
   onOpenPremium,
   onRestorePurchase,
+  onOpenAbout,
 }: Props) {
   const visible = useMemo(() => {
     return sortNotes(notes.filter((note) => matchesNote(note, query)));
@@ -48,13 +53,32 @@ export function NotesList({
 
   const isEmpty = visible.length === 0;
   const isSearching = normalizeSearchQuery(query).length > 0;
+  // 通常状態（メモが1件以上、検索していない）では、導入の短冊を毎回先頭に置かず、メモへ早く届く（D01）。
+  const showIntro = notes.length === 0;
+
+  // 検索結果の件数は、入力が一段落してからまとめて読み上げる（IME 途中や一文字ごとに割り込まない）。
+  const resultLabel = isSearching ? countLabel(visible.length, true) : "";
+  const [announcedResult, setAnnouncedResult] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAnnouncedResult(resultLabel), RESULT_ANNOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [resultLabel]);
   const showAdSlot = ADS_ENABLED && !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
     PREMIUM_ENABLED && !isSearching && (visible.length > 1 || monetization.isPremium);
 
   return (
     <div className="zanshin-home flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
-      <header className="zanshin-home-header pt-gr-3">
+      <header className="zanshin-home-header relative pt-gr-3">
+        {onOpenAbout && (
+          <button
+            type="button"
+            onClick={onOpenAbout}
+            className="zanshin-about-entry absolute right-0 top-0 flex min-h-[44px] items-center rounded-full px-gr-3 font-mincho text-[12px] tracking-[0.08em] text-ink-muted transition-soft hover:text-sumi"
+          >
+            {copy.aboutOpen}
+          </button>
+        )}
         <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-3 text-center">
           <div className="zanshin-app-title-block flex flex-col items-center gap-gr-2">
             <ZanshinMark size={32} className="text-sumi/82" />
@@ -65,19 +89,25 @@ export function NotesList({
               {copy.appSubtitle.toUpperCase()}
             </p>
           </div>
-          <ZanshinPaperSlip lines={copy.taglineLines} />
+          {showIntro && <ZanshinPaperSlip lines={copy.taglineLines} />}
         </div>
       </header>
 
       <div className="mx-auto w-full max-w-[430px] pt-gr-2">
         <SearchBar value={query} onChange={onQueryChange} />
+        <span className="sr-only" role="status" aria-live="polite">
+          {announcedResult}
+        </span>
         <div className="zanshin-list-status mt-gr-3 flex items-center justify-between gap-gr-3 px-gr-1">
           <p className="font-mincho text-[12px] tracking-[0.12em] text-ink-muted/72 jp-text-discipline">
             {countLabel(visible.length, isSearching)}
           </p>
-          <p className="text-[10px] tracking-[0.14em] text-ink-muted/48">
-            {copy.localOnly}
-          </p>
+          <div className="flex items-center gap-gr-2">
+            <BrushPicker variant="list" className="-my-gr-2" />
+            <p className="text-[10px] tracking-[0.14em] text-ink-muted/80">
+              {copy.localOnly}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -86,7 +116,7 @@ export function NotesList({
         aria-label="メモ一覧"
       >
         {isEmpty ? (
-          <EmptyState onCreate={onCreate} searching={isSearching} />
+          <EmptyState searching={isSearching} />
         ) : (
           <ul className="flex flex-col gap-gr-3">
             {visible.map((note, index) => (
@@ -97,7 +127,7 @@ export function NotesList({
                   animationDelay: `${Math.min(index, MAX_STAGGERED_ITEMS) * STAGGER_STEP_MS}ms`,
                 }}
               >
-                <NoteCard note={note} onOpen={onOpen} />
+                <NoteCard note={note} onOpen={onOpen} query={query} />
               </li>
             ))}
           </ul>

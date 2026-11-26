@@ -55,7 +55,7 @@ function click(button: HTMLButtonElement | null) {
 }
 
 function changeTextarea(container: HTMLElement, value: string) {
-  const textarea = container.querySelector("textarea");
+  const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
   Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
     textarea,

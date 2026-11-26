@@ -82,7 +82,7 @@ function deleteCurrentNote(container: HTMLElement) {
 }
 
 function changeTextarea(container: HTMLElement, value: string) {
-  const textarea = container.querySelector("textarea");
+  const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
   const valueSetter = Object.getOwnPropertyDescriptor(
     HTMLTextAreaElement.prototype,
@@ -144,7 +144,8 @@ describe("App global save failure", () => {
     act(() => vi.advanceTimersByTime(500));
 
     expect(container.querySelector('[data-testid="global-save-failure"]')).not.toBeNull();
-    expect(container.textContent).toContain(copy.saveErrorQuota);
+    // 削除が保存先へ確定していないことを、「削除しました」の印象を残さず伝える（D14 / R36）。
+    expect(container.textContent).toContain(copy.deleteSaveFailed);
     expect(retryButtonCount(container)).toBe(1);
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING])).toHaveLength(1);
 
@@ -193,6 +194,8 @@ describe("App global save failure", () => {
     act(() => vi.advanceTimersByTime(500));
     expect(retryButtonCount(container)).toBe(1);
 
+    // 読み返しから開いた編集は「読み返しへ」戻り、もう一度で一覧へ（D06）。
+    act(() => click(findButton(container, copy.backToRead)));
     act(() => click(findButton(container, copy.back)));
 
     expect(container.querySelector('[data-testid="global-save-failure"]')).not.toBeNull();

@@ -9,8 +9,10 @@ import {
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
 import {
+  discardProtectedRecoveryCandidate,
   getNotesPrimaryHealth,
   isRetryableSaveFailure,
+  listProtectedRecoveryCandidates,
   loadNotes,
   NOTES_STORAGE_KEY,
   saveNotes,
@@ -28,6 +30,7 @@ import { createId } from "./lib/id";
 import { copy } from "./lib/i18n";
 import { getSaveFailureMessage } from "./lib/saveFailureUi";
 import { subscribeToNativeAppState } from "./lib/nativeAppLifecycle";
+import { recordDraftRescue } from "./lib/draftRescue";
 import {
   isNativeDurableSnapshotAvailable,
   persistNativeDurableSnapshot,
@@ -38,8 +41,18 @@ import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
 import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
+import { RecoveryReview, type ReviewCandidate } from "./components/RecoveryReview";
+import { AboutScreen } from "./components/AboutScreen";
 
-type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; id: string };
+// editor の origin は戻り先と戻る操作の名前を決める（D06）。
+// new: 「メモを書く」から開いた新規 / read: 読み返しから「編集する」で開いた既存メモ
+type View =
+  | { kind: "list" }
+  | { kind: "editor"; id: string; origin: "new" | "read" }
+  | { kind: "read"; id: string };
+
+// 一覧へ戻る時に復元する文脈。保存した座標は補助で、対象カードの ID を優先する。
+type ListRestore = { cardId: string | null; scrollY: number };
 type DeletedNote = Note & { deletedAt: string };
 type RecoveryCandidateSource = "screen" | "local" | "native";
 
@@ -83,6 +96,10 @@ export default function App() {
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
   const [view, setView] = useState<View>({ kind: "list" });
+  // 「メモを書く」で作ったまま、まだ何も入力・変更していない新規下書き（R15）。
+  // 既存メモが空であることとは別の概念で、入力後に消したメモは含まない。
+  const [untouchedDraftId, setUntouchedDraftId] = useState<string | null>(null);
+  const listRestoreRef = useRef<ListRestore | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [monetization, setMonetization] = useState<MonetizationState>(() =>
     loadMonetizationState(),
@@ -104,6 +121,19 @@ export default function App() {
     initialLoad.recoveredCount,
   );
   const [nativeBackupError, setNativeBackupError] = useState(false);
+  // 保護している復元候補の枠が満杯で、この画面の内容を保存できない状態（R34）。
+  const [archiveFull, setArchiveFull] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  // 削除が保存先へまだ確定していない（確定する保存が成功するまで true）。
+  const [deleteUnconfirmed, setDeleteUnconfirmed] = useState(false);
+  const [reviewCandidates, setReviewCandidates] = useState<ReviewCandidate[]>([]);
+  // 編集の世代。保存・予備保存の結果が「いま表示している版」に対するものか判定する（R35）。
+  // 日時や件数ではなく、この画面が受け取った変更の通し番号。永続化しない。
+  const editVersionRef = useRef(0);
+  const [editVersion, setEditVersion] = useState(0);
+  // 端末内の予備保存の更新に失敗した版。現在の版と一致する間だけ警告にする。
+  const [nativeBackupErrorVersion, setNativeBackupErrorVersion] = useState<number | null>(null);
   const [nativeBackupRetryAllowed, setNativeBackupRetryAllowed] = useState(false);
   const [nativeRecoveryStatus, setNativeRecoveryStatus] = useState<
     "idle" | "checking" | "error"
@@ -154,8 +184,13 @@ export default function App() {
   const persistDurableSnapshot = useCallback((snapshot: readonly Note[]) => {
     if (!isNativeDurableSnapshotAvailable()) return;
 
+    const versionAtRequest = editVersionRef.current;
     void persistNativeDurableSnapshot(snapshot).then((ok) => {
       if (!mountedRef.current) return;
+      // 結果が返るまでに新しい入力があれば、その結果は古い版のもの。
+      // 新しい版の保存・予備保存が自分の結果を出すので、ここでは表示を動かさない。
+      if (editVersionRef.current !== versionAtRequest) return;
+      setNativeBackupErrorVersion(ok ? null : versionAtRequest);
       setNativeBackupError(!ok);
       setNativeBackupRetryAllowed(
         !ok &&
@@ -194,6 +229,12 @@ export default function App() {
     }
   }, [notes]);
 
+  // 描画例外で App が破棄されても、最後に受け取った内容へ届けるための控え（R33）。
+  // 保存層には一切書かない。取り出し専用で、保存先で確認できている版との差も一緒に持つ。
+  useLayoutEffect(() => {
+    recordDraftRescue(notes, baselineNotesRef.current);
+  }, [notes, lastSaveResult]);
+
   const clearPersistTimer = useCallback(() => {
     if (!persistTimerRef.current) return;
     window.clearTimeout(persistTimerRef.current);
@@ -204,6 +245,9 @@ export default function App() {
     // native復旧の確認中/読込障害中は、旧データを上書きし得る編集自体を開始させない。
     setNativeBackupRetryAllowed(false);
     if (nativeRecoveryGateRef.current) return false;
+
+    editVersionRef.current += 1;
+    setEditVersion(editVersionRef.current);
 
     if (externalConflictRef.current) {
       // recovery/conflict 中の編集は自動保存を再開せず、エディタにも停止理由を即時通知する。
@@ -332,6 +376,19 @@ export default function App() {
       return;
     }
 
+    if (
+      isNativeDurableSnapshotAvailable() &&
+      !notesSnapshotMatches(remote.notes, baselineNotesRef.current)
+    ) {
+      // 復帰時にlocalだけが既知の正本と異なる「正常形式の版」へ変わっていても、
+      // 形式が正しいという理由だけで採用せず、native予備保存へも渡さない（R03）。
+      // 起動時と同じ比較（probeNativeRecovery）へ送り、同一または不存在を確認できた時だけ
+      // 解放し、異なる有効版・読込失敗は編集を止めて利用者の選択／再確認へ回す。
+      // 日時の新旧から正しい版を推測しない。
+      registerLocalRecoveryCandidate(remote.notes);
+      return;
+    }
+
     applyCleanRemoteNotes(remote.notes);
     // 正常な保存先を正式採用したら、native復旧層も同じ正本へ追従させる。
     // recovery candidate は上の !remote.ok 分岐なので、未確定候補をここで保存することはない。
@@ -347,7 +404,15 @@ export default function App() {
     (result: SaveResult, snapshot: Note[]) => {
       setLastSaveResult(result);
 
+      if (!result.ok && result.reason === "recovery_archive_full") {
+        // 満杯は通常の競合とは別の理由。画面の内容も保護候補も触らず、確認と整理へ案内する。
+        setArchiveFull(true);
+        return;
+      }
+
       if (result.ok) {
+        setArchiveFull(false);
+        setDeleteUnconfirmed(false);
         notesDirtyRef.current = false;
         dirtySinceRef.current = null;
         saveGuardRef.current = false;
@@ -832,7 +897,8 @@ export default function App() {
 
   const createNote = useCallback(() => {
     if (!markNotesDirty()) return;
-    setSearchQuery("");
+    // 検索語はここでは捨てない。何も書かずに戻った時は、元の検索結果・位置へ戻す（R15 / D06）。
+    listRestoreRef.current = { cardId: null, scrollY: window.scrollY };
 
     const iso = nowIso();
     const note: Note = {
@@ -846,12 +912,15 @@ export default function App() {
     };
 
     setNotes((prev) => [note, ...prev]);
-    setView({ kind: "editor", id: note.id });
+    setUntouchedDraftId(note.id);
+    setView({ kind: "editor", id: note.id, origin: "new" });
   }, [markNotesDirty]);
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
       if (!markNotesDirty()) return;
+      // 何か一つでも変更が入った新規は、「未操作」ではなく入力履歴のあるメモ。
+      setUntouchedDraftId((current) => (current === id ? null : current));
       setNotes((prev) =>
         prev.map((note) =>
           note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
@@ -871,6 +940,8 @@ export default function App() {
 
       if (!markNotesDirty()) return;
 
+      // この削除が保存先へ確定するまで、「削除を保存できませんでした」と区別して伝えるための印。
+      setDeleteUnconfirmed(true);
       if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
       const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
       setNotes((prev) => prev.filter((note) => note.id !== id));
@@ -892,6 +963,8 @@ export default function App() {
       undoTimerRef.current = null;
     }
 
+    // 元に戻した時点で、削除は意図されていない。以後の失敗は通常の保存失敗として扱う。
+    setDeleteUnconfirmed(false);
     const { deletedAt: _, ...note } = lastDeleted;
     setNotes((prev) => (prev.some((item) => item.id === note.id) ? prev : [note, ...prev]));
     setLastDeleted(null);
@@ -912,6 +985,8 @@ export default function App() {
       undoTimerRef.current = null;
     }
 
+    setArchiveFull(false);
+    setDeleteUnconfirmed(false);
     notesDirtyRef.current = false;
     dirtySinceRef.current = null;
     saveGuardRef.current = false;
@@ -986,8 +1061,63 @@ export default function App() {
   }, [persistDurableSnapshot]);
 
   const openNote = useCallback((id: string) => {
+    listRestoreRef.current = { cardId: id, scrollY: window.scrollY };
     setView({ kind: "read", id });
   }, []);
+
+  /**
+   * 編集画面を閉じる。
+   * - 未操作の新規: 空のメモを増やさず、元の一覧／検索結果へ（検索語・位置を保つ）
+   * - 入力のあった新規: 新しいカードが見える通常の一覧へ
+   * - 読み返しから開いた編集: 同じメモの読み返しへ
+   */
+  const closeEditor = useCallback(
+    (id: string, origin: "new" | "read") => {
+      if (origin === "read") {
+        setView({ kind: "read", id });
+        return;
+      }
+      if (untouchedDraftId === id) {
+        // 保存先へ書かれていても、この下書きだけを静かに取り除く（削除のUndoは出さない）。
+        if (markNotesDirty()) {
+          setNotes((prev) => prev.filter((note) => note.id !== id));
+        }
+        setUntouchedDraftId(null);
+        // listRestoreRef は createNote が記録した元の位置をそのまま使う。
+        setView({ kind: "list" });
+        return;
+      }
+      // 現在の検索語に新規メモが一致しないまま、見えないカードを作って終わらせない。
+      setSearchQuery("");
+      listRestoreRef.current = { cardId: id, scrollY: 0 };
+      setView({ kind: "list" });
+    },
+    [markNotesDirty, untouchedDraftId],
+  );
+
+  // 一覧へ戻った後、元のカード（または位置）へ復元し、フォーカスを返す。
+  useEffect(() => {
+    if (view.kind !== "list") return undefined;
+    const target = listRestoreRef.current;
+    if (!target) return undefined;
+    listRestoreRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      // 属性セレクタへ ID を埋め込まず、一覧から照合する（ID に特殊文字があっても安全）。
+      const card = target.cardId
+        ? (Array.from(document.querySelectorAll<HTMLElement>("[data-note-id]")).find(
+            (el) => el.dataset.noteId === target.cardId,
+          ) ?? null)
+        : null;
+      if (card) {
+        card.focus({ preventScroll: true });
+        // 位置の復元は補助。API が無い環境でも、戻る操作そのものを失敗させない。
+        if (typeof card.scrollIntoView === "function") card.scrollIntoView({ block: "center" });
+      } else {
+        window.scrollTo(0, target.scrollY);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view]);
 
   const openPremiumSheet = useCallback(() => {
     setIsPremiumSheetOpen(true);
@@ -1024,15 +1154,84 @@ export default function App() {
     return notes.find((note) => note.id === view.id);
   }, [view, notes]);
 
-  const globalSaveFailureMessage = getSaveFailureMessage(lastSaveResult);
+  const globalSaveFailureMessage = getSaveFailureMessage(lastSaveResult, {
+    deletePending: deleteUnconfirmed,
+  });
   const showGlobalSaveFailure =
-    globalSaveFailureMessage !== null && (view.kind !== "editor" || !currentNote);
+    globalSaveFailureMessage !== null &&
+    // 満杯の説明は復旧の案内の中で出すので、同じ文を二重に出さない。
+    !archiveFull &&
+    (view.kind !== "editor" || !currentNote);
   const canRetryGlobalSave =
     showGlobalSaveFailure &&
     !externalConflict &&
     isRetryableSaveFailure(lastSaveResult);
-  const canRetryNativeBackup =
-    nativeBackupError && nativeBackupRetryAllowed && !externalConflict;
+  // 予備保存の警告は「最新の変更は保存済み」と言える時だけ出す。
+  // 本体の保存が失敗・停止している間や、警告の対象より新しい入力がある間は出さない（R35）。
+  const latestChangeSaved = lastSaveResult === null || lastSaveResult.ok;
+  const showNativeBackupWarning =
+    nativeBackupError &&
+    latestChangeSaved &&
+    !externalConflict &&
+    (nativeBackupErrorVersion === null || nativeBackupErrorVersion === editVersion);
+  const canRetryNativeBackup = showNativeBackupWarning && nativeBackupRetryAllowed;
+
+  // 比較画面に出す候補を、イベントの中で組み立てる（描画中に ref を読まない）。
+  // 開いた時点の内容を並べるだけで、保存内容は変えない。
+  const buildReviewCandidates = useCallback((): ReviewCandidate[] => {
+    const list: ReviewCandidate[] = [];
+    const screen =
+      screenRecoveryCandidateRef.current ??
+      (notesDirtyRef.current || recoveryCandidateSourceRef.current === "screen"
+        ? latestNotesRef.current
+        : null);
+    if (screen !== null) {
+      list.push({ id: "screen", label: copy.recoveryCandidateScreen, notes: screen });
+    }
+    let stored = localRecoveryCandidateRef.current;
+    if (stored === null) {
+      const result = loadNotes();
+      stored = result.ok ? result.notes : null;
+    }
+    if (stored !== null) {
+      list.push({ id: "stored", label: copy.recoveryCandidateStored, notes: stored });
+    }
+    if (nativeRecoveryAlternativeRef.current !== null) {
+      list.push({
+        id: "native",
+        label: copy.recoveryCandidateNative,
+        notes: nativeRecoveryAlternativeRef.current,
+      });
+    }
+    listProtectedRecoveryCandidates().forEach((candidate, index) => {
+      list.push({
+        id: `protected-${candidate.slot}`,
+        label: copy.recoveryCandidateProtected(index + 1),
+        notes: candidate.notes,
+        protectedSlot: { slot: candidate.slot, raw: candidate.raw },
+      });
+    });
+    return list;
+  }, []);
+
+  const openReview = useCallback(() => {
+    setReviewCandidates(buildReviewCandidates());
+    setReviewOpen(true);
+  }, [buildReviewCandidates]);
+
+  const discardProtectedCandidate = useCallback(
+    (candidate: ReviewCandidate) => {
+      if (!candidate.protectedSlot) return "failed" as const;
+      const result = discardProtectedRecoveryCandidate(
+        candidate.protectedSlot.slot as "recovery_primary" | "recovery_secondary",
+        candidate.protectedSlot.raw,
+      );
+      // 整理後の保護候補の一覧を読み直す。
+      setReviewCandidates(buildReviewCandidates());
+      return result;
+    },
+    [buildReviewCandidates],
+  );
 
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
@@ -1043,10 +1242,19 @@ export default function App() {
 
   return (
     <AppShell>
+      {aboutOpen && <AboutScreen onClose={() => setAboutOpen(false)} />}
+      {reviewOpen && (
+        <RecoveryReview
+          candidates={reviewCandidates}
+          archiveFull={archiveFull}
+          onDiscard={discardProtectedCandidate}
+          onClose={() => setReviewOpen(false)}
+        />
+      )}
       {(loadError ||
         externalConflict ||
         showGlobalSaveFailure ||
-        nativeBackupError ||
+        showNativeBackupWarning ||
         nativeRecoveryStatus !== "idle") && (
         <div className="pointer-events-none fixed inset-x-gr-4 top-[max(env(safe-area-inset-top),12px)] z-30 flex flex-col gap-gr-2">
           {nativeRecoveryStatus === "checking" && (
@@ -1152,7 +1360,24 @@ export default function App() {
                   </span>
                 )}
               </p>
+              {archiveFull && (
+                <p
+                  data-testid="recovery-archive-full"
+                  className="mt-gr-2 text-[12px] leading-ample text-sumi jp-text-discipline"
+                >
+                  {copy.recoveryArchiveFull}
+                  <span className="mt-gr-1 block text-ink-muted">{copy.recoveryArchiveFullGuide}</span>
+                </p>
+              )}
               <div className="mt-gr-3 flex flex-wrap justify-end gap-gr-2">
+                <button
+                  type="button"
+                  onClick={openReview}
+                  className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                  style={{ borderRadius: "6px 10px 7px 9px" }}
+                >
+                  {copy.recoveryReviewOpen}
+                </button>
                 {screenRecoveryCandidateCount !== null ? (
                   <>
                     {recoveryCandidateSource !== "screen" && (
@@ -1230,7 +1455,7 @@ export default function App() {
           )}
 
 
-          {nativeBackupError && (
+          {showNativeBackupWarning && (
             <div
               data-testid="native-backup-failure"
               role="alert"
@@ -1282,7 +1507,7 @@ export default function App() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-gr-4 bottom-[max(env(safe-area-inset-bottom),89px)] z-30 flex items-center justify-between gap-gr-3 border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-2 text-[13px] shadow-paper-hover animate-softUp"
+          className="zanshin-undo-toast fixed inset-x-gr-4 bottom-[max(env(safe-area-inset-bottom),89px)] z-30 flex items-center justify-between gap-gr-3 border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-2 text-[13px] shadow-paper-hover animate-softUp"
           style={{ borderRadius: "7px 13px 8px 11px" }}
         >
           <span className="font-mincho text-sumi/88 jp-text-discipline">{copy.undoDeleteMessage}</span>
@@ -1308,6 +1533,7 @@ export default function App() {
             onCreate={createNote}
             onOpenPremium={openPremiumSheet}
             onRestorePurchase={handleRestore}
+            onOpenAbout={() => setAboutOpen(true)}
           />
           {PREMIUM_ENABLED && (
             <PremiumSheet
@@ -1323,14 +1549,26 @@ export default function App() {
       ) : view.kind === "read" ? (
         <ReadMode
           note={currentNote}
+          backLabel={searchQuery.trim() !== "" ? copy.backToSearch : copy.back}
           onBack={() => setView({ kind: "list" })}
-          onEdit={() => setView({ kind: "editor", id: currentNote.id })}
+          onEdit={() => setView({ kind: "editor", id: currentNote.id, origin: "read" })}
         />
       ) : (
         <NoteEditor
           note={currentNote}
           onChange={(patch) => updateNote(currentNote.id, patch)}
-          onBack={() => setView({ kind: "list" })}
+          backLabel={
+            view.kind === "editor" && view.origin === "read"
+              ? copy.backToRead
+              : view.kind === "editor" &&
+                  untouchedDraftId === currentNote.id &&
+                  searchQuery.trim() !== ""
+                ? copy.backToSearch
+                : copy.back
+          }
+          onBack={() =>
+            view.kind === "editor" ? closeEditor(currentNote.id, view.origin) : setView({ kind: "list" })
+          }
           onDelete={() => deleteNote(currentNote.id)}
           saveResult={lastSaveResult}
           conflictMessage={canLoadStoredNotes ? copy.saveConflict : copy.saveRecovery}

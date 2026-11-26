@@ -18,16 +18,19 @@
   },
   "dependencies": {
     "@capacitor/app": "7.1.2",
-    "@capacitor/core": "7.6.8",
-    "@capacitor/filesystem": "7.1.8",
-    "@capacitor/ios": "7.6.8",
+    "@capacitor/core": "7.6.11",
+    "@capacitor/filesystem": "7.1.9",
+    "@capacitor/ios": "7.6.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@capacitor/cli": "7.6.8",
+    "@capacitor/cli": "7.6.11",
     "@cloudflare/vite-plugin": "^1.40.0",
     "@eslint/js": "^10.0.1",
+    "@fontsource/klee-one": "^5.3.1",
+    "@fontsource/yuji-boku": "^5.3.1",
+    "@fontsource/yuji-syuku": "^5.3.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

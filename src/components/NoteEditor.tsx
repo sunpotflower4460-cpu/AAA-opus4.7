@@ -1,15 +1,20 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
 import { copy } from "../lib/i18n";
 import { getSaveFailureMessage } from "../lib/saveFailureUi";
 import { useSaveTrace } from "../hooks/useSaveTrace";
+import { BrushPicker } from "./BrushPicker";
+import { CopyTextButton } from "./CopyTextButton";
+import { getCardDisplay } from "../lib/noteDisplay";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 import { SaveAfterglow } from "./SaveAfterglow";
 
 type Props = {
   note: Note;
   onChange: (patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => void;
+  /** 戻る操作の名前。行き先（一覧へ／検索結果へ／読み返しへ）で呼ぶ。 */
+  backLabel?: string;
   onBack: () => void;
   onDelete: () => void;
   /** App が実際に行った直近の保存結果。UIの保存表示を推測タイマーにしない。 */
@@ -23,10 +28,46 @@ type Props = {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const SAVED_FEEDBACK_VISIBLE_MS = 1200;
+// 画面キーボードが開いたとみなす、視覚ビューポートの縮み（CSS px）。ブラウザの UI バーの伸縮より大きく取る。
+const KEYBOARD_MIN_SHRINK_PX = 120;
+
+/**
+ * 画面キーボードが開いているか。
+ * フォーカスがあるだけでは判断しない（外部キーボードでは画面が縮まない）。
+ * 視覚ビューポートが実際に縮み、かつ入力欄にフォーカスがある時だけ true。
+ * svh/dvh だけではキーボードに追従しないことがあるため、実測で判断する。
+ */
+function useOnScreenKeyboard(): boolean {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return undefined;
+
+    const update = () => {
+      const active = document.activeElement;
+      const typing = active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement;
+      setOpen(typing && window.innerHeight - viewport.height > KEYBOARD_MIN_SHRINK_PX);
+    };
+
+    viewport.addEventListener("resize", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
+    };
+  }, []);
+
+  return open;
+}
+const ANNOUNCE_SAVED_DELAY_MS = 2500;
 
 export function NoteEditor({
   note,
   onChange,
+  backLabel = copy.back,
   onBack,
   onDelete,
   saveResult = null,
@@ -35,7 +76,10 @@ export function NoteEditor({
 }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [announcedSaved, setAnnouncedSaved] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const keyboardOpen = useOnScreenKeyboard();
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
 
@@ -102,10 +146,27 @@ export function NoteEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
 
-  function handleTitle(event: React.ChangeEvent<HTMLInputElement>) {
-    onChange({ title: event.target.value });
+  function handleTitle(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    // 以前の単一行入力と同じく、貼り付けた改行は空白として扱う（題名は1行の名前）。
+    onChange({ title: event.target.value.replace(/\r?\n/g, " ") });
     markDirty();
   }
+
+  function handleTitleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter") return;
+    // 日本語変換中の Enter は確定操作。横取りしない。
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    bodyRef.current?.focus();
+  }
+
+  // 題名の高さは内容に合わせて伸ばす。別の小さなスクロール枠を作らない。
+  useLayoutEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [note.title, note.id]);
 
   function handleBody(event: React.ChangeEvent<HTMLTextAreaElement>) {
     onChange({ body: event.target.value });
@@ -121,6 +182,22 @@ export function NoteEditor({
     setConfirmingDelete(false);
     window.requestAnimationFrame(() => deleteButtonRef.current?.focus());
   }
+
+  // 保存の失敗・競合は、この画面だけの演出ではなく「いまの編集版が保存されていない」という事実。
+  // 再入場で saveState が idle に戻っても、App が保持する結果が失敗である間は表示し続ける。
+  // 失敗が解消するのは、保存が成功した結果が届いた時（または新しい入力で未確定に戻った時）だけ。
+  const displayedSaveState: SaveState = saveResult?.ok === false ? "error" : saveState;
+
+  // 保存済みの読み上げは、最後の保存から少し落ち着いてから一度だけ。入力中・保存中は出さない。
+  useEffect(() => {
+    if (displayedSaveState !== "saved") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAnnouncedSaved(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setAnnouncedSaved(true), ANNOUNCE_SAVED_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [displayedSaveState, note.updatedAt]);
 
   const retryableSaveError = isRetryableSaveFailure(saveResult);
   const saveErrorMessage =
@@ -139,12 +216,15 @@ export function NoteEditor({
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
+    <div
+      className="zanshin-editor mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade"
+      data-keyboard={keyboardOpen ? "open" : "closed"}
+    >
       <header className="zanshin-screen-bar flex items-center justify-between gap-gr-4">
         <button
           type="button"
           onClick={onBack}
-          aria-label={copy.back}
+          aria-label={backLabel}
           className="
             zanshin-nav-button -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
@@ -166,10 +246,11 @@ export function NoteEditor({
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-mincho tracking-mincho">{copy.back}</span>
+          <span className="font-mincho tracking-mincho">{backLabel}</span>
         </button>
 
         <div className="flex items-center gap-gr-2">
+          <BrushPicker variant="icon" />
           <button
             type="button"
             onClick={toggleFavorite}
@@ -227,18 +308,49 @@ export function NoteEditor({
         </div>
       </header>
 
+      {/* 保存の失敗・競合は、いまの編集版が保存されていないという事実。操作バーのすぐ下に出し、
+          成功演出（薄い色・短時間表示）とは別の専用の見た目にする（R07 / R24）。 */}
+      {displayedSaveState === "error" && (
+        <div role="alert" className="zanshin-save-failure">
+          <p className="zanshin-save-failure__message">{saveErrorMessage}</p>
+          <div className="zanshin-save-failure__actions">
+            {retryableSaveError && onRetrySave && (
+              <button
+                type="button"
+                onClick={retrySave}
+                className="zanshin-save-failure__retry min-h-[44px] whitespace-nowrap rounded-full border border-vermilion/40 px-gr-4 py-gr-2 font-mincho text-[14px] tracking-mincho text-vermilion transition-soft hover:bg-vermilion/5 active:scale-[0.98]"
+              >
+                {copy.retrySave}
+              </button>
+            )}
+            {/* 保存できていない最新の文章を、保存の成否と無関係に取り出せる出口（R24）。原文のまま渡す。 */}
+            {note.body !== "" && <CopyTextButton label={copy.copyBody} text={note.body} />}
+            {note.title !== "" && <CopyTextButton label={copy.copyTitle} text={note.title} />}
+          </div>
+        </div>
+      )}
+
+      {/* 通常の「保存済み」は、入力の区切りごとに繰り返し読み上げない。入力が落ち着いてから一度だけ伝える。 */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {announcedSaved ? copy.saved : ""}
+      </span>
+
       <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
-          <SaveAfterglow active={saveState === "saved"} token={note.updatedAt} />
+          <SaveAfterglow active={displayedSaveState === "saved"} token={note.updatedAt} />
 
           <div className="mb-gr-5 self-start">
             <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
           </div>
 
-          <input
-            type="text"
+          {/* 題名は単一行の意味のまま、長い題名は折り返して全文を編集できる（R11）。
+              改行は入れない（Enter は本文へ移動。IME の変換確定は横取りしない）。 */}
+          <textarea
+            ref={titleRef}
+            rows={1}
             value={note.title}
             onChange={handleTitle}
+            onKeyDown={handleTitleKeyDown}
             placeholder={copy.titlePlaceholder}
             aria-label={copy.titlePlaceholder}
             maxLength={200}
@@ -257,38 +369,24 @@ export function NoteEditor({
             placeholder={copy.bodyPlaceholder}
             aria-label={copy.bodyPlaceholder}
             className="writing-textarea jp-writing-surface mt-gr-5 flex-1"
-            style={{ minHeight: "42dvh" }}
+            style={keyboardOpen ? undefined : { minHeight: "42dvh" }}
           />
         </div>
 
-        <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/62">
-          <span aria-live="polite" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
-            {saveState === "saving" && (
+        <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/72">
+          <span aria-hidden="true" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
+            {displayedSaveState === "saving" && (
               <span className="zanshin-save-status zanshin-save-status--saving flex items-center gap-gr-2">
                 <span className="zanshin-breath-dot" aria-hidden="true" />
                 <span className="font-mincho">{copy.saving}</span>
               </span>
             )}
-            {saveState === "saved" && (
+            {displayedSaveState === "saved" && (
               <span
                 key={`saved-${note.updatedAt}`}
                 className="zanshin-save-status zanshin-save-status--saved flex items-center gap-gr-2"
               >
                 <span className="font-mincho">{copy.saved}</span>
-              </span>
-            )}
-            {saveState === "error" && (
-              <span className="zanshin-save-status flex flex-wrap items-center gap-gr-2 text-vermilion">
-                <span className="font-mincho">{saveErrorMessage}</span>
-                {retryableSaveError && onRetrySave && (
-                  <button
-                    type="button"
-                    onClick={retrySave}
-                    className="min-h-[44px] rounded-full border border-vermilion/30 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-vermilion transition-soft hover:bg-vermilion/5 active:scale-[0.98]"
-                  >
-                    {copy.retrySave}
-                  </button>
-                )}
               </span>
             )}
           </span>
@@ -297,6 +395,7 @@ export function NoteEditor({
 
       {confirmingDelete && (
         <DeleteConfirm
+          heading={getCardDisplay(note).heading}
           onCancel={cancelDeleteConfirmation}
           onConfirm={() => {
             setConfirmingDelete(false);
@@ -309,9 +408,12 @@ export function NoteEditor({
 }
 
 function DeleteConfirm({
+  heading,
   onCancel,
   onConfirm,
 }: {
+  /** どのメモか分かる短い識別（本人の題名、または本文の最初の行） */
+  heading: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -373,20 +475,21 @@ function DeleteConfirm({
         >
           {copy.deleteConfirmTitle}
         </h2>
+        <p className="zanshin-delete-target mt-gr-2 text-[15px] leading-ample text-sumi">「{heading}」</p>
         <p
           id="zanshin-delete-description"
           className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted jp-text-discipline"
         >
           {copy.deleteConfirmBody}
         </p>
-        <div className="mt-gr-5 flex items-center justify-end gap-gr-3">
+        <div className="mt-gr-5 flex flex-wrap items-center justify-end gap-gr-3">
           <button
             ref={cancelRef}
             autoFocus
             type="button"
             onClick={onCancel}
             className="
-              min-h-[44px] rounded-full px-gr-4 py-gr-2 font-mincho text-[14px]
+              min-h-[44px] whitespace-nowrap rounded-full px-gr-4 py-gr-2 font-mincho text-[14px]
               text-ink-muted transition-soft hover:text-sumi hover:bg-paper/60
             "
           >
@@ -397,7 +500,7 @@ function DeleteConfirm({
             type="button"
             onClick={onConfirm}
             className="
-              zanshin-delete-confirm min-h-[44px] rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
+              zanshin-delete-confirm min-h-[44px] whitespace-nowrap rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
               text-washi shadow-paper-soft transition-soft
               hover:bg-vermilion/90 active:scale-[0.98]
             "
