@@ -25,6 +25,7 @@ type Props = {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const SAVED_FEEDBACK_VISIBLE_MS = 1200;
+const ANNOUNCE_SAVED_DELAY_MS = 2500;
 
 export function NoteEditor({
   note,
@@ -37,6 +38,7 @@ export function NoteEditor({
 }: Props) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [announcedSaved, setAnnouncedSaved] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
@@ -128,6 +130,17 @@ export function NoteEditor({
   // 再入場で saveState が idle に戻っても、App が保持する結果が失敗である間は表示し続ける。
   // 失敗が解消するのは、保存が成功した結果が届いた時（または新しい入力で未確定に戻った時）だけ。
   const displayedSaveState: SaveState = saveResult?.ok === false ? "error" : saveState;
+
+  // 保存済みの読み上げは、最後の保存から少し落ち着いてから一度だけ。入力中・保存中は出さない。
+  useEffect(() => {
+    if (displayedSaveState !== "saved") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAnnouncedSaved(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setAnnouncedSaved(true), ANNOUNCE_SAVED_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [displayedSaveState, note.updatedAt]);
 
   const retryableSaveError = isRetryableSaveFailure(saveResult);
   const saveErrorMessage =
@@ -235,6 +248,33 @@ export function NoteEditor({
         </div>
       </header>
 
+      {/* 保存の失敗・競合は、いまの編集版が保存されていないという事実。操作バーのすぐ下に出し、
+          成功演出（薄い色・短時間表示）とは別の専用の見た目にする（R07 / R24）。 */}
+      {displayedSaveState === "error" && (
+        <div role="alert" className="zanshin-save-failure">
+          <p className="zanshin-save-failure__message">{saveErrorMessage}</p>
+          <div className="zanshin-save-failure__actions">
+            {retryableSaveError && onRetrySave && (
+              <button
+                type="button"
+                onClick={retrySave}
+                className="zanshin-save-failure__retry min-h-[44px] whitespace-nowrap rounded-full border border-vermilion/40 px-gr-4 py-gr-2 font-mincho text-[14px] tracking-mincho text-vermilion transition-soft hover:bg-vermilion/5 active:scale-[0.98]"
+              >
+                {copy.retrySave}
+              </button>
+            )}
+            {/* 保存できていない最新の文章を、保存の成否と無関係に取り出せる出口（R24）。原文のまま渡す。 */}
+            {note.body !== "" && <CopyTextButton label={copy.copyBody} text={note.body} />}
+            {note.title !== "" && <CopyTextButton label={copy.copyTitle} text={note.title} />}
+          </div>
+        </div>
+      )}
+
+      {/* 通常の「保存済み」は、入力の区切りごとに繰り返し読み上げない。入力が落ち着いてから一度だけ伝える。 */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {announcedSaved ? copy.saved : ""}
+      </span>
+
       <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
         <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
           <SaveAfterglow active={displayedSaveState === "saved"} token={note.updatedAt} />
@@ -270,7 +310,7 @@ export function NoteEditor({
         </div>
 
         <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/72">
-          <span aria-live="polite" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
+          <span aria-hidden="true" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
             {displayedSaveState === "saving" && (
               <span className="zanshin-save-status zanshin-save-status--saving flex items-center gap-gr-2">
                 <span className="zanshin-breath-dot" aria-hidden="true" />
@@ -283,23 +323,6 @@ export function NoteEditor({
                 className="zanshin-save-status zanshin-save-status--saved flex items-center gap-gr-2"
               >
                 <span className="font-mincho">{copy.saved}</span>
-              </span>
-            )}
-            {displayedSaveState === "error" && (
-              <span className="zanshin-save-status flex flex-wrap items-center gap-gr-2 text-vermilion">
-                <span className="font-mincho">{saveErrorMessage}</span>
-                {retryableSaveError && onRetrySave && (
-                  <button
-                    type="button"
-                    onClick={retrySave}
-                    className="min-h-[44px] rounded-full border border-vermilion/30 px-gr-3 py-gr-2 font-mincho text-[11px] tracking-mincho text-vermilion transition-soft hover:bg-vermilion/5 active:scale-[0.98]"
-                  >
-                    {copy.retrySave}
-                  </button>
-                )}
-                {/* 保存できていない最新の文章を、保存の成否と無関係に取り出せる出口（R24）。原文のまま渡す。 */}
-                {note.body !== "" && <CopyTextButton label={copy.copyBody} text={note.body} />}
-                {note.title !== "" && <CopyTextButton label={copy.copyTitle} text={note.title} />}
               </span>
             )}
           </span>

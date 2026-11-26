@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
 import { lineWobble } from "../lib/inkJitter";
@@ -15,8 +16,37 @@ type Props = {
  * 編集は横書きの実用、読み返しは縦書きの余韻として分ける。
  */
 export function ReadMode({ note, onBack, onEdit }: Props) {
-  const title = note.title.trim() || copy.untitled;
+  const hasTitle = note.title.trim().length > 0;
   const hasBody = note.body.trim().length > 0;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [hasMore, setHasMore] = useState(false);
+
+  // 実際に続きがある時だけ「左へ続きます」を出す。scrollLeft の符号はエンジンで異なるので、
+  // 絶対値で「残りの距離」を測る。表示が無くても、タッチ・キーボードで末尾まで読める。
+  const measureMore = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const remaining = el.scrollWidth - el.clientWidth - Math.abs(el.scrollLeft);
+    setHasMore(remaining > 4);
+  }, []);
+
+  useLayoutEffect(() => {
+    measureMore();
+  }, [measureMore, note.id, note.title, note.body]);
+
+  useEffect(() => {
+    window.addEventListener("resize", measureMore);
+    const el = scrollRef.current;
+    let observer: ResizeObserver | null = null;
+    if (el && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(measureMore);
+      observer.observe(el);
+    }
+    return () => {
+      window.removeEventListener("resize", measureMore);
+      observer?.disconnect();
+    };
+  }, [measureMore]);
 
   return (
     <div className="read-mode-shell mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
@@ -68,46 +98,62 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
       </header>
 
       <main className="read-mode-stage flex min-h-0 flex-1 flex-col pt-gr-3 pb-gr-5">
-        <p className="read-mode-hint mb-gr-3 self-end font-mincho text-[11px] tracking-[0.16em] text-ink-muted/80">
-          {copy.readModeHint}
-        </p>
-        <article className="read-mode-paper editor-paper px-gr-5 py-gr-6 jp-text-discipline" aria-label={copy.readNote}>
+        {hasMore && (
+          <p className="read-mode-more font-mincho" aria-hidden="true">
+            {copy.readModeMore}
+          </p>
+        )}
+        <article className="read-mode-paper editor-paper jp-text-discipline" aria-label={copy.readNote}>
           <div className="read-mode-date">
             <ZanshinDateStamp isoString={note.createdAt} />
           </div>
 
-          <h1 className="read-mode-title jp-text-discipline">{title}</h1>
-          <span className="read-mode-divider" aria-hidden="true" />
+          <div
+            ref={scrollRef}
+            className="read-mode-scroll"
+            tabIndex={0}
+            role="region"
+            aria-label={copy.readNote}
+            onScroll={measureMore}
+          >
+            {(hasTitle || !hasBody) && (
+              // 題名のないメモに、大きな代替題名は加えない。本文もない確定済みメモだけ代替表示を残す。
+              <h1 className="read-mode-title jp-text-discipline">
+                {hasTitle ? note.title : copy.untitled}
+              </h1>
+            )}
+            {hasTitle && hasBody && <span className="read-mode-divider" aria-hidden="true" />}
 
-          {hasBody ? (
-            // 空判定だけ trim() を使い、表示内容は原文の改行・先頭末尾の余白を保つ。
-            <p className="read-mode-body jp-text-discipline">
-              {note.body.split("\n").map((line, index) => {
-                const w = lineWobble(note.id, index);
-                return (
-                  // 行ごとに、手で書いたようなごく小さなズレを与える（見た目だけ。内容は変えない）。
-                  <span
-                    key={index}
-                    className="read-line"
-                    style={
-                      {
-                        "--jx": `${w.x}px`,
-                        "--jy": `${w.y}px`,
-                        "--jr": `${w.rotate}deg`,
-                        "--jo": w.opacity,
-                      } as React.CSSProperties
-                    }
-                  >
-                    {line === "" ? "\u200b" : line}
-                  </span>
-                );
-              })}
-            </p>
-          ) : (
-            <p className="read-mode-body read-mode-empty-body jp-text-discipline">
-              {copy.emptyReadBody}
-            </p>
-          )}
+            {hasBody ? (
+              // 空判定だけ trim() を使い、表示内容は原文の改行・先頭末尾の余白を保つ。
+              <p className="read-mode-body jp-text-discipline">
+                {note.body.split("\n").map((line, index) => {
+                  const w = lineWobble(note.id, index);
+                  return (
+                    // 行ごとに、手で書いたようなごく小さなズレを与える（見た目だけ。内容は変えない）。
+                    <span
+                      key={index}
+                      className="read-line"
+                      style={
+                        {
+                          "--jx": `${w.x}px`,
+                          "--jy": `${w.y}px`,
+                          "--jr": `${w.rotate}deg`,
+                          "--jo": w.opacity,
+                        } as React.CSSProperties
+                      }
+                    >
+                      {line === "" ? "\u200b" : line}
+                    </span>
+                  );
+                })}
+              </p>
+            ) : (
+              <p className="read-mode-body read-mode-empty-body jp-text-discipline">
+                {copy.emptyReadBody}
+              </p>
+            )}
+          </div>
         </article>
         <svg
           className="read-mode-seal"

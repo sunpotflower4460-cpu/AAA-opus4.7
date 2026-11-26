@@ -55,6 +55,7 @@ export const copy = {
   readNote: "読み返す",
   readNoteEn: "Read",
   readModeHint: "横へ静かに読み進める",
+  readModeMore: "左へ続きます",
   exitReadMode: "書く場所へ戻る",
   exitReadModeEn: "Back to writing",
   emptyReadBody: "まだ、言葉は置かれていません。",
