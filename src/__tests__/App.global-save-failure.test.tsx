@@ -144,7 +144,8 @@ describe("App global save failure", () => {
     act(() => vi.advanceTimersByTime(500));
 
     expect(container.querySelector('[data-testid="global-save-failure"]')).not.toBeNull();
-    expect(container.textContent).toContain(copy.saveErrorQuota);
+    // 削除が保存先へ確定していないことを、「削除しました」の印象を残さず伝える（D14 / R36）。
+    expect(container.textContent).toContain(copy.deleteSaveFailed);
     expect(retryButtonCount(container)).toBe(1);
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING])).toHaveLength(1);
 

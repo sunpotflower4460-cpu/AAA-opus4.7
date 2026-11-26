@@ -142,7 +142,7 @@ describe("App undo after interrupted delete", () => {
     act(() => vi.advanceTimersByTime(500));
 
     expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
-    expect(container.textContent).toContain(copy.saveErrorQuota);
+    expect(container.textContent).toContain(copy.deleteSaveFailed);
 
     act(() => click(findButton(container, copy.undoDelete)));
     act(() => vi.advanceTimersByTime(500));
