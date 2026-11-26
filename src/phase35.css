@@ -1,0 +1,52 @@
+/*
+ * Phase 35 — 長文・小さい画面での崩れを防ぐ（最後に読み込む層）
+ */
+
+/*
+ * 読み返し: 長いタイトルが、縦書きの主軸（上下）を本文に押されて1文字幅の列に潰れていた。
+ * タイトルの縦の長さに上限を置き、超えた分は次の列へ折り返す。短い題は今までどおり。
+ */
+.read-mode-title {
+  flex: 0 0 auto;
+  max-inline-size: 30svh;
+}
+
+/* 本文は残りの高さに収まるように折り返す。 */
+.read-mode-body {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/*
+ * 筆あとシート: 画面が低い・狭いときに、上端が画面外へはみ出して見出しが切れていた。
+ * 画面内に収め、足りなければシート内だけをスクロールさせる。
+ */
+.zanshin-brush-sheet {
+  max-height: calc(100dvh - 2 * max(env(safe-area-inset-top), 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.zanshin-brush-sample {
+  font-size: clamp(16px, 5.2vw, 20px) !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 359px) {
+  .zanshin-brush-sheet {
+    padding: 21px 18px;
+  }
+}
+
+/* 320px 幅: 件数・筆あと・端末内保存が2段に折れるとき、左端を揃える。 */
+@media (max-width: 359px) {
+  .zanshin-list-status {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .zanshin-list-status .zanshin-brush-trigger--list {
+    margin-left: -13px;
+  }
+}

@@ -40,7 +40,7 @@ export const BRUSHES: readonly BrushOption[] = [
     id: "tegaki",
     label: "手書き",
     labelEn: "Handwriting",
-    note: "ペンで書いたような温もり",
+    note: "ペンの温もり",
     sample: "心が、静かに残る。",
   },
 ];
