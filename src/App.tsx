@@ -9,8 +9,10 @@ import {
 import type { Note } from "./types/note";
 import type { MonetizationState } from "./types/monetization";
 import {
+  discardProtectedRecoveryCandidate,
   getNotesPrimaryHealth,
   isRetryableSaveFailure,
+  listProtectedRecoveryCandidates,
   loadNotes,
   NOTES_STORAGE_KEY,
   saveNotes,
@@ -39,6 +41,7 @@ import { NotesList } from "./components/NotesList";
 import { NoteEditor } from "./components/NoteEditor";
 import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
+import { RecoveryReview, type ReviewCandidate } from "./components/RecoveryReview";
 
 type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; id: string };
 type DeletedNote = Note & { deletedAt: string };
@@ -105,6 +108,11 @@ export default function App() {
     initialLoad.recoveredCount,
   );
   const [nativeBackupError, setNativeBackupError] = useState(false);
+  // 保護している復元候補の枠が満杯で、この画面の内容を保存できない状態（R34）。
+  const [archiveFull, setArchiveFull] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  // 保護候補を整理した後に一覧を読み直すための番号（永続化しない）。
+  const [protectedRevision, setProtectedRevision] = useState(0);
   // 編集の世代。保存・予備保存の結果が「いま表示している版」に対するものか判定する（R35）。
   // 日時や件数ではなく、この画面が受け取った変更の通し番号。永続化しない。
   const editVersionRef = useRef(0);
@@ -381,7 +389,14 @@ export default function App() {
     (result: SaveResult, snapshot: Note[]) => {
       setLastSaveResult(result);
 
+      if (!result.ok && result.reason === "recovery_archive_full") {
+        // 満杯は通常の競合とは別の理由。画面の内容も保護候補も触らず、確認と整理へ案内する。
+        setArchiveFull(true);
+        return;
+      }
+
       if (result.ok) {
+        setArchiveFull(false);
         notesDirtyRef.current = false;
         dirtySinceRef.current = null;
         saveGuardRef.current = false;
@@ -946,6 +961,7 @@ export default function App() {
       undoTimerRef.current = null;
     }
 
+    setArchiveFull(false);
     notesDirtyRef.current = false;
     dirtySinceRef.current = null;
     saveGuardRef.current = false;
@@ -1060,7 +1076,10 @@ export default function App() {
 
   const globalSaveFailureMessage = getSaveFailureMessage(lastSaveResult);
   const showGlobalSaveFailure =
-    globalSaveFailureMessage !== null && (view.kind !== "editor" || !currentNote);
+    globalSaveFailureMessage !== null &&
+    // 満杯の説明は復旧の案内の中で出すので、同じ文を二重に出さない。
+    !archiveFull &&
+    (view.kind !== "editor" || !currentNote);
   const canRetryGlobalSave =
     showGlobalSaveFailure &&
     !externalConflict &&
@@ -1075,6 +1094,55 @@ export default function App() {
     (nativeBackupErrorVersion === null || nativeBackupErrorVersion === editVersion);
   const canRetryNativeBackup = showNativeBackupWarning && nativeBackupRetryAllowed;
 
+  // 比較画面に出す候補。開いた時点の内容を並べるだけで、保存内容は変えない。
+  const reviewCandidates = useMemo<ReviewCandidate[]>(() => {
+    if (!reviewOpen) return [];
+    const list: ReviewCandidate[] = [];
+    const screen =
+      screenRecoveryCandidateRef.current ??
+      (notesDirtyRef.current || recoveryCandidateSourceRef.current === "screen"
+        ? latestNotesRef.current
+        : null);
+    if (screen !== null) {
+      list.push({ id: "screen", label: copy.recoveryCandidateScreen, notes: screen });
+    }
+    const stored = localRecoveryCandidateRef.current ?? (() => {
+      const result = loadNotes();
+      return result.ok ? result.notes : null;
+    })();
+    if (stored !== null) {
+      list.push({ id: "stored", label: copy.recoveryCandidateStored, notes: stored });
+    }
+    if (nativeRecoveryAlternativeRef.current !== null) {
+      list.push({
+        id: "native",
+        label: copy.recoveryCandidateNative,
+        notes: nativeRecoveryAlternativeRef.current,
+      });
+    }
+    listProtectedRecoveryCandidates().forEach((candidate, index) => {
+      list.push({
+        id: `protected-${candidate.slot}`,
+        label: copy.recoveryCandidateProtected(index + 1),
+        notes: candidate.notes,
+        protectedSlot: { slot: candidate.slot, raw: candidate.raw },
+      });
+    });
+    return list;
+    // protectedRevision: 整理後に保護候補の一覧を読み直す。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewOpen, protectedRevision, recoveryCandidateSource, screenRecoveryCandidateCount, nativeRecoveryAlternativeCount, recoveryCandidateCount]);
+
+  const discardProtectedCandidate = useCallback((candidate: ReviewCandidate) => {
+    if (!candidate.protectedSlot) return "failed" as const;
+    const result = discardProtectedRecoveryCandidate(
+      candidate.protectedSlot.slot as "recovery_primary" | "recovery_secondary",
+      candidate.protectedSlot.raw,
+    );
+    setProtectedRevision((revision) => revision + 1);
+    return result;
+  }, []);
+
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -1084,6 +1152,14 @@ export default function App() {
 
   return (
     <AppShell>
+      {reviewOpen && (
+        <RecoveryReview
+          candidates={reviewCandidates}
+          archiveFull={archiveFull}
+          onDiscard={discardProtectedCandidate}
+          onClose={() => setReviewOpen(false)}
+        />
+      )}
       {(loadError ||
         externalConflict ||
         showGlobalSaveFailure ||
@@ -1193,7 +1269,24 @@ export default function App() {
                   </span>
                 )}
               </p>
+              {archiveFull && (
+                <p
+                  data-testid="recovery-archive-full"
+                  className="mt-gr-2 text-[12px] leading-ample text-sumi jp-text-discipline"
+                >
+                  {copy.recoveryArchiveFull}
+                  <span className="mt-gr-1 block text-ink-muted">{copy.recoveryArchiveFullGuide}</span>
+                </p>
+              )}
               <div className="mt-gr-3 flex flex-wrap justify-end gap-gr-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewOpen(true)}
+                  className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
+                  style={{ borderRadius: "6px 10px 7px 9px" }}
+                >
+                  {copy.recoveryReviewOpen}
+                </button>
                 {screenRecoveryCandidateCount !== null ? (
                   <>
                     {recoveryCandidateSource !== "screen" && (

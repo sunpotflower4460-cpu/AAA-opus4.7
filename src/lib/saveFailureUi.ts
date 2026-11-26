@@ -13,6 +13,8 @@ export function getSaveFailureMessage(
   switch (result.reason) {
     case "conflict":
       return null;
+    case "recovery_archive_full":
+      return copy.recoveryArchiveFull;
     case "quota":
       return copy.saveErrorQuota;
     case "unavailable":

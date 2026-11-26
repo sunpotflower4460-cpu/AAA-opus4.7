@@ -74,6 +74,34 @@ export const copy = {
   retrySaveEn: "Try saving again",
   nativeBackupError:
     "最新の変更は保存済みです。端末内の予備保存を更新できませんでした。",
+  // 復元候補の比較（R23）と保護候補の整理（R34）
+  recoveryReviewOpen: "内容を確認する",
+  recoveryReviewTitle: "保存内容を見比べる",
+  recoveryReviewLead:
+    "候補を選ぶと、含まれているメモを読めます。ここで見るだけでは、保存内容は何も変わりません。",
+  recoveryReviewClose: "閉じる",
+  recoveryReviewEmpty: "メモは0件です（すべて削除した内容）",
+  recoveryReviewCount: (count: number) => `メモ ${count}件`,
+  recoveryReviewLatestChange: (label: string) => `いちばん新しい変更日：${label}`,
+  recoveryReviewReadFull: "全文を読む",
+  recoveryReviewNoDate: "変更日を確認できません",
+  recoveryCandidateScreen: "この画面の未保存の内容",
+  recoveryCandidateStored: "保存先で見つかった内容",
+  recoveryCandidateNative: "端末内の別の候補",
+  recoveryCandidateProtected: (index: number) => `保護している候補 ${index}`,
+  recoveryArchiveFull:
+    "保護している候補がいっぱいのため、まだ保存できません。この画面の内容は残っています。",
+  recoveryArchiveFullGuide:
+    "保護している候補を確認し、不要と確認できたものを選んで整理すると、この画面の内容を保存できます。自動では何も消えません。",
+  recoveryDiscardAction: "この候補を整理する",
+  recoveryDiscardConfirmTitle: "この候補を整理しますか？",
+  recoveryDiscardConfirmBody: (count: number) =>
+    `この端末に保護されている候補（メモ ${count}件）を削除します。取り消せません。残したい文章は、先に「本文をコピー」で控えてください。`,
+  recoveryDiscardCancel: "キャンセル",
+  recoveryDiscardConfirm: "整理する",
+  recoveryDiscardDone: "候補を整理しました。もう一度、この画面の内容を保存できます。",
+  recoveryDiscardChanged: "確認した後に候補の内容が変わったため、何も整理していません。もう一度確認してください。",
+  recoveryDiscardFailed: "候補を整理できませんでした。何も変更していません。",
   // 救済（本文・題名の取り出し）
   copyBody: "本文をコピー",
   copyTitle: "タイトルをコピー",
