@@ -139,7 +139,7 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
-    expect(container.querySelector("textarea")).toBeNull();
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).toBeNull();
     expect(durable.persist).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -167,14 +167,14 @@ describe("App native durable snapshot", () => {
     act(() => vi.advanceTimersByTime(1_000));
     await flushPromises();
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
-    expect(container.querySelector("textarea")).toBeNull();
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).toBeNull();
 
     act(() => click(findButton(container, copy.nativeRecoveryRetry)));
     await flushPromises();
     expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
 
     act(() => click(findButton(container, copy.emptyAction)));
-    expect(container.querySelector("textarea")).not.toBeNull();
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).not.toBeNull();
     act(() => vi.advanceTimersByTime(500));
     await flushPromises();
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeDefined();
@@ -353,7 +353,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "元のメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     act(() => {
@@ -397,7 +397,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "元のメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     act(() => {
@@ -449,7 +449,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "元のメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     act(() => {
@@ -506,7 +506,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "復旧候補と同じ正本")));
     act(() => click(findButton(container, copy.editNote)));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     act(() => {
@@ -636,7 +636,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "同じメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    let textarea = container.querySelector("textarea");
+    let textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     const dirtyTextarea = textarea;
@@ -655,7 +655,7 @@ describe("App native durable snapshot", () => {
       window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
     });
     expect(container.querySelector('[data-testid="native-recovery-checking"]')).not.toBeNull();
-    textarea = container.querySelector("textarea");
+    textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     expect(textarea?.value).toBe("screen dirty");
     await flushPromises();
@@ -665,18 +665,18 @@ describe("App native durable snapshot", () => {
     expect(hasButton(container, copy.nativeRecoveryShowAlternative)).toBe(true);
 
     act(() => click(findButton(container, copy.dirtyRecoveryShowLocal)));
-    textarea = container.querySelector("textarea");
+    textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     expect(textarea?.value).toBe("local recovery");
     expect(hasButton(container, copy.dirtyRecoveryShowScreen)).toBe(true);
 
     act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
-    textarea = container.querySelector("textarea");
+    textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     expect(textarea?.value).toBe("native recovery");
 
     act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
-    textarea = container.querySelector("textarea");
+    textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     expect(textarea?.value).toBe("screen dirty");
 
@@ -697,7 +697,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "同じメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    let textarea = container.querySelector("textarea");
+    let textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     const initialTextarea = textarea;
@@ -720,7 +720,7 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     act(() => click(findButton(container, copy.dirtyRecoveryShowLocal)));
-    textarea = container.querySelector("textarea");
+    textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     expect(textarea.value).toBe("local one");
     const localTextarea = textarea;
@@ -728,22 +728,22 @@ describe("App native durable snapshot", () => {
       setter?.call(localTextarea, "local edited by user");
       localTextarea.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("local edited by user");
 
     const localTwo = [makeNote({ id: "shared", title: "同じメモ", body: "local two from remote" })];
     storage._store[BACKUP_KEY_FOR_TESTING] = JSON.stringify(localTwo);
     act(() => {
       window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
     });
-    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("local edited by user");
     await flushPromises();
-    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("local edited by user");
     expect(container.textContent).toContain(copy.storageRecoveryCandidateCount(2));
 
     act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
-    expect(container.querySelector("textarea")?.value).toBe("screen dirty");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("screen dirty");
     act(() => click(findButton(container, copy.dirtyRecoveryShowLocal)));
-    expect(container.querySelector("textarea")?.value).toBe("local edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("local edited by user");
     expect(JSON.parse(storage._store[BACKUP_KEY_FOR_TESTING]) as Note[]).toEqual(localTwo);
   });
 
@@ -755,7 +755,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "同じメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    let textarea = container.querySelector("textarea");
+    let textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     const initialTextarea = textarea;
@@ -775,7 +775,7 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
-    textarea = container.querySelector("textarea");
+    textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     expect(textarea.value).toBe("native one");
     const nativeTextarea = textarea;
@@ -783,7 +783,7 @@ describe("App native durable snapshot", () => {
       setter?.call(nativeTextarea, "native edited by user");
       nativeTextarea.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("native edited by user");
 
     const localTwo = [makeNote({ id: "shared", title: "同じメモ", body: "local two" })];
     const nativeTwo = [makeNote({ id: "shared", title: "同じメモ", body: "native two from probe" })];
@@ -792,14 +792,14 @@ describe("App native durable snapshot", () => {
     act(() => {
       window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING, newValue: null }));
     });
-    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("native edited by user");
     await flushPromises();
-    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("native edited by user");
 
     act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
-    expect(container.querySelector("textarea")?.value).toBe("screen dirty");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("screen dirty");
     act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
-    expect(container.querySelector("textarea")?.value).toBe("native edited by user");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("native edited by user");
   });
 
   it("表示中native候補の件数を編集すると候補件数表示も追従する", async () => {
@@ -810,7 +810,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "同じメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     act(() => {
@@ -849,7 +849,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "同じメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     const dirtyTextarea = textarea;
@@ -869,7 +869,7 @@ describe("App native durable snapshot", () => {
 
     expect(container.textContent).toContain(copy.nativeRecoveryReadError);
     expect(hasButton(container, copy.storageRecoverySave)).toBe(false);
-    expect(container.querySelector("textarea")?.value).toBe("絶対に守るdirty");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("絶対に守るdirty");
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
 
     durable.read.mockResolvedValue({ status: "missing" });
@@ -877,7 +877,7 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
-    expect(container.querySelector("textarea")?.value).toBe("絶対に守るdirty");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("絶対に守るdirty");
     expect(hasButton(container, copy.dirtyRecoveryShowLocal)).toBe(true);
     expect(hasButton(container, copy.storageRecoverySave)).toBe(true);
   });
@@ -890,7 +890,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, "同じメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
     const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     const dirtyTextarea = textarea;
@@ -924,7 +924,7 @@ describe("App native durable snapshot", () => {
     });
     await flushPromises();
 
-    expect(container.querySelector("textarea")?.value).toBe("probe中も守るscreen");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("probe中も守るscreen");
     expect(container.querySelector('[data-testid="dirty-recovery-candidates"]')).not.toBeNull();
     expect(hasButton(container, copy.storageConflictLoad)).toBe(true);
     expect(hasButton(container, copy.dirtyRecoveryShowLocal)).toBe(true);
@@ -932,7 +932,7 @@ describe("App native durable snapshot", () => {
 
     act(() => click(findButton(container, copy.storageConflictLoad)));
     await flushPromises();
-    expect(container.querySelector("textarea")?.value).toBe("戻ったprimary");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("戻ったprimary");
   });
 
   it("初回loadNotesだけ一時失敗して直後にprimaryが読めてもnative safety probeで現在正本へ収束する", async () => {
@@ -984,7 +984,7 @@ describe("App native durable snapshot", () => {
     act(() => click(findButton(container, copy.emptyAction)));
     act(() => vi.advanceTimersByTime(1_000));
     await flushPromises();
-    expect(container.querySelector("textarea")).toBeNull();
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).toBeNull();
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
 
     storage.getItem.mockImplementation((key: string) => storage._store[key] ?? null);
@@ -993,7 +993,7 @@ describe("App native durable snapshot", () => {
 
     expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
     act(() => click(findButton(container, copy.emptyAction)));
-    expect(container.querySelector("textarea")).not.toBeNull();
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).not.toBeNull();
   });
 
   it("local primary破損かつnative不存在でもfresh install扱いせず明示復旧を要求する", async () => {

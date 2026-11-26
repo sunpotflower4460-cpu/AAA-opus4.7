@@ -71,7 +71,7 @@ function openEditor(container: HTMLElement) {
 }
 
 function changeTextarea(container: HTMLElement, value: string) {
-  const textarea = container.querySelector("textarea");
+  const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
   act(() => {
@@ -156,7 +156,7 @@ describe("App Capacitor native lifecycle", () => {
     storage._store[STORAGE_KEY_FOR_TESTING] = JSON.stringify(remote);
 
     act(() => lifecycle.handler?.({ isActive: true }));
-    const textarea = container.querySelector("textarea");
+    const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
     expect(textarea?.value).toBe("端末内の未保存編集");
 
     act(() => lifecycle.handler?.({ isActive: false }));

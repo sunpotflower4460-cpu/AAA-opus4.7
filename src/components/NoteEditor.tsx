@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
 import { copy } from "../lib/i18n";
@@ -6,6 +6,7 @@ import { getSaveFailureMessage } from "../lib/saveFailureUi";
 import { useSaveTrace } from "../hooks/useSaveTrace";
 import { BrushPicker } from "./BrushPicker";
 import { CopyTextButton } from "./CopyTextButton";
+import { getCardDisplay } from "../lib/noteDisplay";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 import { SaveAfterglow } from "./SaveAfterglow";
 
@@ -43,6 +44,7 @@ export function NoteEditor({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [announcedSaved, setAnnouncedSaved] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
 
@@ -109,10 +111,27 @@ export function NoteEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
 
-  function handleTitle(event: React.ChangeEvent<HTMLInputElement>) {
-    onChange({ title: event.target.value });
+  function handleTitle(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    // 以前の単一行入力と同じく、貼り付けた改行は空白として扱う（題名は1行の名前）。
+    onChange({ title: event.target.value.replace(/\r?\n/g, " ") });
     markDirty();
   }
+
+  function handleTitleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter") return;
+    // 日本語変換中の Enter は確定操作。横取りしない。
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    bodyRef.current?.focus();
+  }
+
+  // 題名の高さは内容に合わせて伸ばす。別の小さなスクロール枠を作らない。
+  useLayoutEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [note.title, note.id]);
 
   function handleBody(event: React.ChangeEvent<HTMLTextAreaElement>) {
     onChange({ body: event.target.value });
@@ -286,10 +305,14 @@ export function NoteEditor({
             <ZanshinDateStamp isoString={note.createdAt} isSettling={isDateSettling} />
           </div>
 
-          <input
-            type="text"
+          {/* 題名は単一行の意味のまま、長い題名は折り返して全文を編集できる（R11）。
+              改行は入れない（Enter は本文へ移動。IME の変換確定は横取りしない）。 */}
+          <textarea
+            ref={titleRef}
+            rows={1}
             value={note.title}
             onChange={handleTitle}
+            onKeyDown={handleTitleKeyDown}
             placeholder={copy.titlePlaceholder}
             aria-label={copy.titlePlaceholder}
             maxLength={200}
@@ -334,6 +357,7 @@ export function NoteEditor({
 
       {confirmingDelete && (
         <DeleteConfirm
+          heading={getCardDisplay(note).heading}
           onCancel={cancelDeleteConfirmation}
           onConfirm={() => {
             setConfirmingDelete(false);
@@ -346,9 +370,12 @@ export function NoteEditor({
 }
 
 function DeleteConfirm({
+  heading,
   onCancel,
   onConfirm,
 }: {
+  /** どのメモか分かる短い識別（本人の題名、または本文の最初の行） */
+  heading: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -410,13 +437,14 @@ function DeleteConfirm({
         >
           {copy.deleteConfirmTitle}
         </h2>
+        <p className="zanshin-delete-target mt-gr-2 text-[15px] leading-ample text-sumi">「{heading}」</p>
         <p
           id="zanshin-delete-description"
           className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted jp-text-discipline"
         >
           {copy.deleteConfirmBody}
         </p>
-        <div className="mt-gr-5 flex items-center justify-end gap-gr-3">
+        <div className="mt-gr-5 flex flex-wrap items-center justify-end gap-gr-3">
           <button
             ref={cancelRef}
             autoFocus

@@ -69,7 +69,7 @@ function click(element: Element) {
 function editFirstNoteBody(container: HTMLElement, value: string) {
   act(() => click(findButton(container, "見つかった復元候補")));
   act(() => click(findButton(container, copy.editNote)));
-  const textarea = container.querySelector("textarea");
+  const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
   act(() => {

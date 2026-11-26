@@ -82,7 +82,7 @@ function deleteCurrentNote(container: HTMLElement) {
 }
 
 function changeTextarea(container: HTMLElement, value: string) {
-  const textarea = container.querySelector("textarea");
+  const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
   const valueSetter = Object.getOwnPropertyDescriptor(
     HTMLTextAreaElement.prototype,

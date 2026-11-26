@@ -69,7 +69,7 @@ function hasButton(container: HTMLElement, text: string): boolean {
 }
 
 function changeTextarea(container: HTMLElement, value: string) {
-  const textarea = container.querySelector("textarea");
+  const textarea = container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea");
   if (!(textarea instanceof HTMLTextAreaElement)) throw new Error("textarea not found");
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
   setter?.call(textarea, value);
@@ -157,7 +157,7 @@ describe("保存失敗の継続（R02）", () => {
     // 読み返し → 編集へ再入場。以前はここでエラーも再試行も消えていた。
     act(() => click(findButton(container, "元のメモ")));
     act(() => click(findButton(container, copy.editNote)));
-    expect(container.querySelector("textarea")?.value).toBe("未保存の本文");
+    expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("未保存の本文");
     expect(container.textContent).toContain(copy.saveErrorQuota);
     expect(hasButton(container, copy.retrySave)).toBe(true);
     expect(container.textContent).not.toContain(copy.saved);

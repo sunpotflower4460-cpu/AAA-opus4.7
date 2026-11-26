@@ -694,3 +694,31 @@ body::after {
 .zanshin-compose-button {
   padding-inline: 18px 20px;
 }
+
+/* ───────── 9. 削除確認（R25）─────────
+ * 小さい画面・大きな文字でも、本文・両方の操作へ届く。高さを画面内に収め、足りなければダイアログ内でスクロール。
+ */
+.zanshin-delete-dialog {
+  max-height: calc(100dvh - 2 * max(env(safe-area-inset-top), 16px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.zanshin-delete-target {
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ───────── 10. 題名の入力（R11）───────── */
+textarea.note-title-input {
+  display: block;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  min-height: 1.6em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

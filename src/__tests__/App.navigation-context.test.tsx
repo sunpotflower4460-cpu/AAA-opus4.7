@@ -104,7 +104,7 @@ describe("戻り先と未操作の新規下書き", () => {
   it("新規→何もせず戻る を5回繰り返しても、メモの件数は増えず、保存先にも空のメモが残らない", () => {
     for (let i = 0; i < 5; i += 1) {
       act(() => click(findButton(container, copy.newNote)));
-      expect(container.querySelector("textarea")).not.toBeNull();
+      expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).not.toBeNull();
       act(() => click(findButton(container, copy.back)));
       act(() => vi.advanceTimersByTime(1_000));
       expect(cardCount()).toBe(3);
@@ -129,7 +129,7 @@ describe("戻り先と未操作の新規下書き", () => {
   it("本文を入力した新規は保存され、現在の検索語に一致しなくても、通常の一覧で新しいカードに戻れる", () => {
     setValue(searchInput(), "朝");
     act(() => click(findButton(container, copy.newNote)));
-    setValue(container.querySelector("textarea")!, "検索に一致しない新しい一言");
+    setValue(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")!, "検索に一致しない新しい一言");
     act(() => vi.advanceTimersByTime(1_000));
 
     // 入力のあった新規は「一覧へ」で、新しいカードが見える通常一覧へ。
@@ -142,13 +142,13 @@ describe("戻り先と未操作の新規下書き", () => {
   it("題名だけ・本文だけのメモは保存する。入力後に消した新規メモも、自動削除しない", () => {
     // 題名だけ
     act(() => click(findButton(container, copy.newNote)));
-    setValue(container.querySelector<HTMLInputElement>(".note-title-input")!, "題名だけ");
+    setValue(container.querySelector<HTMLTextAreaElement>(".note-title-input")!, "題名だけ");
     act(() => vi.advanceTimersByTime(1_000));
     act(() => click(findButton(container, copy.back)));
     // 入力して、すべて消した
     act(() => click(findButton(container, copy.newNote)));
-    setValue(container.querySelector("textarea")!, "いったん書いた");
-    setValue(container.querySelector("textarea")!, "");
+    setValue(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")!, "いったん書いた");
+    setValue(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")!, "");
     act(() => vi.advanceTimersByTime(1_000));
     act(() => click(findButton(container, copy.back)));
 
