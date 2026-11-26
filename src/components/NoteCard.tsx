@@ -36,6 +36,7 @@ export function NoteCard({ note, onOpen, query = "" }: Props) {
   return (
     <button
       type="button"
+      data-note-id={note.id}
       onClick={() => onOpen(note.id)}
       aria-label={accessibleName}
       style={

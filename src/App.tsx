@@ -43,7 +43,15 @@ import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
 import { RecoveryReview, type ReviewCandidate } from "./components/RecoveryReview";
 
-type View = { kind: "list" } | { kind: "editor"; id: string } | { kind: "read"; id: string };
+// editor の origin は戻り先と戻る操作の名前を決める（D06）。
+// new: 「メモを書く」から開いた新規 / read: 読み返しから「編集する」で開いた既存メモ
+type View =
+  | { kind: "list" }
+  | { kind: "editor"; id: string; origin: "new" | "read" }
+  | { kind: "read"; id: string };
+
+// 一覧へ戻る時に復元する文脈。保存した座標は補助で、対象カードの ID を優先する。
+type ListRestore = { cardId: string | null; scrollY: number };
 type DeletedNote = Note & { deletedAt: string };
 type RecoveryCandidateSource = "screen" | "local" | "native";
 
@@ -87,6 +95,10 @@ export default function App() {
 
   const [notes, setNotes] = useState<Note[]>(initialLoad.notes);
   const [view, setView] = useState<View>({ kind: "list" });
+  // 「メモを書く」で作ったまま、まだ何も入力・変更していない新規下書き（R15）。
+  // 既存メモが空であることとは別の概念で、入力後に消したメモは含まない。
+  const [untouchedDraftId, setUntouchedDraftId] = useState<string | null>(null);
+  const listRestoreRef = useRef<ListRestore | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [monetization, setMonetization] = useState<MonetizationState>(() =>
     loadMonetizationState(),
@@ -883,7 +895,8 @@ export default function App() {
 
   const createNote = useCallback(() => {
     if (!markNotesDirty()) return;
-    setSearchQuery("");
+    // 検索語はここでは捨てない。何も書かずに戻った時は、元の検索結果・位置へ戻す（R15 / D06）。
+    listRestoreRef.current = { cardId: null, scrollY: window.scrollY };
 
     const iso = nowIso();
     const note: Note = {
@@ -897,12 +910,15 @@ export default function App() {
     };
 
     setNotes((prev) => [note, ...prev]);
-    setView({ kind: "editor", id: note.id });
+    setUntouchedDraftId(note.id);
+    setView({ kind: "editor", id: note.id, origin: "new" });
   }, [markNotesDirty]);
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
       if (!markNotesDirty()) return;
+      // 何か一つでも変更が入った新規は、「未操作」ではなく入力履歴のあるメモ。
+      setUntouchedDraftId((current) => (current === id ? null : current));
       setNotes((prev) =>
         prev.map((note) =>
           note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
@@ -1043,8 +1059,63 @@ export default function App() {
   }, [persistDurableSnapshot]);
 
   const openNote = useCallback((id: string) => {
+    listRestoreRef.current = { cardId: id, scrollY: window.scrollY };
     setView({ kind: "read", id });
   }, []);
+
+  /**
+   * 編集画面を閉じる。
+   * - 未操作の新規: 空のメモを増やさず、元の一覧／検索結果へ（検索語・位置を保つ）
+   * - 入力のあった新規: 新しいカードが見える通常の一覧へ
+   * - 読み返しから開いた編集: 同じメモの読み返しへ
+   */
+  const closeEditor = useCallback(
+    (id: string, origin: "new" | "read") => {
+      if (origin === "read") {
+        setView({ kind: "read", id });
+        return;
+      }
+      if (untouchedDraftId === id) {
+        // 保存先へ書かれていても、この下書きだけを静かに取り除く（削除のUndoは出さない）。
+        if (markNotesDirty()) {
+          setNotes((prev) => prev.filter((note) => note.id !== id));
+        }
+        setUntouchedDraftId(null);
+        // listRestoreRef は createNote が記録した元の位置をそのまま使う。
+        setView({ kind: "list" });
+        return;
+      }
+      // 現在の検索語に新規メモが一致しないまま、見えないカードを作って終わらせない。
+      setSearchQuery("");
+      listRestoreRef.current = { cardId: id, scrollY: 0 };
+      setView({ kind: "list" });
+    },
+    [markNotesDirty, untouchedDraftId],
+  );
+
+  // 一覧へ戻った後、元のカード（または位置）へ復元し、フォーカスを返す。
+  useEffect(() => {
+    if (view.kind !== "list") return undefined;
+    const target = listRestoreRef.current;
+    if (!target) return undefined;
+    listRestoreRef.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      // 属性セレクタへ ID を埋め込まず、一覧から照合する（ID に特殊文字があっても安全）。
+      const card = target.cardId
+        ? (Array.from(document.querySelectorAll<HTMLElement>("[data-note-id]")).find(
+            (el) => el.dataset.noteId === target.cardId,
+          ) ?? null)
+        : null;
+      if (card) {
+        card.focus({ preventScroll: true });
+        // 位置の復元は補助。API が無い環境でも、戻る操作そのものを失敗させない。
+        if (typeof card.scrollIntoView === "function") card.scrollIntoView({ block: "center" });
+      } else {
+        window.scrollTo(0, target.scrollY);
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view]);
 
   const openPremiumSheet = useCallback(() => {
     setIsPremiumSheetOpen(true);
@@ -1474,14 +1545,26 @@ export default function App() {
       ) : view.kind === "read" ? (
         <ReadMode
           note={currentNote}
+          backLabel={searchQuery.trim() !== "" ? copy.backToSearch : copy.back}
           onBack={() => setView({ kind: "list" })}
-          onEdit={() => setView({ kind: "editor", id: currentNote.id })}
+          onEdit={() => setView({ kind: "editor", id: currentNote.id, origin: "read" })}
         />
       ) : (
         <NoteEditor
           note={currentNote}
           onChange={(patch) => updateNote(currentNote.id, patch)}
-          onBack={() => setView({ kind: "list" })}
+          backLabel={
+            view.kind === "editor" && view.origin === "read"
+              ? copy.backToRead
+              : view.kind === "editor" &&
+                  untouchedDraftId === currentNote.id &&
+                  searchQuery.trim() !== ""
+                ? copy.backToSearch
+                : copy.back
+          }
+          onBack={() =>
+            view.kind === "editor" ? closeEditor(currentNote.id, view.origin) : setView({ kind: "list" })
+          }
           onDelete={() => deleteNote(currentNote.id)}
           saveResult={lastSaveResult}
           conflictMessage={canLoadStoredNotes ? copy.saveConflict : copy.saveRecovery}

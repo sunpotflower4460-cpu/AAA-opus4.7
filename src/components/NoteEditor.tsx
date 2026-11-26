@@ -12,6 +12,8 @@ import { SaveAfterglow } from "./SaveAfterglow";
 type Props = {
   note: Note;
   onChange: (patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => void;
+  /** 戻る操作の名前。行き先（一覧へ／検索結果へ／読み返しへ）で呼ぶ。 */
+  backLabel?: string;
   onBack: () => void;
   onDelete: () => void;
   /** App が実際に行った直近の保存結果。UIの保存表示を推測タイマーにしない。 */
@@ -30,6 +32,7 @@ const ANNOUNCE_SAVED_DELAY_MS = 2500;
 export function NoteEditor({
   note,
   onChange,
+  backLabel = copy.back,
   onBack,
   onDelete,
   saveResult = null,
@@ -164,7 +167,7 @@ export function NoteEditor({
         <button
           type="button"
           onClick={onBack}
-          aria-label={copy.back}
+          aria-label={backLabel}
           className="
             zanshin-nav-button -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
@@ -186,7 +189,7 @@ export function NoteEditor({
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-mincho tracking-mincho">{copy.back}</span>
+          <span className="font-mincho tracking-mincho">{backLabel}</span>
         </button>
 
         <div className="flex items-center gap-gr-2">

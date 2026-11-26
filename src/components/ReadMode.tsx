@@ -7,6 +7,8 @@ import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
   note: Note;
+  /** 戻る操作の名前。行き先（一覧へ／検索結果へ）で呼ぶ。 */
+  backLabel?: string;
   onBack: () => void;
   onEdit: () => void;
 };
@@ -15,7 +17,7 @@ type Props = {
  * 読み返し専用モード。
  * 編集は横書きの実用、読み返しは縦書きの余韻として分ける。
  */
-export function ReadMode({ note, onBack, onEdit }: Props) {
+export function ReadMode({ note, backLabel = copy.back, onBack, onEdit }: Props) {
   const hasTitle = note.title.trim().length > 0;
   const hasBody = note.body.trim().length > 0;
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,7 +56,7 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
         <button
           type="button"
           onClick={onBack}
-          aria-label={copy.back}
+          aria-label={backLabel}
           className="
             zanshin-nav-button -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
@@ -76,7 +78,7 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-mincho tracking-mincho">{copy.back}</span>
+          <span className="font-mincho tracking-mincho">{backLabel}</span>
         </button>
 
         <div className="flex items-center gap-gr-2">

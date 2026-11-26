@@ -132,6 +132,8 @@ describe("保存失敗の継続（R02）", () => {
   }
 
   function backToList() {
+    // 読み返しから開いた編集は「読み返しへ」戻り、もう一度で一覧へ。
+    act(() => click(findButton(container, copy.backToRead)));
     act(() => click(findButton(container, copy.back)));
   }
 

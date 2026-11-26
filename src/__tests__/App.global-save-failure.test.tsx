@@ -194,6 +194,8 @@ describe("App global save failure", () => {
     act(() => vi.advanceTimersByTime(500));
     expect(retryButtonCount(container)).toBe(1);
 
+    // 読み返しから開いた編集は「読み返しへ」戻り、もう一度で一覧へ（D06）。
+    act(() => click(findButton(container, copy.backToRead)));
     act(() => click(findButton(container, copy.back)));
 
     expect(container.querySelector('[data-testid="global-save-failure"]')).not.toBeNull();

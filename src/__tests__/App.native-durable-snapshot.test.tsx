@@ -831,9 +831,10 @@ describe("App native durable snapshot", () => {
     act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
     expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(1));
 
-    const backButton = container.querySelector(`button[aria-label="${copy.back}"]`);
+    const backButton = container.querySelector(`button[aria-label="${copy.backToRead}"]`);
     if (!(backButton instanceof HTMLButtonElement)) throw new Error("editor back button not found");
     act(() => click(backButton));
+    act(() => click(findButton(container, copy.back)));
     act(() => click(findButton(container, copy.newNote)));
 
     expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(2));
