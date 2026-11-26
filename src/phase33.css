@@ -16,7 +16,7 @@
 
 /* ─────────── 1. 字を紙に沈める ─────────── */
 
-/* 白い縁取りは「浮き」の原因。墨が紙へ滲む、茶色の淡い縁だけを残す。 */
+/* 白い縁取りは「浮き」の原因、ぼかしや影は「滲み」の原因。字の輪郭はくっきり保ち、なじませるのは墨の濃淡（下）と乗算だけにする。 */
 .note-title-input,
 .writing-textarea,
 .read-mode-title,
@@ -27,8 +27,7 @@
 .zanshin-app-title-block h1,
 .zanshin-empty-state .poetic-lines {
   color: var(--ink);
-  text-shadow:
-    0 0 0.5px rgba(70, 46, 22, 0.30) !important;
+  text-shadow: none !important;
 }
 
 /* 紙の濃淡が墨を透かして見えるように、紙の上へ乗算で重ねる。 */
@@ -63,7 +62,6 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: blur(0.15px);
 }
 
 /* 背景を持つ要素の中でだけ有効。ボタン内のカードは、押下時も濃淡が崩れないようにする。 */
