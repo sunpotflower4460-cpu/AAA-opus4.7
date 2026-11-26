@@ -243,6 +243,8 @@ npm run preview
 | [docs/uiux-integrity-review-phase-8.md](docs/uiux-integrity-review-phase-8.md) | Phase 8 UI/UX監査レポート |
 | [docs/app-store-monetization-checklist.md](docs/app-store-monetization-checklist.md) | App Store monetization 申請チェックリスト |
 | [docs/app-store-preparation-phase-18.md](docs/app-store-preparation-phase-18.md) | Phase 18 App Store 申請準備レポート |
+| [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | ストア公開前の品質改善（設計・実装指示・受入／実装記録） |
+| [docs/ui-release-polish-report.md](docs/ui-release-polish-report.md) | UI磨き込み（紙・書体・余白）の記録。仕上げCSSは `src/release.css` に統合 |
 | [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) | **App Store 提出パック（最終版）** |
 | [docs/app-store-submission-checklist.md](docs/app-store-submission-checklist.md) | App Store 提出全体チェックリスト |
 | [docs/app-store-metadata-draft.md](docs/app-store-metadata-draft.md) | App Store Connect 用メタデータ草案 |

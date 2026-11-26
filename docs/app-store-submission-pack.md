@@ -1,4 +1,6 @@
-# App Store 提出パック（v1.0 / 最終版）
+# App Store 提出パック（v1.0）
+
+> **状態の注意**: 提出前の品質改善の受入状況（R01〜R37、実機未確認の項目、外部条件待ち）は [docs/store-release-polish/ACCEPTANCE.md](store-release-polish/ACCEPTANCE.md) の §4・§13 が正です。本書の「提出前の最終確認」は、実機・Archive・TestFlight を確認した証拠ではありません。
 
 このファイルが提出内容の**唯一の正**です。App Store Connect へはここから貼り付けます。
 過去フェーズの草案（`app-store-metadata-draft.md` / `app-store-submission-copy-phase-20.md`）より優先します。
@@ -52,7 +54,7 @@
 ・メモの作成・編集・削除（削除後は少しの間、元に戻せます）
 ・自動保存
 ・検索
-・お気に入り（金のしるし）
+・先頭に留める（金のしるし）
 ・日付印
 ・縦書きの読み返しモード
 ・筆あと（明朝・筆・墨・手書きから字の表情を選べます）
@@ -95,7 +97,7 @@ FEATURES
 • Create, edit and delete notes (with a short undo window after deleting)
 • Automatic saving
 • Search
-• Favorites
+• Pin notes to the top
 • Subtle date marks
 • Vertical reading mode
 • Choice of writing styles: Mincho, Brush, Ink, and Handwriting
@@ -153,10 +155,10 @@ This is a simple, fully local note-taking app with a calm Japanese-inspired desi
 - Notes are stored only on the device and are never sent to a server. The app makes no network requests.
 
 How to review:
-1. On the home screen, tap "言葉を置く" (the + button) to create a note.
+1. On the home screen, tap "メモを書く" (the button at the bottom right) to create a note.
 2. Type a title and body. The note is saved automatically; no save button is needed.
 3. Tap back to return to the list, then tap a note to open it in vertical reading mode.
-4. Tap "言葉を直す" to edit. The gold dot button marks a note as a favorite; the trash icon deletes it (a confirmation is shown, and Undo is offered for a few seconds).
+4. Tap "編集する" to edit. The gold dot button ("先頭に留める") pins a note to the top of the list; the trash icon deletes it (a confirmation is shown, and "元に戻す" is offered for 10 seconds).
 5. Use the search field on the home screen to find notes.
 
 The UI is in Japanese. "残心" (zanshin) is a Japanese term meaning a lingering, mindful presence after an action.
