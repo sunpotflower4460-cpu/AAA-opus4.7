@@ -1,5 +1,6 @@
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
+import { lineWobble } from "../lib/inkJitter";
 import { BrushPicker } from "./BrushPicker";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
@@ -80,7 +81,28 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
 
           {hasBody ? (
             // 空判定だけ trim() を使い、表示内容は原文の改行・先頭末尾の余白を保つ。
-            <p className="read-mode-body jp-text-discipline">{note.body}</p>
+            <p className="read-mode-body jp-text-discipline">
+              {note.body.split("\n").map((line, index) => {
+                const w = lineWobble(note.id, index);
+                return (
+                  // 行ごとに、手で書いたようなごく小さなズレを与える（見た目だけ。内容は変えない）。
+                  <span
+                    key={index}
+                    className="read-line"
+                    style={
+                      {
+                        "--jx": `${w.x}px`,
+                        "--jy": `${w.y}px`,
+                        "--jr": `${w.rotate}deg`,
+                        "--jo": w.opacity,
+                      } as React.CSSProperties
+                    }
+                  >
+                    {line === "" ? "\u200b" : line}
+                  </span>
+                );
+              })}
+            </p>
           ) : (
             <p className="read-mode-body read-mode-empty-body jp-text-discipline">
               {copy.emptyReadBody}

@@ -1,5 +1,6 @@
 import type { Note } from "../types/note";
 import { copy } from "../lib/i18n";
+import { cardImperfection } from "../lib/inkJitter";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
@@ -21,12 +22,19 @@ function preview(body: string): string {
 export function NoteCard({ note, onOpen }: Props) {
   const title = note.title.trim() || copy.untitled;
   const bodyPreview = preview(note.body);
+  const imperfection = cardImperfection(note.id);
 
   return (
     <button
       type="button"
       onClick={() => onOpen(note.id)}
       aria-label={`${title}、${copy.openReadMode}`}
+      style={
+        {
+          "--card-tilt": `${imperfection.tiltDeg}deg`,
+          "--card-radius": imperfection.radius,
+        } as React.CSSProperties
+      }
       className="
         group relative block w-full text-left
         rounded-[13px] paper-card zanshin-note-card
