@@ -79,7 +79,7 @@ export function NoteCard({ note, onOpen }: Props) {
             </div>
           )}
 
-          <div className="mt-gr-4 flex items-center gap-gr-2 text-[11px] tracking-[0.12em] text-ink-muted/80">
+          <div className="zanshin-note-card__cta mt-gr-4 flex items-center gap-gr-2 text-[11px] tracking-[0.12em] text-ink-muted/80">
             <span className="h-px w-gr-4 bg-gradient-to-r from-gold/28 to-transparent" aria-hidden="true" />
             <span className="font-mincho">{copy.openReadMode}</span>
           </div>
