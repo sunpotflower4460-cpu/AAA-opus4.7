@@ -332,6 +332,19 @@ export default function App() {
       return;
     }
 
+    if (
+      isNativeDurableSnapshotAvailable() &&
+      !notesSnapshotMatches(remote.notes, baselineNotesRef.current)
+    ) {
+      // 復帰時にlocalだけが既知の正本と異なる「正常形式の版」へ変わっていても、
+      // 形式が正しいという理由だけで採用せず、native予備保存へも渡さない（R03）。
+      // 起動時と同じ比較（probeNativeRecovery）へ送り、同一または不存在を確認できた時だけ
+      // 解放し、異なる有効版・読込失敗は編集を止めて利用者の選択／再確認へ回す。
+      // 日時の新旧から正しい版を推測しない。
+      registerLocalRecoveryCandidate(remote.notes);
+      return;
+    }
+
     applyCleanRemoteNotes(remote.notes);
     // 正常な保存先を正式採用したら、native復旧層も同じ正本へ追従させる。
     // recovery candidate は上の !remote.ok 分岐なので、未確定候補をここで保存することはない。
