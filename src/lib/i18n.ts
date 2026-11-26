@@ -65,11 +65,13 @@ export const copy = {
   savedEn: "Saved",
   saving: "保存中",
   savingEn: "Saving",
-  saveError: "保存できませんでした",
+  saveError: "最新の変更を保存できませんでした",
   saveErrorEn: "Could not save",
-  saveErrorQuota: "保存領域の上限に達したため、保存できませんでした",
-  saveErrorUnavailable: "端末内の保存先を利用できませんでした",
+  saveErrorQuota: "メモの保存領域が足りないため、最新の変更を保存できませんでした",
+  saveErrorUnavailable: "端末内の保存先を利用できなかったため、最新の変更を保存できませんでした",
   saveErrorInvalidData: "この内容を安全に保存できませんでした",
+  deleteSaveFailed:
+    "削除を保存できませんでした。この端末にはまだ元のメモが残っています。",
   retrySave: "もう一度保存する",
   retrySaveEn: "Try saving again",
   nativeBackupError:

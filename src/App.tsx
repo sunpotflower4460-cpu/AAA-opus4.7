@@ -111,6 +111,8 @@ export default function App() {
   // 保護している復元候補の枠が満杯で、この画面の内容を保存できない状態（R34）。
   const [archiveFull, setArchiveFull] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // 削除が保存先へまだ確定していない（確定する保存が成功するまで true）。
+  const [deleteUnconfirmed, setDeleteUnconfirmed] = useState(false);
   // 保護候補を整理した後に一覧を読み直すための番号（永続化しない）。
   const [protectedRevision, setProtectedRevision] = useState(0);
   // 編集の世代。保存・予備保存の結果が「いま表示している版」に対するものか判定する（R35）。
@@ -397,6 +399,7 @@ export default function App() {
 
       if (result.ok) {
         setArchiveFull(false);
+        setDeleteUnconfirmed(false);
         notesDirtyRef.current = false;
         dirtySinceRef.current = null;
         saveGuardRef.current = false;
@@ -920,6 +923,8 @@ export default function App() {
 
       if (!markNotesDirty()) return;
 
+      // この削除が保存先へ確定するまで、「削除を保存できませんでした」と区別して伝えるための印。
+      setDeleteUnconfirmed(true);
       if (undoTimerRef.current) window.clearTimeout(undoTimerRef.current);
       const deleted: DeletedNote = { ...target, deletedAt: nowIso() };
       setNotes((prev) => prev.filter((note) => note.id !== id));
@@ -941,6 +946,8 @@ export default function App() {
       undoTimerRef.current = null;
     }
 
+    // 元に戻した時点で、削除は意図されていない。以後の失敗は通常の保存失敗として扱う。
+    setDeleteUnconfirmed(false);
     const { deletedAt: _, ...note } = lastDeleted;
     setNotes((prev) => (prev.some((item) => item.id === note.id) ? prev : [note, ...prev]));
     setLastDeleted(null);
@@ -962,6 +969,7 @@ export default function App() {
     }
 
     setArchiveFull(false);
+    setDeleteUnconfirmed(false);
     notesDirtyRef.current = false;
     dirtySinceRef.current = null;
     saveGuardRef.current = false;
@@ -1074,7 +1082,9 @@ export default function App() {
     return notes.find((note) => note.id === view.id);
   }, [view, notes]);
 
-  const globalSaveFailureMessage = getSaveFailureMessage(lastSaveResult);
+  const globalSaveFailureMessage = getSaveFailureMessage(lastSaveResult, {
+    deletePending: deleteUnconfirmed,
+  });
   const showGlobalSaveFailure =
     globalSaveFailureMessage !== null &&
     // 満杯の説明は復旧の案内の中で出すので、同じ文を二重に出さない。

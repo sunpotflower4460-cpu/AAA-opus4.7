@@ -56,6 +56,12 @@ function findButton(container: HTMLElement, text: string): HTMLButtonElement {
   return button;
 }
 
+function findByLabel(container: HTMLElement, label: string): HTMLButtonElement {
+  const button = container.querySelector(`button[aria-label="${label}"]`);
+  if (!(button instanceof HTMLButtonElement)) throw new Error(`Button not found by label: ${label}`);
+  return button;
+}
+
 function hasButton(container: HTMLElement, text: string): boolean {
   return Array.from(container.querySelectorAll("button")).some((candidate) =>
     candidate.textContent?.includes(text),
@@ -250,5 +256,65 @@ describe("保存失敗中の本文の取り出し（R24）", () => {
       await Promise.resolve();
     });
     expect(writeText).toHaveBeenLastCalledWith("取り出す題名");
+  });
+});
+
+describe("削除の保存失敗（R36 / F08）", () => {
+  let storage: ReturnType<typeof mockLocalStorage>;
+  let container: HTMLDivElement;
+  let root: Root | null = null;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    storage = mockLocalStorage();
+    Object.defineProperty(window, "localStorage", { value: storage, writable: true, configurable: true });
+    storage.setItem(STORAGE_KEY_FOR_TESTING, JSON.stringify([makeNote(), makeNote({ id: "note-2", title: "残るメモ" })]));
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => root?.render(<App />));
+  });
+
+  afterEach(() => {
+    if (root) act(() => root?.unmount());
+    container.remove();
+    vi.useRealTimers();
+  });
+
+  it("削除の保存が確定しない間は「削除を保存できませんでした」と伝え、元のメモは保存先に残り、容量不足を削除だけで解決できるとは案内しない", () => {
+    act(() => click(findButton(container, "元のメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === PENDING_SAVE_KEY_FOR_TESTING) throw new DOMException("quota", "QuotaExceededError");
+      storage._store[key] = value;
+    });
+    act(() => click(findByLabel(container, copy.deleteNote)));
+    act(() => click(findButton(container, copy.confirmDelete)));
+    act(() => vi.advanceTimersByTime(1_000));
+
+    expect(container.textContent).toContain(copy.deleteSaveFailed);
+    // 「削除しました」とだけ伝えて終わらせず、取り消しの導線も残す。
+    expect(container.textContent).toContain(copy.undoDelete);
+    // 保存先には元のメモが残っている（削除は確定していない）。
+    expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toHaveLength(2);
+    // 容量不足の案内は、削除すれば解決するという書き方をしない。
+    expect(copy.saveErrorQuota).not.toMatch(/削除|消(す|し)/);
+    expect(copy.deleteSaveFailed).not.toMatch(/削除すれば|消せば/);
+  });
+
+  it("元に戻した後は、削除の失敗ではなく通常の保存失敗として扱う", () => {
+    act(() => click(findButton(container, "元のメモ")));
+    act(() => click(findButton(container, copy.editNote)));
+    storage.setItem.mockImplementation((key: string, value: string) => {
+      if (key === PENDING_SAVE_KEY_FOR_TESTING) throw new DOMException("quota", "QuotaExceededError");
+      storage._store[key] = value;
+    });
+    act(() => click(findByLabel(container, copy.deleteNote)));
+    act(() => click(findButton(container, copy.confirmDelete)));
+    act(() => vi.advanceTimersByTime(1_000));
+    act(() => click(findButton(container, copy.undoDelete)));
+    act(() => vi.advanceTimersByTime(1_000));
+
+    expect(container.textContent).not.toContain(copy.deleteSaveFailed);
   });
 });

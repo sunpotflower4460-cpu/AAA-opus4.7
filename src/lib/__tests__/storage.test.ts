@@ -688,6 +688,71 @@ describe("saveNotes", () => {
     expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
   });
 
+  describe("保存の各段階での失敗の区別（R36 / F07）", () => {
+    const oldNotes = [makeNote({ id: "n", title: "旧確定版" })];
+    const nextNotes = [makeNote({ id: "n", title: "未保存の新しい版" })];
+    const oldRaw = JSON.stringify(oldNotes);
+
+    function failOn(target: string) {
+      storage.setItem.mockImplementation((key: string, value: string) => {
+        if (key === target) throw new DOMException("quota", "QuotaExceededError");
+        storage._store[key] = value;
+      });
+    }
+
+    it("journalの書込みで失敗: 何も変わらず、旧確定版がそのまま残る", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      storage.setItem(BACKUP_KEY_FOR_TESTING, oldRaw);
+      failOn(PENDING_SAVE_KEY_FOR_TESTING);
+
+      expect(saveNotes(nextNotes, { expectedNotes: oldNotes })).toEqual({ ok: false, reason: "quota" });
+      expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeUndefined();
+    });
+
+    it("復旧コピーの書込みで失敗: primaryは旧確定版のまま。未保存版はjournalにだけ残り、旧版も失われない", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      storage.setItem(BACKUP_KEY_FOR_TESTING, oldRaw);
+      failOn(BACKUP_KEY_FOR_TESTING);
+
+      expect(saveNotes(nextNotes, { expectedNotes: oldNotes })).toEqual({ ok: false, reason: "quota" });
+      expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(JSON.parse(storage._store[PENDING_SAVE_KEY_FOR_TESTING])).toMatchObject({
+        baseRaw: oldRaw,
+        nextRaw: JSON.stringify(nextNotes),
+      });
+    });
+
+    it("primaryの書込みで失敗: 旧確定版はprimaryに、未保存版は復旧コピーとjournalに残り、再起動後に候補として拾える", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      storage.setItem(BACKUP_KEY_FOR_TESTING, oldRaw);
+      failOn(STORAGE_KEY_FOR_TESTING);
+
+      const result = saveNotes(nextNotes, { expectedNotes: oldNotes });
+      expect(result.ok).toBe(false);
+      expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(oldRaw);
+      expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(JSON.stringify(nextNotes));
+      expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBeDefined();
+
+      // 次回読込では、旧版を正本のまま、中断した新しい版を候補として提示する（自動採用しない）。
+      storage.setItem.mockImplementation((key: string, value: string) => {
+        storage._store[key] = value;
+      });
+      const reloaded = loadNotes();
+      expect(JSON.stringify(reloaded.notes)).toContain("未保存の新しい版");
+      expect(reloaded.ok).toBe(false);
+    });
+
+    it("容量不足を示す結果は retry 可能な失敗で、別の理由（競合・満杯）と区別される", () => {
+      storage.setItem(STORAGE_KEY_FOR_TESTING, oldRaw);
+      failOn(PENDING_SAVE_KEY_FOR_TESTING);
+      const result = saveNotes(nextNotes, { expectedNotes: oldNotes });
+      expect(result).toEqual({ ok: false, reason: "quota" });
+    });
+  });
+
   describe("保護候補が満杯の時の確認と整理（R34）", () => {
     const archive1 = [makeNote({ id: "archive-1", title: "退避1" })];
     const archive2 = [makeNote({ id: "archive-2", title: "退避2" })];
