@@ -63,7 +63,7 @@ export function ReadMode({ note, onBack, onEdit }: Props) {
       </header>
 
       <main className="read-mode-stage flex min-h-0 flex-1 flex-col pt-gr-3 pb-gr-5">
-        <p className="read-mode-hint mb-gr-3 self-end font-mincho text-[11px] tracking-[0.16em] text-ink-muted/54">
+        <p className="read-mode-hint mb-gr-3 self-end font-mincho text-[11px] tracking-[0.16em] text-ink-muted/80">
           {copy.readModeHint}
         </p>
         <article className="read-mode-paper editor-paper px-gr-5 py-gr-6 jp-text-discipline" aria-label={copy.readNote}>

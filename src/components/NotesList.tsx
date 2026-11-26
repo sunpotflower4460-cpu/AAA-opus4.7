@@ -75,7 +75,7 @@ export function NotesList({
           <p className="font-mincho text-[12px] tracking-[0.12em] text-ink-muted/72 jp-text-discipline">
             {countLabel(visible.length, isSearching)}
           </p>
-          <p className="text-[10px] tracking-[0.14em] text-ink-muted/48">
+          <p className="text-[10px] tracking-[0.14em] text-ink-muted/80">
             {copy.localOnly}
           </p>
         </div>

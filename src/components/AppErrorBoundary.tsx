@@ -39,7 +39,7 @@ export class AppErrorBoundary extends Component<Props, State> {
             <p className="mt-gr-3 text-[14px] leading-ample text-ink-muted jp-text-discipline">
               予期しない問題が起きました。再読み込みすると、残心を開き直せます。
             </p>
-            <p className="mt-gr-2 text-[11px] leading-ample tracking-[0.08em] text-ink-muted/62">
+            <p className="mt-gr-2 text-[11px] leading-ample tracking-[0.08em] text-ink-muted/72">
               Something unexpected happened. Reload to open Zanshin again.
             </p>
             <button

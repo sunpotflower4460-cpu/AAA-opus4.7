@@ -195,7 +195,12 @@ Cloudflare Pages 接続済みであれば、現状の `main` ブランチから�
 
 ---
 
-## App Store申請前 TODO
+## App Store 提出
+
+**提出内容・手順・残タスクは [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) に集約しています。**
+スクリーンショットは `store/screenshots/` にあります。初回リリースは無料・広告なし・課金なし・外部SDKなしです。
+
+## （旧）App Store申請前 TODO（初回リリースでは広告・課金は対象外）
 
 - StoreKit の本番課金実装へ差し替える
 - Restore Purchase を実課金フローへ接続する
@@ -221,6 +226,7 @@ Phase 18 では、提出前に必要なメタデータ、Privacy、StoreKit、iO
 | [docs/uiux-integrity-review-phase-8.md](docs/uiux-integrity-review-phase-8.md) | Phase 8 UI/UX監査レポート |
 | [docs/app-store-monetization-checklist.md](docs/app-store-monetization-checklist.md) | App Store monetization 申請チェックリスト |
 | [docs/app-store-preparation-phase-18.md](docs/app-store-preparation-phase-18.md) | Phase 18 App Store 申請準備レポート |
+| [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) | **App Store 提出パック（最終版）** |
 | [docs/app-store-submission-checklist.md](docs/app-store-submission-checklist.md) | App Store 提出全体チェックリスト |
 | [docs/app-store-metadata-draft.md](docs/app-store-metadata-draft.md) | App Store Connect 用メタデータ草案 |
 | [docs/privacy-and-tracking-notes.md](docs/privacy-and-tracking-notes.md) | App Privacy / ATT / SDK確認メモ |

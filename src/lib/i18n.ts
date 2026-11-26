@@ -32,7 +32,7 @@ export const copy = {
   settledOn: "残した日",
 
   // 空状態
-  emptyTitleLines: ["まだ、言葉は置かれていません。"] as PoeticLines,
+  emptyTitleLines: ["まだ、言葉は", "置かれていません。"] as PoeticLines,
   emptySubtitleLines: [
     "その日の余白に、",
     "最初の言葉を残す。",
@@ -124,7 +124,7 @@ export const copy = {
     "Let this note go quietly?\nYou can undo for a short while after deleting it.",
   cancel: "残しておく",
   cancelEn: "Keep it",
-  confirmDelete: "手放す（削除）",
+  confirmDelete: "手放す",
   confirmDeleteEn: "Release (delete)",
   undoDelete: "元に戻す",
   undoDeleteEn: "Undo",

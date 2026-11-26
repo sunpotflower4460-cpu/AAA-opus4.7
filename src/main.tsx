@@ -13,6 +13,7 @@ import "./phase27.css";
 import "./phase28.css";
 import "./phase29.css";
 import "./phase30.css";
+import "./phase31.css";
 
 const root = document.getElementById("root");
 

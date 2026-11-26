@@ -261,7 +261,7 @@ export function NoteEditor({
           />
         </div>
 
-        <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/62">
+        <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/72">
           <span aria-live="polite" className="flex min-h-[1.6em] flex-col justify-end gap-gr-1">
             {saveState === "saving" && (
               <span className="zanshin-save-status zanshin-save-status--saving flex items-center gap-gr-2">
@@ -386,7 +386,7 @@ function DeleteConfirm({
             type="button"
             onClick={onCancel}
             className="
-              min-h-[44px] rounded-full px-gr-4 py-gr-2 font-mincho text-[14px]
+              min-h-[44px] whitespace-nowrap rounded-full px-gr-4 py-gr-2 font-mincho text-[14px]
               text-ink-muted transition-soft hover:text-sumi hover:bg-paper/60
             "
           >
@@ -397,7 +397,7 @@ function DeleteConfirm({
             type="button"
             onClick={onConfirm}
             className="
-              zanshin-delete-confirm min-h-[44px] rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
+              zanshin-delete-confirm min-h-[44px] whitespace-nowrap rounded-full bg-vermilion px-gr-5 py-gr-3 font-mincho text-[14px]
               text-washi shadow-paper-soft transition-soft
               hover:bg-vermilion/90 active:scale-[0.98]
             "
