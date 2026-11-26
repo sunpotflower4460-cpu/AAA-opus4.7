@@ -127,7 +127,7 @@ notes,journal,memo,writing,diary,paper,minimal,vertical,zanshin,notebook,calm
 
 **「データを収集していない（Data Not Collected）」** を選択します。
 
-- 実装は外部通信を一切行わず、第三者SDKもありません（`package.json` の依存は React / Capacitor のみ）。
+- 広告・分析・追跡のSDKは使っていません。アプリは端末内の機能のために Capacitor（オープンソースのフレームワーク）を使用しており、メモを外部のサーバーへ送信しません（`package.json` の依存は React / Capacitor 関連のみ。Privacy Manifest は収集データなし・トラッキングなし）。
 - トラッキングなし → ATT ダイアログは不要（`NSUserTrackingUsageDescription` は付けない）。
 - 権限ダイアログなし（Info.plist に `NS*UsageDescription` は不要）。
 
@@ -149,7 +149,7 @@ notes,journal,memo,writing,diary,paper,minimal,vertical,zanshin,notebook,calm
 This is a simple, fully local note-taking app with a calm Japanese-inspired design.
 
 - No account or login is required.
-- No ads, no in-app purchases, no analytics, no tracking, and no third-party SDKs.
+- No ads, no in-app purchases, no analytics and no tracking. The app uses the open-source Capacitor framework for on-device features; it contains no advertising, analytics or tracking SDKs.
 - Notes are stored only on the device and are never sent to a server. The app makes no network requests.
 
 How to review:
@@ -213,7 +213,7 @@ Xcode で:
 ## 10. 提出前の最終確認
 
 - [x] 広告・課金・mock Premium が UI に出ない
-- [x] 外部通信・第三者SDKなし
+- [x] メモを外部へ送信しない／広告・分析・追跡のSDKなし（Capacitor は使用。「第三者SDKなし」とは書かない）
 - [x] 暗号化の申告（Info.plist）
 - [x] Privacy Manifest
 - [x] アプリアイコン 1024×1024（アルファなし）/ 起動画面が残心ブランド
