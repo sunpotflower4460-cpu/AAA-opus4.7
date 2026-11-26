@@ -28,6 +28,40 @@ type Props = {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const SAVED_FEEDBACK_VISIBLE_MS = 1200;
+// 画面キーボードが開いたとみなす、視覚ビューポートの縮み（CSS px）。ブラウザの UI バーの伸縮より大きく取る。
+const KEYBOARD_MIN_SHRINK_PX = 120;
+
+/**
+ * 画面キーボードが開いているか。
+ * フォーカスがあるだけでは判断しない（外部キーボードでは画面が縮まない）。
+ * 視覚ビューポートが実際に縮み、かつ入力欄にフォーカスがある時だけ true。
+ * svh/dvh だけではキーボードに追従しないことがあるため、実測で判断する。
+ */
+function useOnScreenKeyboard(): boolean {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return undefined;
+
+    const update = () => {
+      const active = document.activeElement;
+      const typing = active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement;
+      setOpen(typing && window.innerHeight - viewport.height > KEYBOARD_MIN_SHRINK_PX);
+    };
+
+    viewport.addEventListener("resize", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
+    };
+  }, []);
+
+  return open;
+}
 const ANNOUNCE_SAVED_DELAY_MS = 2500;
 
 export function NoteEditor({
@@ -45,6 +79,7 @@ export function NoteEditor({
   const [announcedSaved, setAnnouncedSaved] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const keyboardOpen = useOnScreenKeyboard();
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
 
@@ -181,7 +216,10 @@ export function NoteEditor({
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
+    <div
+      className="zanshin-editor mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade"
+      data-keyboard={keyboardOpen ? "open" : "closed"}
+    >
       <header className="zanshin-screen-bar flex items-center justify-between gap-gr-4">
         <button
           type="button"
@@ -331,7 +369,7 @@ export function NoteEditor({
             placeholder={copy.bodyPlaceholder}
             aria-label={copy.bodyPlaceholder}
             className="writing-textarea jp-writing-surface mt-gr-5 flex-1"
-            style={{ minHeight: "42dvh" }}
+            style={keyboardOpen ? undefined : { minHeight: "42dvh" }}
           />
         </div>
 

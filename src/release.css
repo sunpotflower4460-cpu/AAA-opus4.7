@@ -722,3 +722,29 @@ textarea.note-title-input {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* ───────── 11. キーボード表示中の編集領域（R32）─────────
+ * 画面キーボードが開いている間は、日付・題名まわりの上下の余白と装飾を詰め、本文の入力と選択に場所を譲る。
+ * 本文の最低高さ（42dvh）も外す。実際の見える行数は実機で測る（要実機）。
+ */
+.zanshin-editor[data-keyboard="open"] .editor-paper {
+  padding-top: 13px !important;
+  padding-bottom: 13px !important;
+}
+
+.zanshin-editor[data-keyboard="open"] .editor-paper > div:first-of-type {
+  margin-bottom: 8px !important;
+}
+
+.zanshin-editor[data-keyboard="open"] .zanshin-date-stamp {
+  transform: scale(0.92);
+  transform-origin: left top;
+}
+
+.zanshin-editor[data-keyboard="open"] .editor-paper > [aria-hidden="true"] {
+  display: none;
+}
+
+.zanshin-editor[data-keyboard="open"] .writing-textarea {
+  margin-top: 8px !important;
+}
