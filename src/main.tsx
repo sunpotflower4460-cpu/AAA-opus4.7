@@ -25,6 +25,7 @@ import "./phase32.css";
 import "./phase33.css";
 import "./phase34.css";
 import "./phase35.css";
+import "./phase36.css";
 
 // 描画前に筆あとを反映し、字体の切り替わりでちらつかないようにする。
 initBrush();

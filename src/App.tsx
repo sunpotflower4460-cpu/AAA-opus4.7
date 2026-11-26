@@ -1248,7 +1248,7 @@ export default function App() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed inset-x-gr-4 bottom-[max(env(safe-area-inset-bottom),89px)] z-30 flex items-center justify-between gap-gr-3 border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-2 text-[13px] shadow-paper-hover animate-softUp"
+          className="zanshin-undo-toast fixed inset-x-gr-4 bottom-[max(env(safe-area-inset-bottom),89px)] z-30 flex items-center justify-between gap-gr-3 border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-2 text-[13px] shadow-paper-hover animate-softUp"
           style={{ borderRadius: "7px 13px 8px 11px" }}
         >
           <span className="font-mincho text-sumi/88 jp-text-discipline">{copy.undoDeleteMessage}</span>

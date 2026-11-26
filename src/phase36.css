@@ -1,0 +1,111 @@
+/*
+ * Phase 36 — 余白と、静かな背景（最後に読み込む層）
+ *
+ *  1. 読み返し: 長いタイトル・長い本文でも、列と列・題と本文のあいだに息ができるように。
+ *  2. 「元に戻す」バーを、紙の端に貼り付けず、少し浮かせて小さく。
+ *  3. 背景: 人によっては汚れに見える雲状のムラ・長い繊維のうねり・端の暗がりをさらに弱める。
+ */
+
+:root {
+  --phase32-fibers-page: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640' viewBox='0 0 640 640'%3E%3Cdefs%3E%3Cg id='t' fill='none' stroke-linecap='round'%3E%3Cpath d='M184.7 326.6Q177.4 339.9 167.9 351.8' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.51'/%3E%3Cpath d='M143.9 223.7Q154.2 221.9 164.5 223.6' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.40'/%3E%3Cpath d='M286.2 109.1Q274.1 115.8 261.0 120.2' stroke='%23fffaf0' stroke-opacity='0.61' stroke-width='0.54'/%3E%3Cpath d='M431.3 191.0Q423.8 192.5 416.6 189.9' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.60'/%3E%3Cpath d='M481.5 484.3Q472.8 477.1 462.4 472.7' stroke='%23fffaf0' stroke-opacity='0.54' stroke-width='0.70'/%3E%3Cpath d='M63.5 600.1Q57.7 614.2 44.2 621.3' stroke='%23fffaf0' stroke-opacity='0.54' stroke-width='0.63'/%3E%3Cpath d='M254.6 265.7Q251.2 260.9 248.1 256.0' stroke='%23fffaf0' stroke-opacity='0.45' stroke-width='0.50'/%3E%3Cpath d='M559.9 447.4Q569.0 447.6 577.3 443.8' stroke='%23fffaf0' stroke-opacity='0.73' stroke-width='0.65'/%3E%3Cpath d='M622.3 14.0Q631.3 13.2 637.1 6.3' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.44'/%3E%3Cpath d='M614.2 556.6Q615.8 540.1 609.1 525.0' stroke='%23fffaf0' stroke-opacity='0.45' stroke-width='0.42'/%3E%3Cpath d='M564.6 607.3Q551.6 612.3 539.7 605.0' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.35'/%3E%3Cpath d='M17.7 123.3Q10.0 126.2 2.2 123.3' stroke='%23fffaf0' stroke-opacity='0.46' stroke-width='0.55'/%3E%3Cpath d='M501.5 554.0Q502.4 559.4 504.7 564.3' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.42'/%3E%3Cpath d='M564.1 487.6Q559.4 479.5 551.1 475.2' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.46'/%3E%3Cpath d='M501.7 35.5Q498.4 48.6 490.1 59.3' stroke='%23fffaf0' stroke-opacity='0.60' stroke-width='0.49'/%3E%3Cpath d='M278.3 242.1Q265.2 237.0 252.1 242.1' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.48'/%3E%3Cpath d='M220.4 301.4Q219.0 293.9 212.2 290.5' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.53'/%3E%3Cpath d='M283.5 142.2Q278.4 158.7 286.7 173.9' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.77'/%3E%3Cpath d='M107.0 20.1Q94.4 14.0 90.5 0.5' stroke='%23fffaf0' stroke-opacity='0.46' stroke-width='0.64'/%3E%3Cpath d='M199.7 68.0Q198.1 78.6 192.9 88.0' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.79'/%3E%3Cpath d='M459.4 68.6Q454.2 80.8 459.4 93.0' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.67'/%3E%3Cpath d='M146.5 140.8Q134.0 132.0 127.2 118.3' stroke='%23fffaf0' stroke-opacity='0.40' stroke-width='0.52'/%3E%3Cpath d='M421.8 470.2Q426.5 461.9 423.0 453.0' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.53'/%3E%3Cpath d='M510.7 486.7Q519.8 502.2 516.6 519.8' stroke='%23fffaf0' stroke-opacity='0.43' stroke-width='0.47'/%3E%3Cpath d='M234.9 421.5Q230.6 407.9 232.3 393.7' stroke='%23fffaf0' stroke-opacity='0.50' stroke-width='0.75'/%3E%3Cpath d='M516.6 475.4Q506.1 484.1 498.7 495.6' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.72'/%3E%3Cpath d='M445.8 221.7Q452.3 219.9 456.8 214.7' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.76'/%3E%3Cpath d='M615.2 491.7Q610.9 484.9 611.0 476.7' stroke='%23fffaf0' stroke-opacity='0.46' stroke-width='0.36'/%3E%3Cpath d='M394.4 38.3Q398.3 27.2 407.0 19.4' stroke='%23fffaf0' stroke-opacity='0.47' stroke-width='0.55'/%3E%3Cpath d='M557.3 138.8Q548.8 135.4 540.2 138.4' stroke='%23fffaf0' stroke-opacity='0.65' stroke-width='0.49'/%3E%3Cpath d='M401.5 303.0Q396.8 309.7 396.2 317.9' stroke='%23fffaf0' stroke-opacity='0.69' stroke-width='0.67'/%3E%3Cpath d='M92.1 173.5Q93.5 163.3 90.8 153.3' stroke='%23fffaf0' stroke-opacity='0.64' stroke-width='0.75'/%3E%3Cpath d='M44.0 58.0Q43.7 45.2 52.1 35.6' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.53'/%3E%3Cpath d='M502.1 565.5Q501.5 573.0 496.4 578.4' stroke='%23fffaf0' stroke-opacity='0.62' stroke-width='0.48'/%3E%3Cpath d='M15.2 325.9Q30.8 335.7 32.3 354.1' stroke='%23fffaf0' stroke-opacity='0.56' stroke-width='0.40'/%3E%3Cpath d='M492.6 503.6Q483.6 493.3 471.8 486.5' stroke='%23fffaf0' stroke-opacity='0.75' stroke-width='0.66'/%3E%3Cpath d='M470.4 472.4Q457.6 464.9 453.9 450.5' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.40'/%3E%3Cpath d='M5.7 169.2Q-8.2 160.4 -24.5 162.7' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.39'/%3E%3Cpath d='M133.0 214.7Q121.1 222.6 115.5 235.8' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.41'/%3E%3Cpath d='M154.7 137.9Q150.2 145.5 142.2 149.1' stroke='%23fffaf0' stroke-opacity='0.47' stroke-width='0.50'/%3E%3Cpath d='M446.1 151.5Q434.4 154.3 423.5 159.4' stroke='%23fffaf0' stroke-opacity='0.49' stroke-width='0.40'/%3E%3Cpath d='M604.8 516.0Q607.6 522.0 606.7 528.6' stroke='%23fffaf0' stroke-opacity='0.74' stroke-width='0.78'/%3E%3Cpath d='M260.8 346.6Q251.4 348.3 243.9 342.2' stroke='%23fffaf0' stroke-opacity='0.58' stroke-width='0.48'/%3E%3Cpath d='M91.8 84.1Q85.3 99.2 72.4 109.5' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.45'/%3E%3Cpath d='M388.3 473.2Q387.2 489.4 386.6 505.5' stroke='%23fffaf0' stroke-opacity='0.69' stroke-width='0.37'/%3E%3Cpath d='M165.7 199.2Q177.6 195.6 188.6 201.6' stroke='%23fffaf0' stroke-opacity='0.48' stroke-width='0.69'/%3E%3Cpath d='M213.0 222.1Q203.5 209.5 194.2 196.7' stroke='%23fffaf0' stroke-opacity='0.61' stroke-width='0.80'/%3E%3Cpath d='M602.5 183.5Q598.3 174.9 595.0 165.9' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.44'/%3E%3Cpath d='M364.0 634.8Q364.9 651.7 360.0 667.9' stroke='%23fffaf0' stroke-opacity='0.57' stroke-width='0.72'/%3E%3Cpath d='M97.7 545.0Q95.9 528.2 90.5 512.1' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.50'/%3E%3Cpath d='M596.2 235.6Q599.3 240.6 597.1 246.2' stroke='%23fffaf0' stroke-opacity='0.57' stroke-width='0.73'/%3E%3Cpath d='M146.8 625.3Q140.2 610.1 124.1 605.9' stroke='%23fffaf0' stroke-opacity='0.68' stroke-width='0.36'/%3E%3Cpath d='M24.0 194.2Q13.7 207.7 2.7 220.7' stroke='%23fffaf0' stroke-opacity='0.42' stroke-width='0.50'/%3E%3Cpath d='M213.2 240.2Q213.0 230.1 206.1 222.8' stroke='%23fffaf0' stroke-opacity='0.64' stroke-width='0.52'/%3E%3Cpath d='M182.0 446.8Q181.1 430.2 179.9 413.6' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.48'/%3E%3Cpath d='M618.9 588.8Q605.3 591.3 592.8 597.4' stroke='%23fffaf0' stroke-opacity='0.50' stroke-width='0.50'/%3E%3Cpath d='M393.3 210.9Q400.7 224.4 412.5 234.3' stroke='%23fffaf0' stroke-opacity='0.56' stroke-width='0.47'/%3E%3Cpath d='M563.8 41.5Q568.5 45.2 574.5 44.5' stroke='%23fffaf0' stroke-opacity='0.41' stroke-width='0.70'/%3E%3Cpath d='M463.3 98.2Q471.3 96.6 477.4 91.1' stroke='%23fffaf0' stroke-opacity='0.63' stroke-width='0.56'/%3E%3Cpath d='M567.4 9.7Q562.5 26.8 547.5 36.4' stroke='%23fffaf0' stroke-opacity='0.67' stroke-width='0.79'/%3E%3Cpath d='M363.2 207.1Q376.3 214.8 391.1 217.9' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.73'/%3E%3Cpath d='M529.3 97.2Q531.3 102.3 532.9 107.4' stroke='%23fffaf0' stroke-opacity='0.51' stroke-width='0.54'/%3E%3Cpath d='M330.4 8.2Q314.9 3.8 299.0 6.0' stroke='%23fffaf0' stroke-opacity='0.44' stroke-width='0.52'/%3E%3Cpath d='M480.9 359.4Q490.9 343.9 486.1 326.0' stroke='%23fffaf0' stroke-opacity='0.72' stroke-width='0.65'/%3E%3Cpath d='M345.0 483.7Q334.3 470.5 334.0 453.5' stroke='%23fffaf0' stroke-opacity='0.71' stroke-width='0.44'/%3E%3Cpath d='M134.8 38.0Q124.1 34.8 113.2 32.5' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.36'/%3E%3Cpath d='M361.2 207.4Q344.9 210.8 328.4 209.9' stroke='%23fffaf0' stroke-opacity='0.42' stroke-width='0.65'/%3E%3Cpath d='M162.5 618.1Q176.3 615.6 190.4 615.3' stroke='%23fffaf0' stroke-opacity='0.59' stroke-width='0.68'/%3E%3Cpath d='M441.4 453.8Q437.4 457.6 432.2 459.3' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.50'/%3E%3Cpath d='M172.4 128.1Q179.4 118.9 178.6 107.3' stroke='%23fffaf0' stroke-opacity='0.62' stroke-width='0.37'/%3E%3Cpath d='M557.5 368.5Q564.5 366.3 567.6 359.6' stroke='%23fffaf0' stroke-opacity='0.52' stroke-width='0.69'/%3E%3Cpath d='M382.0 475.1Q377.0 490.0 368.1 502.8' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.61'/%3E%3Cpath d='M258.2 46.0Q255.1 40.5 257.5 34.6' stroke='%23fffaf0' stroke-opacity='0.55' stroke-width='0.48'/%3E%3Cpath d='M401.8 330.2Q406.2 322.4 413.5 317.2' stroke='%23fffaf0' stroke-opacity='0.61' stroke-width='0.40'/%3E%3Cpath d='M52.4 141.4Q43.9 149.7 37.0 159.3' stroke='%23fffaf0' stroke-opacity='0.43' stroke-width='0.63'/%3E%3Cpath d='M397.9 423.7Q393.6 410.9 395.5 397.5' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.44'/%3E%3Cpath d='M30.5 315.4Q41.4 324.2 46.7 337.2' stroke='%23fffaf0' stroke-opacity='0.54' stroke-width='0.48'/%3E%3Cpath d='M397.6 169.5Q384.6 161.6 382.3 146.5' stroke='%23fffaf0' stroke-opacity='0.53' stroke-width='0.62'/%3E%3Cpath d='M126.7 1.1Q121.7 2.1 117.1 4.0' stroke='%23fffaf0' stroke-opacity='0.47' stroke-width='0.76'/%3E%3Cpath d='M28.3 111.1Q32.7 123.5 33.9 136.6' stroke='%23fffaf0' stroke-opacity='0.72' stroke-width='0.44'/%3E%3Cpath d='M496.9 464.6Q492.9 468.9 487.2 470.7' stroke='%238a6b40' stroke-opacity='0.07' stroke-width='0.37'/%3E%3Cpath d='M133.1 138.4Q136.2 128.6 145.7 124.5' stroke='%238a6b40' stroke-opacity='0.07' stroke-width='0.37'/%3E%3Cpath d='M383.8 173.9Q373.8 180.1 363.1 184.9' stroke='%238a6b40' stroke-opacity='0.05' stroke-width='0.35'/%3E%3Cpath d='M419.1 250.3Q414.7 255.4 408.3 257.4' stroke='%238a6b40' stroke-opacity='0.05' stroke-width='0.40'/%3E%3Cpath d='M401.3 223.0Q392.6 224.2 386.1 230.0' stroke='%238a6b40' stroke-opacity='0.07' stroke-width='0.39'/%3E%3Cpath d='M428.2 187.8Q428.9 177.8 424.2 169.0' stroke='%238a6b40' stroke-opacity='0.05' stroke-width='0.41'/%3E%3Cellipse cx='35.4' cy='605.2' rx='0.74' ry='0.51' fill='%237a5c34' fill-opacity='0.07'/%3E%3Cellipse cx='490.5' cy='596.8' rx='0.59' ry='0.45' fill='%237a5c34' fill-opacity='0.06'/%3E%3Cellipse cx='62.3' cy='482.1' rx='0.63' ry='0.39' fill='%237a5c34' fill-opacity='0.08'/%3E%3C/g%3E%3C/defs%3E%3Cuse href='%23t' x='-640' y='-640'/%3E%3Cuse href='%23t' x='-640' y='0'/%3E%3Cuse href='%23t' x='-640' y='640'/%3E%3Cuse href='%23t' x='0' y='-640'/%3E%3Cuse href='%23t' x='0' y='0'/%3E%3Cuse href='%23t' x='0' y='640'/%3E%3Cuse href='%23t' x='640' y='-640'/%3E%3Cuse href='%23t' x='640' y='0'/%3E%3Cuse href='%23t' x='640' y='640'/%3E%3C/svg%3E");
+}
+
+/* ─────────── 1. 読み返しの余白 ─────────── */
+.read-mode-paper {
+  /* 縦書きでも padding は物理方向。上下に広く、左右は列がはみ出さない程度に。 */
+  padding: 44px 44px 52px 44px !important;
+  min-height: 58svh !important;
+  max-height: 78svh !important;
+}
+
+/* 列と列（縦書きでは行間）を広げる。 */
+.read-mode-body {
+  line-height: 2.5 !important;
+  letter-spacing: 0.09em !important;
+}
+
+.read-mode-title {
+  line-height: 2.25 !important;
+  letter-spacing: 0.14em !important;
+  text-wrap: balance;
+}
+
+/* 日付印 → 題 → 区切り → 本文 の縦の間合い（縦書きの主軸＝上下）。 */
+.read-mode-date {
+  margin-block-end: 28px !important;
+}
+
+.read-mode-divider {
+  margin-inline: 26px !important;
+  min-height: 24px !important;
+}
+
+/* 題が複数列になっても、本文が潰れて見えなくならないよう、縦の持ち分を確保する。 */
+.read-mode-title {
+  max-inline-size: 24svh;
+  margin-inline-end: 4px;
+}
+
+.read-mode-body {
+  min-inline-size: 10em;
+}
+
+/* ─────────── 2. 「元に戻す」バー ─────────── */
+.zanshin-undo-toast {
+  /* 入場アニメーション（softUp）が transform を使うので、中央寄せは margin:auto で行う。 */
+  left: 21px !important;
+  right: 21px !important;
+  margin-inline: auto;
+  width: min(calc(100% - 42px), 340px);
+  background: rgba(251, 248, 241, 0.94) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  padding-block: 4px !important;
+  box-shadow:
+    0 1px 2px rgba(92, 70, 42, 0.06),
+    0 10px 28px rgba(92, 70, 42, 0.12) !important;
+}
+
+/* ─────────── 3. 背景をさらに静かに ─────────── */
+body {
+  background-image:
+    radial-gradient(118% 92% at 17% 10%, rgba(251, 246, 234, 0.78) 0%, transparent 56%),
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.014), transparent 70%),
+    radial-gradient(70% 60% at 78% 20%, rgba(120, 92, 54, 0.012), transparent 72%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.014), transparent 75%),
+    linear-gradient(135deg, rgba(251, 246, 234, 0.4) 0%, rgba(243, 234, 215, 0.10) 48%, rgba(232, 220, 196, 0.14) 100%) !important;
+}
+
+body::before {
+  background-image:
+    radial-gradient(60% 45% at 22% 28%, rgba(120, 92, 54, 0.014), transparent 70%),
+    radial-gradient(80% 55% at 60% 80%, rgba(110, 84, 48, 0.014), transparent 75%) !important;
+}
+
+body::after {
+  opacity: 0.26 !important;
+}
+
+@media (max-width: 430px) {
+  body::after {
+    opacity: 0.22 !important;
+  }
+}
+
+.zanshin-fibers {
+  opacity: 0.7;
+  /* 暗がりは気配だけ。上から明るい光を落として、画面全体を清潔に見せる。 */
+  box-shadow:
+    inset 0 0 44px rgba(120, 88, 48, 0.02),
+    inset 0 0 8px rgba(120, 88, 48, 0.02);
+  background-image:
+    radial-gradient(120% 60% at 50% 0%, rgba(255, 251, 240, 0.4), transparent 62%),
+    var(--phase33-stain),
+    var(--phase32-fibers-page);
+  background-size: 100% 100%, 720px 720px, 640px 640px;
+}
+
+/* 画面左端の「間」の基準線は、傷に見えることがあるので、さらに淡く。 */
+.zanshin-ma-axis {
+  opacity: 0.22;
+}
