@@ -186,3 +186,44 @@ describe("戻り先と未操作の新規下書き", () => {
     expect(storedNotes(storage).find((n) => n.id === "b")?.title).toBe("");
   });
 });
+
+describe("検索の解除（R18）", () => {
+  it("検索を消した後は入力欄へフォーカスが戻り、そのまま次の語を書ける", () => {
+    vi.useFakeTimers();
+    const store: Record<string, string> = {
+      [STORAGE_KEY_FOR_TESTING]: JSON.stringify([makeNote({ id: "a", title: "朝の庭" })]),
+    };
+    Object.defineProperty(window, "localStorage", {
+      value: {
+        getItem: (k: string) => store[k] ?? null,
+        setItem: (k: string, v: string) => {
+          store[k] = v;
+        },
+        removeItem: (k: string) => {
+          delete store[k];
+        },
+        clear: () => {},
+      },
+      configurable: true,
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => root.render(<App />));
+
+    const input = container.querySelector<HTMLInputElement>(".zanshin-search-input")!;
+    setValue(input, "存在しない語");
+    expect(container.textContent).toContain(copy.noSearchResult);
+    expect(container.textContent).toContain(copy.noSearchResultHint);
+    expect(container.textContent).toContain(copy.searchResultCountLabel(0));
+
+    act(() => click(findButton(container, copy.clearSearch)));
+    expect(input.value).toBe("");
+    expect(document.activeElement).toBe(input);
+    expect(container.textContent).toContain(copy.notesCountLabel(1));
+
+    act(() => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+  });
+});

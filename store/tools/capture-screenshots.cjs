@@ -108,7 +108,7 @@ async function compose(browser, size, key, rawPath) {
     // [操作, 筆あと]。読み返しは筆、書く画面は手書き調、ほかは標準の明朝。
     const shots = {
       home: [async () => {}, "mincho"],
-      edit: [async (p) => { await p.getByText("朝の庭").first().click(); await p.waitForTimeout(700); await p.getByRole("button", { name: "言葉を直す" }).click(); }, "mincho"],
+      edit: [async (p) => { await p.getByText("朝の庭").first().click(); await p.waitForTimeout(700); await p.getByRole("button", { name: "編集する" }).click(); }, "mincho"],
       read: [async (p) => { await p.getByText("朝の庭").first().click(); }, "fude"],
       brush: [async (p) => { await p.getByRole("button", { name: /筆あと/ }).click(); }, "fude"],
       search: [async (p) => { await p.locator(".zanshin-search-input").fill("雨"); }, "mincho"],

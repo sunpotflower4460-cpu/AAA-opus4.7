@@ -294,9 +294,15 @@ html[data-brush="boku"] .writing-textarea {
 }
 
 /* 背景を持つ要素の中でだけ有効。ボタン内のカードは、押下時も濃淡が崩れないようにする。 */
+/* 見出し・抜粋は表示だけ原則2行（保存原文は短縮しない）。-webkit-box でないと行数制限が効かない。 */
 .zanshin-note-card__title,
 .zanshin-note-card__preview {
-  display: block;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 /* 入力中の文字は少しだけ柔らかく。 */
