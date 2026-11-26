@@ -113,8 +113,7 @@ export default function App() {
   const [reviewOpen, setReviewOpen] = useState(false);
   // 削除が保存先へまだ確定していない（確定する保存が成功するまで true）。
   const [deleteUnconfirmed, setDeleteUnconfirmed] = useState(false);
-  // 保護候補を整理した後に一覧を読み直すための番号（永続化しない）。
-  const [protectedRevision, setProtectedRevision] = useState(0);
+  const [reviewCandidates, setReviewCandidates] = useState<ReviewCandidate[]>([]);
   // 編集の世代。保存・予備保存の結果が「いま表示している版」に対するものか判定する（R35）。
   // 日時や件数ではなく、この画面が受け取った変更の通し番号。永続化しない。
   const editVersionRef = useRef(0);
@@ -1104,9 +1103,9 @@ export default function App() {
     (nativeBackupErrorVersion === null || nativeBackupErrorVersion === editVersion);
   const canRetryNativeBackup = showNativeBackupWarning && nativeBackupRetryAllowed;
 
-  // 比較画面に出す候補。開いた時点の内容を並べるだけで、保存内容は変えない。
-  const reviewCandidates = useMemo<ReviewCandidate[]>(() => {
-    if (!reviewOpen) return [];
+  // 比較画面に出す候補を、イベントの中で組み立てる（描画中に ref を読まない）。
+  // 開いた時点の内容を並べるだけで、保存内容は変えない。
+  const buildReviewCandidates = useCallback((): ReviewCandidate[] => {
     const list: ReviewCandidate[] = [];
     const screen =
       screenRecoveryCandidateRef.current ??
@@ -1116,10 +1115,11 @@ export default function App() {
     if (screen !== null) {
       list.push({ id: "screen", label: copy.recoveryCandidateScreen, notes: screen });
     }
-    const stored = localRecoveryCandidateRef.current ?? (() => {
+    let stored = localRecoveryCandidateRef.current;
+    if (stored === null) {
       const result = loadNotes();
-      return result.ok ? result.notes : null;
-    })();
+      stored = result.ok ? result.notes : null;
+    }
     if (stored !== null) {
       list.push({ id: "stored", label: copy.recoveryCandidateStored, notes: stored });
     }
@@ -1139,19 +1139,26 @@ export default function App() {
       });
     });
     return list;
-    // protectedRevision: 整理後に保護候補の一覧を読み直す。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviewOpen, protectedRevision, recoveryCandidateSource, screenRecoveryCandidateCount, nativeRecoveryAlternativeCount, recoveryCandidateCount]);
-
-  const discardProtectedCandidate = useCallback((candidate: ReviewCandidate) => {
-    if (!candidate.protectedSlot) return "failed" as const;
-    const result = discardProtectedRecoveryCandidate(
-      candidate.protectedSlot.slot as "recovery_primary" | "recovery_secondary",
-      candidate.protectedSlot.raw,
-    );
-    setProtectedRevision((revision) => revision + 1);
-    return result;
   }, []);
+
+  const openReview = useCallback(() => {
+    setReviewCandidates(buildReviewCandidates());
+    setReviewOpen(true);
+  }, [buildReviewCandidates]);
+
+  const discardProtectedCandidate = useCallback(
+    (candidate: ReviewCandidate) => {
+      if (!candidate.protectedSlot) return "failed" as const;
+      const result = discardProtectedRecoveryCandidate(
+        candidate.protectedSlot.slot as "recovery_primary" | "recovery_secondary",
+        candidate.protectedSlot.raw,
+      );
+      // 整理後の保護候補の一覧を読み直す。
+      setReviewCandidates(buildReviewCandidates());
+      return result;
+    },
+    [buildReviewCandidates],
+  );
 
   useEffect(() => {
     if (view.kind !== "list" && !currentNote) {
@@ -1291,7 +1298,7 @@ export default function App() {
               <div className="mt-gr-3 flex flex-wrap justify-end gap-gr-2">
                 <button
                   type="button"
-                  onClick={() => setReviewOpen(true)}
+                  onClick={openReview}
                   className="min-h-[44px] border border-gold/35 px-gr-3 py-gr-2 font-mincho text-[12px] text-sumi transition-soft hover:bg-washi active:scale-[0.98]"
                   style={{ borderRadius: "6px 10px 7px 9px" }}
                 >
