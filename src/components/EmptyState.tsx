@@ -19,6 +19,7 @@ export function EmptyState({ onCreate, searching = false }: Props) {
         <p className="font-mincho text-base tracking-mincho text-ink-muted jp-text-discipline">
           {copy.noSearchResult}
         </p>
+        <p className="text-[14px] leading-ample text-ink-muted">{copy.noSearchResultHint}</p>
       </div>
     );
   }

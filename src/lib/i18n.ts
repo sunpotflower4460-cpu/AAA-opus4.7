@@ -20,11 +20,14 @@ export const copy = {
   searchPlaceholderEn: "Find the words you left behind",
   clearSearch: "検索を消す",
   clearSearchEn: "Clear search",
-  newNote: "言葉を置く",
+  newNote: "メモを書く",
   newNoteEn: "Place new words",
   notesCount: "余韻",
-  notesCountEmpty: "まだ余韻はありません",
-  localOnly: "端末内に保存",
+  notesCountEmpty: "まだ残した言葉はありません",
+  notesCountLabel: (count: number) => `残した言葉 ${count}件`,
+  searchResultCountLabel: (count: number) =>
+    count === 0 ? "一致するメモは0件です" : `${count}件 見つかりました`,
+  localOnly: "この端末に保存",
   openReadMode: "読み返す",
   favorites: "大切な余韻",
   favoriteBadge: "金のしるし",
@@ -32,23 +35,26 @@ export const copy = {
   settledOn: "残した日",
 
   // 空状態
-  emptyTitleLines: ["まだ、言葉は", "置かれていません。"] as PoeticLines,
+  emptyTitleLines: ["ひとことでも、", "途中のままでも。"] as PoeticLines,
   emptySubtitleLines: [
-    "その日の余白に、",
-    "最初の言葉を残す。",
+    "入力した内容は、",
+    "この端末に自動保存されます。",
   ] as PoeticLines,
-  emptyAction: "最初の余白をひらく",
+  emptyAction: "メモを書く",
 
   // エディタ
-  back: "戻る",
+  // 戻る操作は、行き先で呼ぶ（D16）。既定は一覧。
+  back: "一覧へ",
+  backToSearch: "検索結果へ",
+  backToRead: "読み返しへ",
   backEn: "Back",
-  titlePlaceholder: "この余白に名をつける",
+  titlePlaceholder: "タイトル（任意）",
   titlePlaceholderEn: "Place a title",
   bodyPlaceholder: "いま残したい言葉を、ここに。",
   bodyPlaceholderEn: "Place the words you wish to leave, quietly.",
   untitled: "名のない余韻",
   untitledEn: "Untitled trace",
-  editNote: "言葉を直す",
+  editNote: "編集する",
   editNoteEn: "Edit",
 
   // 読み返し
@@ -153,31 +159,32 @@ export const copy = {
   storageRecoverySave: "この画面の内容で保存し直す",
 
   // お気に入り
-  favoriteOn: "大切な余韻として残す",
-  favoriteOff: "大切な余韻から外す",
+  favoriteOn: "先頭に留める",
+  favoriteOff: "先頭固定を解除",
   favoriteOnEn: "Keep as a treasured trace",
   favoriteOffEn: "Remove treasured trace",
 
   // 削除
-  deleteNote: "この余韻を手放す",
+  deleteNote: "このメモを削除",
   deleteNoteEn: "Let this trace go",
-  deleteConfirmTitle: "この余韻を手放しますか？",
+  deleteConfirmTitle: "このメモを削除しますか？",
   deleteConfirmTitleEn: "Let this trace go?",
   deleteConfirmBody:
-    "この言葉を静かに手放しますか？\n削除したあとも、しばらくは元に戻せます。",
+    "削除後10秒間は、直前の1件を元に戻せます。\nアプリを終了・再起動すると取り消せません。",
   deleteConfirmBodyEn:
     "Let this note go quietly?\nYou can undo for a short while after deleting it.",
-  cancel: "残しておく",
+  cancel: "キャンセル",
   cancelEn: "Keep it",
-  confirmDelete: "手放す",
+  confirmDelete: "削除する",
   confirmDeleteEn: "Release (delete)",
   undoDelete: "元に戻す",
   undoDeleteEn: "Undo",
-  undoDeleteMessage: "余韻を手放しました",
+  undoDeleteMessage: "メモを削除しました",
   undoDeleteMessageEn: "Trace released",
 
   // 検索結果
-  noSearchResult: "その言葉は、まだ見つかっていません。",
+  noSearchResult: "この言葉に一致するメモはありません",
+  noSearchResultHint: "別の言葉でも探せます",
   noSearchResultEn: "That trace has not appeared yet.",
 
   // Monetization

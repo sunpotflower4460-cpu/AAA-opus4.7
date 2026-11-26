@@ -28,9 +28,9 @@ const MAX_STAGGERED_ITEMS = 6;
 const STAGGER_STEP_MS = 40;
 
 function countLabel(count: number, isSearching: boolean): string {
-  if (isSearching) return count === 0 ? "0件" : `${count}件 見つかりました`;
+  if (isSearching) return copy.searchResultCountLabel(count);
   if (count === 0) return copy.notesCountEmpty;
-  return `${count}つの${copy.notesCount}`;
+  return copy.notesCountLabel(count);
 }
 
 export function NotesList({
@@ -101,7 +101,7 @@ export function NotesList({
                   animationDelay: `${Math.min(index, MAX_STAGGERED_ITEMS) * STAGGER_STEP_MS}ms`,
                 }}
               >
-                <NoteCard note={note} onOpen={onOpen} />
+                <NoteCard note={note} onOpen={onOpen} query={query} />
               </li>
             ))}
           </ul>
