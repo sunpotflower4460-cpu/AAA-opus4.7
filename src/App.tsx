@@ -42,6 +42,7 @@ import { NoteEditor } from "./components/NoteEditor";
 import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
 import { RecoveryReview, type ReviewCandidate } from "./components/RecoveryReview";
+import { AboutScreen } from "./components/AboutScreen";
 
 // editor の origin は戻り先と戻る操作の名前を決める（D06）。
 // new: 「メモを書く」から開いた新規 / read: 読み返しから「編集する」で開いた既存メモ
@@ -123,6 +124,7 @@ export default function App() {
   // 保護している復元候補の枠が満杯で、この画面の内容を保存できない状態（R34）。
   const [archiveFull, setArchiveFull] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   // 削除が保存先へまだ確定していない（確定する保存が成功するまで true）。
   const [deleteUnconfirmed, setDeleteUnconfirmed] = useState(false);
   const [reviewCandidates, setReviewCandidates] = useState<ReviewCandidate[]>([]);
@@ -1240,6 +1242,7 @@ export default function App() {
 
   return (
     <AppShell>
+      {aboutOpen && <AboutScreen onClose={() => setAboutOpen(false)} />}
       {reviewOpen && (
         <RecoveryReview
           candidates={reviewCandidates}
@@ -1530,6 +1533,7 @@ export default function App() {
             onCreate={createNote}
             onOpenPremium={openPremiumSheet}
             onRestorePurchase={handleRestore}
+            onOpenAbout={() => setAboutOpen(true)}
           />
           {PREMIUM_ENABLED && (
             <PremiumSheet

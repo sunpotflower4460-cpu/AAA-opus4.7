@@ -21,6 +21,8 @@ type Props = {
   onOpen: (id: string) => void;
   onCreate: () => void;
   onOpenPremium: () => void;
+  /** 「このアプリについて」を開く */
+  onOpenAbout?: () => void;
   onRestorePurchase: () => void | Promise<void>;
 };
 
@@ -43,6 +45,7 @@ export function NotesList({
   onCreate,
   onOpenPremium,
   onRestorePurchase,
+  onOpenAbout,
 }: Props) {
   const visible = useMemo(() => {
     return sortNotes(notes.filter((note) => matchesNote(note, query)));
@@ -66,7 +69,16 @@ export function NotesList({
 
   return (
     <div className="zanshin-home flex flex-1 flex-col gap-gr-5 pt-gr-3 animate-washiFade">
-      <header className="zanshin-home-header pt-gr-3">
+      <header className="zanshin-home-header relative pt-gr-3">
+        {onOpenAbout && (
+          <button
+            type="button"
+            onClick={onOpenAbout}
+            className="zanshin-about-entry absolute right-0 top-0 flex min-h-[44px] items-center rounded-full px-gr-3 font-mincho text-[12px] tracking-[0.08em] text-ink-muted transition-soft hover:text-sumi"
+          >
+            {copy.aboutOpen}
+          </button>
+        )}
         <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-3 text-center">
           <div className="zanshin-app-title-block flex flex-col items-center gap-gr-2">
             <ZanshinMark size={32} className="text-sumi/82" />

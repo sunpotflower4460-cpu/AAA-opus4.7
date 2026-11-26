@@ -83,6 +83,39 @@ export const copy = {
   retrySaveEn: "Try saving again",
   nativeBackupError:
     "最新の変更は保存済みです。端末内の予備保存を更新できませんでした。",
+  // このアプリについて（R04 / D15）
+  aboutOpen: "このアプリについて",
+  aboutTitle: "残心 / Zanshin",
+  aboutClose: "閉じる",
+  aboutLead:
+    "静かに書き、読み返すためのメモ帳です。現在のバージョンは無料で、広告はありません。アカウント登録も不要です。",
+  aboutStorageTitle: "保存について",
+  aboutStorageBody:
+    "メモは、この端末に自動で保存されます。クラウド同期はありません。端末内の予備保存は、同じ端末で内容を復旧するためのものです。別の端末や機種変更後に必ず戻せる仕組みではありません。",
+  aboutStorageCaution:
+    "保存できない案内が出た時は、最新の変更がまだ残せていないことがあります。表示された操作で確認し、必要に応じて題名や本文をコピーしてください。アプリの削除やデータの消去をすると、メモを取り戻せなくなる場合があります。",
+  aboutDeleteTitle: "削除について",
+  aboutDeleteBody:
+    "削除後10秒間は、直前の1件を「元に戻す」で取り消せます。アプリを終了・再起動した後は取り消せません。必要な文章かを確認してから削除してください。",
+  aboutPinTitle: "大切なメモを先頭へ",
+  aboutPinBody:
+    "「先頭に留める」を選ぶと、金のしるしが付き、一覧の先頭のグループに置かれます。固定したメモとそのほかのメモは、それぞれ変更の新しい順に並びます。しるしの付け外しも変更として扱います。",
+  aboutPrivacyTitle: "プライバシー",
+  aboutPrivacyPoints: [
+    "メモの内容は、この端末の中にだけ保存します。外部のサーバーへは送信しません。",
+    "広告・分析・追跡のための仕組みは使っていません。許可を求める画面（位置情報・連絡先・写真など）もありません。",
+    "アプリは端末内の機能（Capacitor）で動作します。アカウント情報や識別子は収集しません。",
+    "iOS の端末バックアップ（iCloud バックアップなど）をお使いの場合は、iOS の仕組みによりアプリのデータがそのバックアップに含まれることがあります。",
+  ] as readonly string[],
+  aboutSupportTitle: "お問い合わせ",
+  aboutSupportBody:
+    "不具合やご質問は、下の GitHub Issues からお知らせください。投稿は公開されます。メモの本文、個人情報、他の人の情報は書かず、困っている操作とアプリのバージョンをお知らせください。",
+  aboutSupportLink: "GitHub Issues を開く（外部ブラウザ）",
+  aboutSupportHint: "機種・iOS のバージョン・アプリのバージョン・起きた操作を添えていただくと、確認しやすくなります。",
+  aboutVersion: "バージョン",
+  aboutVersionUnknown: "取得できませんでした",
+  aboutVersionDev: "開発ビルド（Web）",
+  aboutLinkFailed: "リンクを開けませんでした。アプリへ戻って、もう一度お試しください。",
   // 復元候補の比較（R23）と保護候補の整理（R34）
   recoveryReviewOpen: "内容を確認する",
   recoveryReviewTitle: "保存内容を見比べる",

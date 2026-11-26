@@ -748,3 +748,46 @@ textarea.note-title-input {
 .zanshin-editor[data-keyboard="open"] .writing-textarea {
   margin-top: 8px !important;
 }
+
+/* ───────── 12. このアプリについて（R04）───────── */
+.zanshin-about-section {
+  margin-top: 21px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(92, 70, 42, 0.14);
+}
+
+.zanshin-about-section h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: var(--ink, #231c16);
+}
+
+.zanshin-about-section p,
+.zanshin-about-section li {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--text-body, #4a423a);
+}
+
+.zanshin-about-section ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.zanshin-about-section a {
+  display: inline-block;
+  min-height: 44px;
+  padding: 10px 0;
+  color: var(--ink, #231c16);
+  text-decoration: underline;
+  text-decoration-color: rgba(201, 166, 70, 0.7);
+  text-underline-offset: 4px;
+}
+
+/* 「このアプリについて」への入口は、作成操作より弱く、いつも同じ場所に。 */
+.zanshin-about-entry {
+  z-index: 2;
+}
