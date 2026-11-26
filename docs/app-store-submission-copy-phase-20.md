@@ -1,5 +1,7 @@
 # Phase 20 App Store Submission Copy
 
+> 提出用の草案です。日本語UIの初版を基準にし、最終ビルドの機能・文言・対応言語と一致させてから使用してください。英語の説明文があることは英語UIの実装を意味しません。品質改善後の画面仕様は [DESIGN.md](store-release-polish/DESIGN.md)、提出確認は [ACCEPTANCE.md](store-release-polish/ACCEPTANCE.md) を参照します。
+
 ## 初回リリース方針
 
 初回リリースでは、審査リスクと実装リスクを抑えるため、以下の状態で提出する。
@@ -10,7 +12,7 @@
 - App内課金なし
 - アカウントなし
 - クラウド同期なし
-- 外部SDKなし
+- 広告・分析・追跡のSDKなし。Capacitorと端末内機能のプラグインは使用する
 - トラッキングなし
 - メモは端末内保存のみ
 
@@ -155,7 +157,8 @@ This app is a simple local note-taking app with a calm Japanese-inspired design.
 No account login is required.
 No ads are included in the current release.
 No in-app purchases are included in the current release.
-No analytics, tracking, or third-party SDKs are included.
+No advertising or analytics SDKs are included, and the app does not perform tracking.
+The app uses Capacitor and official plugins for app lifecycle events and on-device file storage.
 Notes are stored locally on the device and are not sent to an external server.
 
 Main flows to review:

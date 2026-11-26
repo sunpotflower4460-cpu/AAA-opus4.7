@@ -4,6 +4,8 @@
 
 残心 / Zanshin を App Store 初回リリースへ進める前に、Web build、Capacitor iOS、実機、TestFlight の流れを再現可能な手順で確認する。
 
+全37項目の最新受入条件は [ACCEPTANCE.md](store-release-polish/ACCEPTANCE.md) に集約する。本書は操作の手順として併用し、確認コミット・環境・未実施事項を残す。署名、アップロード、審査提出、配信開始は、その時点の利用者の依頼に従う。
+
 Phase 33 以降、`ios/` は生成物ではなく **native source artifact** として Git 管理する。通常作業で `npx cap add ios` は実行しない。
 
 ---
@@ -11,12 +13,14 @@ Phase 33 以降、`ios/` は生成物ではなく **native source artifact** と
 ## 前提
 
 - Apple Developer Program に登録済み
-- Xcode がインストール済み
+- 提出時点のApple SDK要件を満たすXcodeがインストール済み
 - Apple ID で Xcode にログイン済み
 - CocoaPods が利用可能
 - iPhone 実機で確認できる
 - App Store Connect でアプリ登録できる
 - Node.js 22 以上
+
+2026-11-26確認時点では、2026-04-28以降のアップロードにXcode 26以降とiOS 26 SDK以降が必要。[Apple公式要件](https://developer.apple.com/news/upcoming-requirements/?id=04282026a) を提出直前に再確認し、使用Xcode/SDKを記録する。これはビルド用SDKの条件で、Deployment TargetをiOS 26へ変更する指示ではない。
 
 ---
 
@@ -33,16 +37,19 @@ Phase 33 以降、`ios/` は生成物ではなく **native source artifact** と
 - アカウントなし
 - クラウド同期なし
 - トラッキングなし
-- 外部SDKなし
+- 広告・分析・追跡SDKなし。Capacitorと端末内機能のプラグインは使用する
 - ローカル保存のみ
 
 ---
 
 ## 1. クリーンなローカル準備
 
+未コミットの作業を保護し、確認するリリース対象コミットを記録してから進める。以下はmainを対象にする場合の例。
+
 ```bash
+git status --short
 git checkout main
-git pull
+git pull --ff-only
 npm ci
 npm run check
 ```
@@ -57,6 +64,8 @@ npm run check
 - Production build
 
 Node.js 20 以前ではなく Node.js 22 以上を使用する。
+
+監査環境ではCloudflare Vite pluginの `uv_interface_addresses` エラーによりテストが起動できなかった。一時設定で既存169件が成立したことは標準の `npm run check` 成功とは別に記録している。設定を変更して検証した場合は、その差と標準環境の未確認範囲を残し、実機確認の代わりにしない。
 
 ---
 
@@ -232,7 +241,8 @@ This app is a simple local note-taking app.
 No account is required.
 No ads are included.
 No in-app purchases are included.
-No analytics, tracking, or third-party SDKs are included.
+No advertising or analytics SDKs are included, and the app does not perform tracking.
+The app uses Capacitor and official plugins for app lifecycle events and on-device file storage.
 Notes are stored locally on the device and are not sent to an external server.
 ```
 
@@ -251,4 +261,4 @@ Notes are stored locally on the device and are not sent to an external server.
 - [ ] スクリーンショットが揃っている
 - [ ] Privacy Policy / Support URL が用意できている
 
-これを満たしたら、初回審査へ進める。
+これを満たした状態を提出準備完了とする。審査への提出・配信は、利用者の依頼に従って実行し、準備完了と提出済みを区別する。

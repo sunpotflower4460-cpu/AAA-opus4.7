@@ -26,7 +26,15 @@ The goal is to make writing feel **quiet, spacious, and intentional**.
 
 ## Phase Rules
 
-### Phase 1 (Current)
+### Current state and store-polish work
+
+Phase 42 is implemented. The approved documentation handoff for the next store-polish work lives in `docs/store-release-polish/README.md`, with `DESIGN.md`, `IMPLEMENTATION.md`, and `ACCEPTANCE.md`. Read those documents before work on that scope, and compare the current branch with the audited baseline. A documented finding is not a completed fix.
+
+The Phase 1–3 rules below describe those historical stages; Phase 1 is no longer the current stage. Follow the user's actual task authorization. The store-polish documents do not grant deployment, store submission, or permission to bypass branch protection or data-safety checks.
+
+The initial release remains free, ad-free, and without Premium, login, or cloud sync. Keep the hard prohibitions below. Retain the existing journal, conflict checks, recovery candidates, and native durability protections.
+
+### Phase 1 (Historical)
 
 - ✅ Work on README and docs only
 - ✅ Establish design, concept, MVP scope, and development rules
@@ -93,9 +101,9 @@ If a feature makes the app:
 
 - Use the **golden ratio spacing scale**: `4 / 8 / 13 / 21 / 34 / 55 / 89`
 - Use only the **defined color palette** (Washi, Sumi, Gold, Indigo, Vermilion, etc.)
-- Use **serif fonts** for headings, **sans-serif** for body input
+- Use **serif fonts** for headings and the current 18px writing surface as the comparison baseline; use **sans-serif** for practical UI text. Confirm readability against the current store-polish design instead of reverting to older typography by default.
 - Animation must be **slow, soft, and intentional** — no bounces, no sparkles
-- Minimum transition duration: **200ms**. Prefer 300–400ms for screen transitions.
+- Decorative transitions should remain soft; 300–400ms is a reference for screen transitions. Input, save failures, and navigation must not wait for an animation. Respect reduced-motion preferences.
 
 ---
 
@@ -133,6 +141,9 @@ If you believe one of these is needed, **stop and ask the user first.** Do not i
 
 | File | Purpose |
 |------|---------|
+| `docs/store-release-polish/README.md` | Current store-polish scope and document entry point |
+| `docs/store-release-polish/IMPLEMENTATION.md` | W0–W5 implementation instructions |
+| `docs/store-release-polish/ACCEPTANCE.md` | R01–R37 status and verification evidence |
 | `docs/concept.md` | The philosophy and world of Zanshin |
 | `docs/design-system.md` | Colors, typography, spacing, motifs, animation |
 | `docs/mvp-spec.md` | What to build in MVP — and what NOT to build |
