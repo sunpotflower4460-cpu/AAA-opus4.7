@@ -1,5 +1,7 @@
 # iOS Wrapper Plan
 
+> これは導入前の計画記録です。2026-11-26現在、Capacitor 7、Git管理されたiosプロジェクト、端末内の予備保存は導入済みです。通常作業でiosを削除・再生成しません。現在の作業は [iOS / TestFlight Runbook](ios-testflight-runbook-phase-20.md) と [品質改善指示書](store-release-polish/README.md) を参照してください。下記のStoreKit/広告検討は初版には適用しません。
+
 ## 推奨
 Capacitor
 

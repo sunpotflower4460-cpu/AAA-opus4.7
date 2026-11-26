@@ -1,5 +1,7 @@
 # App Store Monetization Checklist
 
+> 初版では対象外（2026-11-26）。広告・Premium・StoreKitを有効化しない方針です。本書は将来それらを明示的に採用した時の参考資料であり、初版公開の必須作業ではありません。現在の入口は [App Store Submission Checklist](app-store-submission-checklist.md) と [品質改善の指示書](store-release-polish/README.md) です。
+
 ## IAP
 - [ ] Phase 7/8 はモック実装であることを最終確認
 - [ ] Paid Apps Agreement 確認

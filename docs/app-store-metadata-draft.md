@@ -1,5 +1,7 @@
 # App Store Metadata Draft
 
+> 初期の候補を残した草案です。2026-11-26現在、初版は日本語UI・無料・広告なし・Premiumなしです。提出用の文章は [Phase 20提出コピー](app-store-submission-copy-phase-20.md) と [品質改善設計](store-release-polish/DESIGN.md) を起点に、最終ビルドへ合わせて確定してください。英語の説明文は英語UIの実装を意味しません。
+
 ## アプリ名候補
 - 残心 - Zanshin Notes
 - Zanshin Notes
@@ -56,21 +58,23 @@ Zanshin brings a calm note-taking experience shaped by stillness and space.
 
 ## Review Notes候補
 This app is a simple note-taking app with a calm Japanese-inspired design.  
-The current Premium feature removes ads. If Premium is implemented for review, please use the in-app purchase flow and restore purchase button.  
 No account login is required.  
-Notes are stored locally on the device.
+No ads or in-app purchases are included in the current release.  
+No advertising or analytics SDKs are included, and the app does not perform tracking.  
+The app uses Capacitor and official plugins for app lifecycle events and on-device file storage.  
+Notes are stored locally on the device and are not sent to an external server.
 
-実装状況に合わせて必ず更新すること。StoreKit 未実装の状態では、mock Premium を本番機能として説明しない。
+最終ビルドの実装状況に合わせて更新します。初版ではPremium・購入・復元購入を利用者へ表示せず、本番機能として説明しません。
 
 ---
 
 ## スクリーンショット方針
-推奨構成:
-1. ホーム画面: 書いたあとにも、心が残る
-2. エディタ: 心の余白に言葉を置く
-3. 日付印: その日の余白に残る
-4. メモ一覧: 言葉と日付が紙片として残る
-5. Premium: 広告を外して、静かな余白を守る
+現在の構成案は [受入条件のスクリーンショット確認](store-release-polish/ACCEPTANCE.md#93-スクリーンショットの確認) に合わせます。最終実ビルドを使い、次の価値を示します。
+
+1. 読み返し: 日本語を縦書きで読む
+2. エディタ: 題名なしのひとことから、横書きで書く
+3. 検索・一覧: 残した言葉を見つける
+4. 保存: この端末へ保存する
 
 スクショ内コピー候補:
 - 書いたあとにも、心が残る。
@@ -81,4 +85,4 @@ Notes are stored locally on the device.
 注意:
 - 文字を詰めすぎない
 - スクショ内でも余白を守る
-- Premium を強く売り込みすぎない
+- 未実装の機能や、初版で無効のPremium・広告を紹介しない

@@ -3,6 +3,16 @@
 > 書いたあとにも、心がそこに残るメモ帳。  
 > A note-taking app where the heart lingers, even after the writing ends.
 
+## 現在の作業入口（2026-11-26）
+
+Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護が実装されています。現在は、ストア公開前の見やすさ・書きやすさ・保存の信頼性を仕上げる段階です。
+
+**[ストア公開前の設計・実装指示書](docs/store-release-polish/README.md)** に、2回のレビュー全37項目、採用する画面仕様、実装順、受入条件、監査原文を統合しています。実装担当へは [キックオフプロンプト](docs/store-release-polish/KICKOFF.md) を渡してください。
+
+文書を収録した段階で、37項目のアプリ改修・実機確認が完了したわけではありません。進捗は [ACCEPTANCE.md](docs/store-release-polish/ACCEPTANCE.md) で区別して記録します。
+
+初版の方針は **iPhone / portrait、日本語UI、無料・広告なし・Premiumなし・アカウントなし・クラウド同期なし** です。古いPhase文書は当時の記録として参照し、初版の実装に課金・広告を追加しないでください。
+
 ---
 
 ## アプリ概要
@@ -52,7 +62,7 @@
 | お気に入り | 大切な言葉を残す |
 | ローカル保存 | まずはデバイスの中に |
 | iPhone向けUI | 手のひらに収まる静けさ |
-| 多言語文言設計 | 日本語・英語を意識した言葉づかい |
+| 文言設計 | 日本語UI。英語の補助文はあるが、英語UI切替は未実装 |
 
 ---
 
@@ -61,13 +71,16 @@
 - **Vite** — 高速な開発環境
 - **React + TypeScript** — 型安全なコンポーネント設計
 - **Tailwind CSS** — 余白と間を制御しやすいユーティリティCSS
-- **localStorage / IndexedDB** — MVPはローカル保存から
-- **PWA対応** — ブラウザからでもiOS的体験を
-- **Capacitor（将来）** — ネイティブiOSアプリ化への備え
+- **localStorage** — 本体、復旧コピー、中断保存journal、競合保護
+- **Capacitor Filesystem** — iOS端末内の複数世代の予備保存。クラウドバックアップではない
+- **Web / WKWebView** — ブラウザ確認とネイティブ実機確認を分ける
+- **Capacitor 7** — iOSプロジェクトは導入済み・Git管理対象。通常作業で再生成しない
 
 ---
 
 ## 開発フェーズ
+
+以下は初期フェーズの履歴です。現在の作業は [W0〜W5の実装指示](docs/store-release-polish/IMPLEMENTATION.md) と [Phase 42報告](docs/phase-42-native-startup-divergence-report.md) を参照してください。
 
 | フェーズ | 内容 | Cloudflareデプロイ |
 |----------|------|-------------------|
@@ -109,8 +122,8 @@ Phase 18 の App Store 申請準備レポートは [docs/app-store-preparation-p
 Phase 3 でMVPを実装しました。以下のコマンドで動かせます。
 
 ```bash
-# 依存関係のインストール
-npm install
+# ロックファイルどおりの依存関係をインストール
+npm ci
 
 # 開発サーバー起動（http://localhost:5173）
 npm run dev
@@ -118,8 +131,8 @@ npm run dev
 # 本番ビルド（dist/ に出力）
 npm run build
 
-# lint スクリプトは現時点で未設定
-# 最終確認は npm run build を基準に行う
+# 型検査・lint・テスト・ビルド
+npm run check
 
 # ビルド成果物のプレビュー
 npm run preview
@@ -127,8 +140,10 @@ npm run preview
 
 要件：
 
-- Node.js 18 以上
+- Node.js 22 以上（package.json / CIの要件に合わせる）
 - npm 9 以上
+
+監査環境ではCloudflare Vite pluginの `uv_interface_addresses` エラーにより標準のテスト起動ができませんでした。一時設定でのテスト成功と、元の `npm run check` 成功は別に記録します。詳細は [検証範囲](docs/store-release-polish/README.md#進捗と証拠) を参照してください。
 
 ---
 
@@ -145,37 +160,36 @@ npm run preview
 | お気に入り切り替え | ✅ |
 | localStorage 永続化 | ✅ |
 | iPhone 向けレスポンシブ UI（safe-area 対応） | ✅ |
-| 日本語/英語を意識した文言設計 | ✅ |
+| 日本語UI・英語補助文の定義 | ✅（英語UI切替は未実装） |
 
 ---
 
-## Monetization / Premium（Phase 7）
+## 広告・Premium（初版は無効）
 
 - Phase 7 では広告 SDK や StoreKit の本番実装ではなく、広告位置確認用の `AdSlot` と購入状態のモック層を追加しています。
-- 現在の Premium 切り替えは `localStorage` ベースの仮実装です。**App Store 申請前に StoreKit と実際の restore 処理へ差し替えが必要です。**
-- Phase 8 の監査方針として、広告はエディタや保存直後に出さず、空状態の中心も壊さない配置を維持します。
-- 詳細は [docs/monetization-phase-7.md](docs/monetization-phase-7.md) と [docs/app-store-monetization-checklist.md](docs/app-store-monetization-checklist.md) を参照してください。
+- 現在は [featureFlags.ts](src/lib/featureFlags.ts) の `APP_STORE_INITIAL_RELEASE=true`、`ADS_ENABLED=false`、`PREMIUM_ENABLED=false` により、初版の広告・課金導線を無効化しています。
+- **初版公開のためにStoreKitや広告SDKを導入する必要はありません。** 公開ビルドにモックの購入・復元操作が出ないことを確認します。
+- [Phase 7の設計](docs/monetization-phase-7.md) と [monetization checklist](docs/app-store-monetization-checklist.md) は、将来その機能を明示的に採用した時の参考資料です。
 
 ---
 
-## Cloudflare Pages デプロイ方針
+## Web公開の扱い
 
-Phase 3 のMVP完成後、Phase 4 で最終調整を行いました。  
-Cloudflare Pages 接続済みであれば、現状の `main` ブランチからそのままデプロイ可能です。  
-**Phase 3 の途中ではデプロイしません。**
+現在の開発設定はCloudflare Vite pluginを使い、`npm run deploy` は `wrangler deploy` を呼びます。以下のPages接続手順は過去の案内です。現実の接続先や公開URLを確認せず、新しい公開先を作ったり既存サイトを上書きしたりしないでください。
 
-推奨設定：
+ストア品質改善の実装作業にWeb公開は含めません。公開を依頼された時は、その時点の `vite.config.ts` / `wrangler.jsonc` と指定された公開先に合わせて進めます。
+
+過去のPages用設定例：
 
 | 項目 | 値 |
 |------|----|
 | Framework preset | None / Vite |
 | Build command | `npm run build` |
 | Build output directory | `dist` |
-| Node.js version | 18 以上 |
+| Node.js version | 22 以上 |
 | 環境変数 | 不要 |
 
-ビルド成果物は静的ファイルのみで、サーバーサイドや外部APIには依存しません。  
-データはユーザーの端末の `localStorage`（キー: `zanshin.notes.v1`）に保存されます。
+メモ本体は端末の `localStorage`（キー: `zanshin.notes.v1`）に保存され、iOSでは端末内ファイルの予備保存も使用します。Web公開先の運用と、アプリ内のメモ保存を混同しないでください。
 
 ### Cloudflare Pages の手動接続手順（未接続の場合）
 
@@ -191,7 +205,7 @@ Cloudflare Pages 接続済みであれば、現状の `main` ブランチから�
 
 - この作業時点では **Cloudflare Pages 未接続前提** として、接続手順と設定のみを維持しています。
 - 公開時は `npm run build` 成功後に Pages を実行してください。
-- 接続済み環境では、発行された `*.pages.dev` URL でトップ表示・メモ作成・保存復元・検索・お気に入り・Premium mock を確認してください。
+- Phase 17当時はPremium mockも確認対象でした。初版の現在の確認では、広告・Premium・モック購入が利用者へ表示されないことを確認します。
 
 ---
 
@@ -202,13 +216,14 @@ Cloudflare Pages 接続済みであれば、現状の `main` ブランチから�
 
 ## （旧）App Store申請前 TODO（初回リリースでは広告・課金は対象外）
 
-- StoreKit の本番課金実装へ差し替える
-- Restore Purchase を実課金フローへ接続する
-- 広告SDKを選定し、一覧下部のみの静かな配置を維持する
-- Privacy / ATT / 課金まわりの申請情報を整理する
-- 実機で iPhone 幅（375 / 390 / 430）を再確認する
+- [全37項目の受入条件](docs/store-release-polish/ACCEPTANCE.md) に沿い、対応状況と証拠を記録する
+- 保存・復旧・縦書き・キーボード・文字拡大・VoiceOverを、最終ビルドで確認する
+- アプリ内のプライバシー・サポート導線、実在する公開URLと問い合わせ窓口を揃える
+- 日本語UIと対応言語の申告、Capacitor使用とSDK説明を一致させる
+- 広告・Premium・モック課金が初版に表示されないことを確認する
+- 使用Xcode/SDK、Archive、TestFlightの実機結果を記録する
 
-Phase 18 では、提出前に必要なメタデータ、Privacy、StoreKit、iOS ラッパー方針を docs として整理しました。mock Premium は引き続き仮実装であり、本番課金ではありません。
+提出の入口は [App Store Submission Checklist](docs/app-store-submission-checklist.md) です。署名、アップロード、審査提出、配信開始は、その時点の利用者の依頼に従います。
 
 ---
 
@@ -216,6 +231,8 @@ Phase 18 では、提出前に必要なメタデータ、Privacy、StoreKit、iO
 
 | ファイル | 内容 |
 |----------|------|
+| [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | 現在の設計・実装指示・R01〜R37の受入条件への入口 |
+| [docs/store-release-polish/KICKOFF.md](docs/store-release-polish/KICKOFF.md) | 実装担当へ渡すキックオフプロンプト |
 | [docs/concept.md](docs/concept.md) | 「残心」の思想と世界観 |
 | [docs/design-system.md](docs/design-system.md) | UI/UXとデザインシステム |
 | [docs/mvp-spec.md](docs/mvp-spec.md) | MVP仕様 |
