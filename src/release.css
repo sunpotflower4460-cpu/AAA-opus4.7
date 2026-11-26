@@ -683,3 +683,14 @@ body::after {
   gap: 8px 13px;
   margin-top: 10px;
 }
+
+/* ───────── 8. ホーム（R14）─────────
+ * 作成操作は「メモを書く」と読めることを優先し、プラス記号だけにしない（どの幅でも文字を出す）。
+ */
+.zanshin-compose-label {
+  display: inline !important;
+}
+
+.zanshin-compose-button {
+  padding-inline: 18px 20px;
+}

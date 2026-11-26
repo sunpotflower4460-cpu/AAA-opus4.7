@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Note } from "../types/note";
 import type { MonetizationState } from "../types/monetization";
 import { copy } from "../lib/i18n";
@@ -26,6 +26,7 @@ type Props = {
 
 const MAX_STAGGERED_ITEMS = 6;
 const STAGGER_STEP_MS = 40;
+const RESULT_ANNOUNCE_DELAY_MS = 600;
 
 function countLabel(count: number, isSearching: boolean): string {
   if (isSearching) return copy.searchResultCountLabel(count);
@@ -49,6 +50,16 @@ export function NotesList({
 
   const isEmpty = visible.length === 0;
   const isSearching = normalizeSearchQuery(query).length > 0;
+  // 通常状態（メモが1件以上、検索していない）では、導入の短冊を毎回先頭に置かず、メモへ早く届く（D01）。
+  const showIntro = notes.length === 0;
+
+  // 検索結果の件数は、入力が一段落してからまとめて読み上げる（IME 途中や一文字ごとに割り込まない）。
+  const resultLabel = isSearching ? countLabel(visible.length, true) : "";
+  const [announcedResult, setAnnouncedResult] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setAnnouncedResult(resultLabel), RESULT_ANNOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [resultLabel]);
   const showAdSlot = ADS_ENABLED && !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
     PREMIUM_ENABLED && !isSearching && (visible.length > 1 || monetization.isPremium);
@@ -66,12 +77,15 @@ export function NotesList({
               {copy.appSubtitle.toUpperCase()}
             </p>
           </div>
-          <ZanshinPaperSlip lines={copy.taglineLines} />
+          {showIntro && <ZanshinPaperSlip lines={copy.taglineLines} />}
         </div>
       </header>
 
       <div className="mx-auto w-full max-w-[430px] pt-gr-2">
         <SearchBar value={query} onChange={onQueryChange} />
+        <span className="sr-only" role="status" aria-live="polite">
+          {announcedResult}
+        </span>
         <div className="zanshin-list-status mt-gr-3 flex items-center justify-between gap-gr-3 px-gr-1">
           <p className="font-mincho text-[12px] tracking-[0.12em] text-ink-muted/72 jp-text-discipline">
             {countLabel(visible.length, isSearching)}
@@ -90,7 +104,7 @@ export function NotesList({
         aria-label="メモ一覧"
       >
         {isEmpty ? (
-          <EmptyState onCreate={onCreate} searching={isSearching} />
+          <EmptyState searching={isSearching} />
         ) : (
           <ul className="flex flex-col gap-gr-3">
             {visible.map((note, index) => (

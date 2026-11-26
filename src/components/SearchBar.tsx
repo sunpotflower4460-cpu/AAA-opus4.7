@@ -60,7 +60,11 @@ export function SearchBar({ value, onChange }: Props) {
       {hasValue && (
         <button
           type="button"
-          onClick={() => onChange("")}
+          onClick={() => {
+            onChange("");
+            // 解除後は入力欄へ戻し、続けて次の語を書けるようにする。
+            inputRef.current?.focus();
+          }}
           aria-label={copy.clearSearch}
           className="zanshin-clear-button"
         >

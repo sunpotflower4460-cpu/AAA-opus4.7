@@ -3,12 +3,11 @@ import { ZanshinMark } from "./ZanshinMark";
 import { PoeticLines } from "./PoeticLines";
 
 type Props = {
-  onCreate: () => void;
   /** 検索結果としての空状態か */
   searching?: boolean;
 };
 
-export function EmptyState({ onCreate, searching = false }: Props) {
+export function EmptyState({ searching = false }: Props) {
   if (searching) {
     return (
       <div className="flex flex-col items-center gap-gr-3 py-gr-7 text-center animate-fadeIn">
@@ -39,20 +38,7 @@ export function EmptyState({ onCreate, searching = false }: Props) {
           className="max-w-[14em] font-mincho text-[13px] leading-[1.9] tracking-[0.02em] text-ink-muted jp-poetic-copy"
         />
       </div>
-      <button
-        type="button"
-        onClick={onCreate}
-        aria-label={copy.emptyAction}
-        className="
-          zanshin-empty-action mt-gr-2 min-h-[44px] rounded-full border border-[color:var(--color-line)]
-          bg-paper/82 px-gr-5 py-[10px] font-mincho text-[14px] tracking-mincho text-sumi
-          shadow-paper-soft transition-soft
-          hover:bg-paper hover:shadow-paper hover:-translate-y-[1px]
-          active:translate-y-0 active:scale-[0.99]
-        "
-      >
-        {copy.emptyAction}
-      </button>
+      {/* 作成操作は、常設の「メモを書く」に一つだけ置く。空状態に別の同名ボタンを重ねない（D01）。 */}
     </div>
   );
 }
