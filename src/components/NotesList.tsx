@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { Note } from "../types/note";
 import type { MonetizationState } from "../types/monetization";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
+import { useI18n } from "../i18n/useI18n";
+import { makeNoteDateFormatter } from "../lib/zanshinDate";
 import { matchesNote, normalizeSearchQuery, sortNotes } from "../lib/notesLogic";
 import { ADS_ENABLED, PREMIUM_ENABLED } from "../lib/featureFlags";
 import { BrushPicker } from "./BrushPicker";
@@ -22,19 +24,13 @@ type Props = {
   onCreate: () => void;
   onOpenPremium: () => void;
   /** 「このアプリについて」を開く */
-  onOpenAbout?: () => void;
+  onOpenAbout?: (trigger: HTMLButtonElement) => void;
   onRestorePurchase: () => void | Promise<void>;
 };
 
 const MAX_STAGGERED_ITEMS = 6;
 const STAGGER_STEP_MS = 40;
 const RESULT_ANNOUNCE_DELAY_MS = 600;
-
-function countLabel(count: number, isSearching: boolean): string {
-  if (isSearching) return copy.searchResultCountLabel(count);
-  if (count === 0) return copy.notesCountEmpty;
-  return copy.notesCountLabel(count);
-}
 
 export function NotesList({
   notes,
@@ -47,6 +43,8 @@ export function NotesList({
   onRestorePurchase,
   onOpenAbout,
 }: Props) {
+  const { copy, locale, preferences } = useI18n();
+  const formatCreationDate = makeNoteDateFormatter({ formatLocale: locale });
   const visible = useMemo(() => {
     return sortNotes(notes.filter((note) => matchesNote(note, query)));
   }, [notes, query]);
@@ -57,12 +55,22 @@ export function NotesList({
   const showIntro = notes.length === 0;
 
   // 検索結果の件数は、入力が一段落してからまとめて読み上げる（IME 途中や一文字ごとに割り込まない）。
-  const resultLabel = isSearching ? countLabel(visible.length, true) : "";
-  const [announcedResult, setAnnouncedResult] = useState("");
+  const noteCount = visible.length;
+  const liveResult = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const timer = window.setTimeout(() => setAnnouncedResult(resultLabel), RESULT_ANNOUNCE_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [resultLabel]);
+    const region = liveResult.current;
+    if (!region || !isSearching) return;
+    const timer = window.setTimeout(() => {
+      region.lang = preferences.getSnapshot().locale;
+      const current = messages[preferences.getSnapshot().locale];
+      region.textContent = current.searchResultCountLabel({ noteCount });
+    }, RESULT_ANNOUNCE_DELAY_MS);
+    return () => {
+      window.clearTimeout(timer);
+      region.textContent = "";
+    };
+  }, [isSearching, query, noteCount, preferences]);
+
   const showAdSlot = ADS_ENABLED && !isSearching && !isEmpty && visible.length > 1;
   const showPremiumCard =
     PREMIUM_ENABLED && !isSearching && (visible.length > 1 || monetization.isPremium);
@@ -73,10 +81,11 @@ export function NotesList({
         {onOpenAbout && (
           <button
             type="button"
-            onClick={onOpenAbout}
-            className="zanshin-about-entry absolute right-0 top-0 flex min-h-[44px] items-center rounded-full px-gr-3 font-mincho text-[12px] tracking-[0.08em] text-ink-muted transition-soft hover:text-sumi"
+            onClick={(event) => onOpenAbout(event.currentTarget)}
+            className="zanshin-about-entry flex min-h-[44px] flex-wrap items-center justify-end gap-gr-2 rounded-full px-gr-3 font-mincho text-[12px] tracking-[0.08em] text-ink-muted transition-soft hover:text-sumi"
           >
-            {copy.aboutOpen}
+            <span>{copy.aboutOpen}</span>
+            {locale === "ja" && <span lang="en">Language</span>}
           </button>
         )}
         <div className="mx-auto flex w-full max-w-[390px] flex-col items-center gap-gr-3 text-center">
@@ -85,9 +94,9 @@ export function NotesList({
             <h1 className="font-mincho text-[26px] leading-none tracking-[0.2em] text-sumi">
               {copy.appName}
             </h1>
-            <p className="english-subcopy text-[9px] tracking-[0.24em] opacity-80">
-              {copy.appSubtitle.toUpperCase()}
-            </p>
+            {locale === "ja" && (
+              <p lang="en" className="english-subcopy text-[9px] tracking-[0.24em] opacity-80">Zanshin</p>
+            )}
           </div>
           {showIntro && <ZanshinPaperSlip lines={copy.taglineLines} />}
         </div>
@@ -95,14 +104,12 @@ export function NotesList({
 
       <div className="mx-auto w-full max-w-[430px] pt-gr-2">
         <SearchBar value={query} onChange={onQueryChange} />
-        <span className="sr-only" role="status" aria-live="polite">
-          {announcedResult}
-        </span>
-        <div className="zanshin-list-status mt-gr-3 flex items-center justify-between gap-gr-3 px-gr-1">
+        <span className="sr-only" role="status" ref={liveResult} />
+        <div className="zanshin-list-status mt-gr-3 flex flex-wrap items-center justify-between gap-gr-3 px-gr-1">
           <p className="font-mincho text-[12px] tracking-[0.12em] text-ink-muted/72 jp-text-discipline">
-            {countLabel(visible.length, isSearching)}
+            {isSearching ? copy.searchResultCountLabel({ noteCount }) : copy.notesCountLabel({ noteCount })}
           </p>
-          <div className="flex items-center gap-gr-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-gr-2">
             <BrushPicker variant="list" className="-my-gr-2" />
             <p className="text-[10px] tracking-[0.14em] text-ink-muted/80">
               {copy.localOnly}
@@ -113,7 +120,7 @@ export function NotesList({
 
       <section
         className="mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-gr-3 pb-[max(env(safe-area-inset-bottom),89px)]"
-        aria-label="メモ一覧"
+        aria-label={copy.notesList}
       >
         {isEmpty ? (
           <EmptyState searching={isSearching} />
@@ -127,7 +134,7 @@ export function NotesList({
                   animationDelay: `${Math.min(index, MAX_STAGGERED_ITEMS) * STAGGER_STEP_MS}ms`,
                 }}
               >
-                <NoteCard note={note} onOpen={onOpen} query={query} />
+                <NoteCard note={note} onOpen={onOpen} query={query} formatCreationDate={formatCreationDate} />
               </li>
             ))}
           </ul>

@@ -1,0 +1,47 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  color: #1f1b18;
+  background: #f9f7f4;
+  line-height: 1.75;
+}
+
+body {
+  max-width: 40rem;
+  margin: auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+  align-items: center;
+}
+
+a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: inherit;
+  text-decoration-color: #8c682e;
+  text-underline-offset: 0.25em;
+  overflow-wrap: anywhere;
+}
+
+h1, h2 {
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+  line-height: 1.35;
+}
+
+h2 {
+  margin-top: 2rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #d5c9b7;
+}
+
+footer {
+  margin-top: 2rem;
+  font-size: 0.875rem;
+  color: #62594e;
+}

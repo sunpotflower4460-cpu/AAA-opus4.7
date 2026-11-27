@@ -1,5 +1,5 @@
 import { useId, useRef } from "react";
-import { copy } from "../lib/i18n";
+import { useI18n } from "../i18n/useI18n";
 
 type Props = {
   value: string;
@@ -7,9 +7,10 @@ type Props = {
 };
 
 export function SearchBar({ value, onChange }: Props) {
+  const { copy } = useI18n();
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const hasValue = value.trim().length > 0;
+  const hasValue = value.length > 0;
 
   return (
     <div
@@ -52,6 +53,9 @@ export function SearchBar({ value, onChange }: Props) {
         inputMode="search"
         autoComplete="off"
         spellCheck={false}
+        autoCorrect="off"
+        autoCapitalize="none"
+        dir="auto"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={copy.searchPlaceholder}

@@ -1,4 +1,4 @@
-import { copy } from "./i18n";
+import type { Messages } from "./i18n";
 import type { SaveResult } from "./storage";
 
 /**
@@ -6,6 +6,7 @@ import type { SaveResult } from "./storage";
  * それ以外の保存失敗は、表示場所に依存しない共通メッセージへ正規化する。
  */
 export function getSaveFailureMessage(
+  copy: Messages,
   result: SaveResult | null | undefined,
   options: { deletePending?: boolean } = {},
 ): string | null {

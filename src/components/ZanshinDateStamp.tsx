@@ -1,4 +1,5 @@
-import { getZanshinStamp } from "../lib/zanshinDate";
+import { useI18n } from "../i18n/useI18n";
+import { formatZanshinDate, getTimeOfDay, makeNoteDateFormatter } from "../lib/zanshinDate";
 
 type ZanshinDateStampProps = {
   isoString: string;
@@ -6,8 +7,7 @@ type ZanshinDateStampProps = {
   compact?: boolean;
   /** 保存後、紙に定着する短い余韻を出す */
   isSettling?: boolean;
-  /** aria-label に追加する説明文（任意） */
-  ariaLabel?: string;
+  decorative?: boolean;
 };
 
 /**
@@ -18,12 +18,15 @@ export function ZanshinDateStamp({
   isoString,
   compact = false,
   isSettling = false,
-  ariaLabel,
+  decorative = false,
 }: ZanshinDateStampProps) {
-  const { label, date } = getZanshinStamp(isoString);
+  const { copy, locale } = useI18n();
+  const date = formatZanshinDate(isoString);
+  const timeOfDay = getTimeOfDay(isoString);
 
   // 壊れた日時から「夜の余白」だけが残るような誤表示をしない。
-  if (!label || !date) return null;
+  if (!timeOfDay || !date) return null;
+  const displayDate = decorative ? null : makeNoteDateFormatter({ formatLocale: locale })(isoString);
 
   return (
     <div
@@ -34,12 +37,14 @@ export function ZanshinDateStamp({
       ]
         .filter(Boolean)
         .join(" ")}
-      aria-label={ariaLabel || `${label} ${date}`}
+      aria-hidden={decorative || undefined}
     >
       <span className="zanshin-moon-seal" aria-hidden="true" />
       <span className="zanshin-date-stamp__text">
-        <span className="zanshin-yohaku-label">{label}</span>
-        <span className="zanshin-date">{date}</span>
+        <span className="zanshin-yohaku-label">{copy.timeOfDay[timeOfDay]}</span>
+        <time className="zanshin-date" dateTime={isoString} aria-label={displayDate ? copy.creationDate({ displayDate }) : undefined}>
+          {date}
+        </time>
       </span>
     </div>
   );

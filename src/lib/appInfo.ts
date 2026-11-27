@@ -16,8 +16,8 @@ export type AppVersionInfo = { version: string; build: string | null };
  * 問い合わせに添えるバージョン。ネイティブでは実際のアプリ情報、Web では「開発ビルド」。
  * 取得できなかった時は推測した番号を出さず、取得できなかったと伝える。
  */
-export async function getAppVersionInfo(): Promise<AppVersionInfo | null> {
-  if (!Capacitor.isNativePlatform()) return null;
+export async function getAppVersionInfo(): Promise<AppVersionInfo | "web" | null> {
+  if (!Capacitor.isNativePlatform()) return "web";
   try {
     const info = await CapacitorApp.getInfo();
     return { version: info.version, build: info.build ?? null };

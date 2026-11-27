@@ -6,7 +6,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../types/note";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import {
   BACKUP_KEY_FOR_TESTING,
   RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING,
@@ -27,6 +27,8 @@ vi.mock("../lib/nativeDurableSnapshot", () => ({
 }));
 
 import App from "../App";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -141,9 +143,9 @@ describe("復元候補の比較と、保護候補満杯からの解決", () => {
     // 候補ごとの呼び名・件数（0件も明示）・変更日。
     expect(container.textContent).toContain(copy.recoveryCandidateStored);
     expect(container.textContent).toContain(copy.recoveryCandidateNative);
-    expect(container.textContent).toContain(copy.recoveryReviewCount(2));
+    expect(container.textContent).toContain(copy.recoveryReviewCount({ noteCount: 2 }));
     expect(container.textContent).toContain(copy.recoveryReviewEmpty);
-    expect(container.textContent).toContain("2026.08.29");
+    expect(container.textContent).toContain("2026年8月29日");
 
     // 題名なしのメモは本文の最初の非空行で識別でき、全文を読める。
     expect(container.textContent).toContain("題名なしの一行目");
@@ -154,7 +156,7 @@ describe("復元候補の比較と、保護候補満杯からの解決", () => {
 
     // 候補を切り替えて読んでも、保存層・nativeには何も書かない。
     act(() => click(findButton(container, copy.recoveryCandidateNative)));
-    act(() => click(findButton(container, copy.recoveryReviewClose)));
+    act(() => click(findButton(container, copy.close)));
     expect(JSON.stringify(storage._store)).toBe(before);
     expect(durable.persist).not.toHaveBeenCalled();
     expect(container.textContent).toContain(copy.storageConflictTitle);
@@ -196,16 +198,16 @@ describe("復元候補の比較と、保護候補満杯からの解決", () => {
 
       act(() => click(findButton(container, copy.recoveryReviewOpen)));
       expect(container.textContent).toContain(copy.recoveryArchiveFullGuide);
-      act(() => click(findButton(container, copy.recoveryCandidateProtected(1))));
+      act(() => click(findButton(container, copy.recoveryCandidateProtected({ candidateIndex: 1 }))));
       expect(container.textContent).toContain("退避1の題名");
 
       // 候補2を確認し、整理を選ぶ。確認ダイアログで対象と取り消せないことを示す。
-      act(() => click(findButton(container, copy.recoveryCandidateProtected(2))));
+      act(() => click(findButton(container, copy.recoveryCandidateProtected({ candidateIndex: 2 }))));
       expect(container.textContent).toContain("退避2の題名");
       act(() => click(findButton(container, copy.recoveryDiscardAction)));
-      expect(container.textContent).toContain(copy.recoveryDiscardConfirmBody(1));
+      expect(container.textContent).toContain(copy.recoveryDiscardConfirmBody({ noteCount: 1 }));
       // キャンセルでは何も消えない。
-      act(() => click(findButton(container, copy.recoveryDiscardCancel)));
+      act(() => click(findButton(container, copy.cancel)));
       expect(storage._store[RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING]).toBe(JSON.stringify(archive2));
 
       act(() => click(findButton(container, copy.recoveryDiscardAction)));
@@ -216,7 +218,7 @@ describe("復元候補の比較と、保護候補満杯からの解決", () => {
       expect(storage._store[RECOVERY_CONFLICT_BACKUP_KEY_FOR_TESTING]).toBe(JSON.stringify(archive1));
 
       // 閉じて、この画面の内容を保存し直せる。
-      act(() => click(findButton(container, copy.recoveryReviewClose)));
+      act(() => click(findButton(container, copy.close)));
       act(() => click(findButton(container, copy.storageRecoverySave)));
       expect(container.querySelector('[data-testid="recovery-archive-full"]')).toBeNull();
       expect(container.textContent).not.toContain(copy.storageRecoveryTitle);
@@ -239,7 +241,7 @@ describe("復元候補の比較と、保護候補満杯からの解決", () => {
       editFirstNoteBody(container, "この画面で書き足した本文");
       act(() => click(findButton(container, copy.storageRecoverySave)));
       act(() => click(findButton(container, copy.recoveryReviewOpen)));
-      act(() => click(findButton(container, copy.recoveryCandidateProtected(2))));
+      act(() => click(findButton(container, copy.recoveryCandidateProtected({ candidateIndex: 2 }))));
       act(() => click(findButton(container, copy.recoveryDiscardAction)));
 
       // 確認中に別の画面などが同じ枠の内容を変えた。

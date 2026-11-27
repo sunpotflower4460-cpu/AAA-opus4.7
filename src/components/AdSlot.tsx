@@ -1,5 +1,5 @@
 import { shouldShowAds } from "../lib/monetization";
-import { copy } from "../lib/i18n";
+import { copy } from "../lib/monetizationCopy";
 import type { MonetizationState } from "../types/monetization";
 
 type Props = {

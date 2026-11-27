@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../types/note";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import { STORAGE_KEY_FOR_TESTING } from "../lib/storage";
 
 const lifecycle = vi.hoisted(() => ({
@@ -18,6 +18,8 @@ vi.mock("../lib/nativeAppLifecycle", () => ({
 }));
 
 import App from "../App";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

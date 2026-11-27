@@ -19,8 +19,8 @@ export function ZanshinMark({
       width={size}
       height={size}
       viewBox="0 0 64 64"
-      role="img"
-      aria-label="残心"
+      aria-hidden="true"
+      focusable="false"
       className={[
         "zanshin-logo-mark block",
         breathing ? "animate-breath" : "",

@@ -1,8 +1,8 @@
+import { useId } from "react";
 import type { Note } from "../types/note";
-import { copy } from "../lib/i18n";
+import { useI18n } from "../i18n/useI18n";
 import { cardImperfection } from "../lib/inkJitter";
 import { getCardDisplay } from "../lib/noteDisplay";
-import { getZanshinStamp } from "../lib/zanshinDate";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
 type Props = {
@@ -10,35 +10,26 @@ type Props = {
   onOpen: (id: string) => void;
   /** 検索中の語。一致した理由を抜粋で示すために使う（保存内容は変えない） */
   query?: string;
+  formatCreationDate: (iso: string) => string | null;
 };
 
-/** 「2026.11.26」→「2026年11月26日」。読み上げで意味が伝わる形にする。 */
-function spokenDate(createdAt: string): string | null {
-  const { date } = getZanshinStamp(createdAt);
-  const match = /^(\d{4})\.(\d{2})\.(\d{2})$/.exec(date ?? "");
-  if (!match) return null;
-  return `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日`;
-}
-
-export function NoteCard({ note, onOpen, query = "" }: Props) {
-  const { heading, excerpt } = getCardDisplay(note, query);
+export function NoteCard({ note, onOpen, query = "", formatCreationDate }: Props) {
+  const { copy } = useI18n();
+  const { heading, headingSource, excerpt } = getCardDisplay(note, query);
   const imperfection = cardImperfection(note.id);
-  const dateLabel = spokenDate(note.createdAt);
-  // カードの名前: 識別できる見出し + 作成日 + 固定状態。全カードを同じ名前にしない。
-  const accessibleName = [
-    heading,
-    dateLabel ? `作成日 ${dateLabel}` : null,
-    note.isFavorite ? "先頭に固定" : null,
-  ]
-    .filter(Boolean)
-    .join("、");
+  const nameId = useId();
+  const dateId = useId();
+  const pinId = useId();
+  const dateLabel = formatCreationDate(note.createdAt);
+  const nameReferences = [nameId, dateLabel ? dateId : null, note.isFavorite ? pinId : null]
+    .filter(Boolean).join(" ");
 
   return (
     <button
       type="button"
       data-note-id={note.id}
       onClick={() => onOpen(note.id)}
-      aria-label={accessibleName}
+      aria-labelledby={nameReferences}
       style={
         {
           "--card-tilt": `${imperfection.tiltDeg}deg`,
@@ -69,22 +60,28 @@ export function NoteCard({ note, onOpen, query = "" }: Props) {
 
         <div className="min-w-0 flex-1">
           <div className="mb-gr-3">
-            <ZanshinDateStamp isoString={note.createdAt} compact />
+            <ZanshinDateStamp isoString={note.createdAt} compact decorative />
           </div>
 
+          {dateLabel && <span className="sr-only" id={dateId}>{copy.creationDate({ displayDate: dateLabel })}</span>}
+          {note.isFavorite && <span className="sr-only" id={pinId}>{copy.pinned}</span>}
           <h3
+            id={nameId}
+            dir={headingSource === "untitled" ? undefined : "auto"}
+            lang={headingSource === "untitled" ? undefined : ""}
             className={[
               "zanshin-note-card__title line-clamp-2 font-mincho text-[17px] leading-snug tracking-mincho jp-text-discipline",
-              heading === copy.untitled && note.title.trim() === "" ? "text-ink-muted" : "text-sumi",
+              headingSource === "untitled" ? "text-ink-muted" : "text-sumi",
             ].join(" ")}
           >
-            {heading}
+            {heading ?? copy.untitled}
           </h3>
 
-          {excerpt !== "" && (
+          {excerpt && (
             <div className="mt-gr-2">
-              <p className="zanshin-note-card__preview line-clamp-2 text-[14px] leading-ample text-ink-muted jp-text-discipline">
-                {excerpt}
+              <p dir="auto" lang="" className="zanshin-note-card__preview line-clamp-2 text-[14px] leading-ample text-ink-muted jp-text-discipline">
+                {excerpt.directionSource && <span hidden>{excerpt.directionSource}</span>}
+                {excerpt.text}
               </p>
             </div>
           )}

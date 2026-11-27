@@ -7,8 +7,10 @@ import {
   CONFLICT_BACKUP_KEY_FOR_TESTING,
   STORAGE_KEY_FOR_TESTING,
 } from "../lib/storage";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import type { Note } from "../types/note";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -228,7 +230,7 @@ describe("App lifecycle persistence", () => {
     expect(container.textContent).toContain("実行中に救出したメモ");
     expect(container.textContent).not.toContain("元のメモ");
     expect(container.textContent).toContain(copy.storageRecoveryTitle);
-    expect(container.textContent).toContain("復元候補を1件表示しています");
+    expect(container.textContent).toContain(copy.storageRecoveryCandidateCount({ noteCount: 1 }));
 
     act(() => click(findButton(container, copy.storageRecoverySave)));
 

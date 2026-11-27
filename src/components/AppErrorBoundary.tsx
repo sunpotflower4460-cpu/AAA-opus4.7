@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { copy } from "../lib/i18n";
-import { getDraftRescue, getUnsavedNotes } from "../lib/draftRescue";
+import { getLastUiLocale } from "../i18n/locales";
+import { rescueMessages } from "../i18n/rescueMessages";
+import { OriginalText } from "./OriginalText";
+import { getDraftRescue, getRescueNotes } from "../lib/draftRescue";
 import { CopyTextButton } from "./CopyTextButton";
 
 type Props = {
@@ -32,12 +34,14 @@ export class AppErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children;
 
+    const locale = getLastUiLocale();
+    const copy = rescueMessages[locale];
     const snapshot = getDraftRescue();
-    const unsavedNotes = getUnsavedNotes(snapshot);
-    const known = snapshot !== null;
+    const originals = getRescueNotes(snapshot);
+    const hasUnsavedEdits = originals.some(({ kind }) => kind === "edited");
 
     return (
-      <div className="flex min-h-dvh items-start justify-center px-gr-4 py-gr-6 text-center sm:items-center">
+      <div lang={locale} className="flex min-h-dvh items-start justify-center px-gr-4 py-gr-6 text-center sm:items-center">
         <div
           className="w-full max-w-[460px] border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-5 shadow-paper-soft sm:px-gr-5"
           style={{ borderRadius: "8px 16px 9px 14px" }}
@@ -48,42 +52,35 @@ export class AppErrorBoundary extends Component<Props, State> {
           </h1>
 
           <p className="mt-gr-3 text-[14px] leading-ample text-sumi jp-text-discipline">
-            {!known
-              ? copy.renderFailureUnknown
-              : unsavedNotes.length > 0
-                ? copy.renderFailureUnsaved
-                : copy.renderFailureNoUnsaved}
+            {hasUnsavedEdits
+              ? copy.renderFailureUnsaved
+              : snapshot?.savedNotes
+                ? copy.renderFailureNoUnsaved
+                : copy.renderFailureUnknown}
           </p>
 
-          {unsavedNotes.length > 0 && (
+          {originals.length > 0 && (
             <ul className="mt-gr-4 flex flex-col gap-gr-4 text-left">
-              {unsavedNotes.map((note) => (
+              {originals.map(({ note, kind }, index) => (
                 <li
-                  key={note.id}
+                  key={`${note.id}-${index}`}
                   className="flex flex-col gap-gr-2 border-t border-[color:var(--color-line)] pt-gr-3"
                 >
-                  <span className="text-[12px] text-ink-muted">{copy.unsavedNoteLabel}</span>
+                  <span className="text-[12px] text-ink-muted">
+                    {kind === "edited" ? copy.unsavedNoteLabel : copy.unconfirmedNoteLabel}
+                  </span>
                   {note.title !== "" && (
-                    <input
-                      readOnly
-                      aria-label={copy.titlePlaceholder}
-                      value={note.title}
-                      onFocus={(event) => event.currentTarget.select()}
-                      className="w-full rounded-[8px] border border-[color:var(--color-line)] bg-paper px-gr-3 py-gr-2 text-[16px] text-sumi"
-                    />
+                    <OriginalText label={copy.originalTitle} text={note.title} rows={3} />
                   )}
-                  <textarea
-                    readOnly
-                    aria-label={copy.bodyPlaceholder}
-                    value={note.body}
-                    rows={Math.min(12, Math.max(4, note.body.split("\n").length + 1))}
-                    onFocus={(event) => event.currentTarget.select()}
-                    className="w-full rounded-[8px] border border-[color:var(--color-line)] bg-paper px-gr-3 py-gr-2 text-[16px] leading-ample text-sumi"
-                  />
+                  {note.body !== "" && (
+                    <OriginalText label={copy.originalText} text={note.body} rows={6} />
+                  )}
                   <div className="flex flex-wrap gap-gr-3">
-                    <CopyTextButton label={copy.copyBody} text={note.body} />
+                    {note.body !== "" && (
+                      <CopyTextButton label={copy.copyBody} text={note.body} feedback={copy} />
+                    )}
                     {note.title !== "" && (
-                      <CopyTextButton label={copy.copyTitle} text={note.title} />
+                      <CopyTextButton label={copy.copyTitle} text={note.title} feedback={copy} />
                     )}
                   </div>
                 </li>

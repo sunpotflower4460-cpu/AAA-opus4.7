@@ -6,9 +6,11 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import { STORAGE_KEY_FOR_TESTING } from "../lib/storage";
 import type { Note } from "../types/note";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -71,7 +73,7 @@ describe("このアプリについて", () => {
     for (const expected of [
       copy.aboutStorageTitle,
       "クラウド同期はありません",
-      "別の端末や機種変更後に必ず戻せる仕組みではありません",
+      "機種変更後に復元できるとは限りません",
       copy.aboutDeleteTitle,
       "10秒間",
       copy.aboutPinTitle,
@@ -102,7 +104,7 @@ describe("このアプリについて", () => {
     const before = JSON.stringify(store);
 
     act(() => click(find(container, copy.aboutOpen)));
-    act(() => click(find(container, copy.aboutClose)));
+    act(() => click(find(container, copy.close)));
 
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     expect(container.querySelector<HTMLInputElement>(".zanshin-search-input")!.value).toBe("朝");

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { readDisplaySetting, writeDisplaySetting } from "./displayStorage";
 
 /**
  * 「筆あと」— 書いた言葉の字の表情を選ぶ設定。
@@ -6,63 +7,23 @@ import { useSyncExternalStore } from "react";
  */
 export type BrushId = "mincho" | "fude" | "boku" | "tegaki";
 
-export type BrushOption = {
-  id: BrushId;
-  label: string;
-  labelEn: string;
-  note: string;
-  sample: string;
-};
-
-export const BRUSHES: readonly BrushOption[] = [
-  {
-    id: "mincho",
-    label: "明朝",
-    labelEn: "Mincho",
-    note: "端正で、静かな活字",
-    sample: "心が、静かに残る。",
-  },
-  {
-    id: "fude",
-    label: "筆",
-    labelEn: "Brush",
-    note: "筆のかすれと、はらい",
-    sample: "心が、静かに残る。",
-  },
-  {
-    id: "boku",
-    label: "墨",
-    labelEn: "Ink",
-    note: "太く、墨の溜まる字",
-    sample: "心が、静かに残る。",
-  },
-  {
-    id: "tegaki",
-    label: "手書き",
-    labelEn: "Handwriting",
-    note: "ペンの温もり",
-    sample: "心が、静かに残る。",
-  },
-];
+export const BRUSHES: readonly BrushId[] = ["mincho", "fude", "boku", "tegaki"];
 
 export const BRUSH_STORAGE_KEY = "zanshin.prefs.brush.v1";
 export const DEFAULT_BRUSH: BrushId = "mincho";
 
 function isBrushId(value: unknown): value is BrushId {
-  return BRUSHES.some((brush) => brush.id === value);
+  return BRUSHES.some((brush) => brush === value);
 }
 
 export function readStoredBrush(): BrushId {
-  try {
-    const raw = window.localStorage.getItem(BRUSH_STORAGE_KEY);
-    return isBrushId(raw) ? raw : DEFAULT_BRUSH;
-  } catch {
-    return DEFAULT_BRUSH;
-  }
+  const { value } = readDisplaySetting(BRUSH_STORAGE_KEY);
+  return isBrushId(value) ? value : DEFAULT_BRUSH;
 }
 
 let current: BrushId = DEFAULT_BRUSH;
 let initialized = false;
+let brushWriteFailed = false;
 const listeners = new Set<() => void>();
 
 function applyToDocument(id: BrushId) {
@@ -88,11 +49,8 @@ export function setBrush(id: BrushId): void {
   current = id;
   initialized = true;
   applyToDocument(id);
-  try {
-    window.localStorage.setItem(BRUSH_STORAGE_KEY, id);
-  } catch {
-    // 保存できなくても、この起動中は選んだ字体で使える。
-  }
+  const saved = writeDisplaySetting(BRUSH_STORAGE_KEY, id);
+  brushWriteFailed = !saved;
   listeners.forEach((listener) => listener());
 }
 
@@ -105,4 +63,8 @@ function subscribe(listener: () => void) {
 
 export function useBrush(): BrushId {
   return useSyncExternalStore(subscribe, getBrush, () => DEFAULT_BRUSH);
+}
+
+export function useBrushWriteFailed(): boolean {
+  return useSyncExternalStore(subscribe, () => brushWriteFailed, () => false);
 }

@@ -6,8 +6,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { STORAGE_KEY_FOR_TESTING } from "../lib/storage";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import type { Note } from "../types/note";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -69,7 +71,7 @@ describe("題名の入力", () => {
   const body = () => container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")!;
 
   it("題名欄は「タイトル（任意）」と名付けられ、題名なしでも本文だけで保存できる", () => {
-    expect(title().getAttribute("aria-label")).toBe(copy.titlePlaceholder);
+    expect(title().labels?.[0]?.textContent).toBe(copy.titlePlaceholder);
     expect(copy.titlePlaceholder).toBe("タイトル（任意）");
     setValue(body(), "題名なしの一言");
     act(() => vi.advanceTimersByTime(1_000));

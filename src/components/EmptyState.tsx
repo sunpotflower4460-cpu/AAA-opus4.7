@@ -1,4 +1,4 @@
-import { copy } from "../lib/i18n";
+import { useI18n } from "../i18n/useI18n";
 import { ZanshinMark } from "./ZanshinMark";
 import { PoeticLines } from "./PoeticLines";
 
@@ -8,6 +8,7 @@ type Props = {
 };
 
 export function EmptyState({ searching = false }: Props) {
+  const { copy } = useI18n();
   if (searching) {
     return (
       <div className="flex flex-col items-center gap-gr-3 py-gr-7 text-center animate-fadeIn">
