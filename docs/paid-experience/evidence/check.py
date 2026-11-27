@@ -203,7 +203,7 @@ def run_order(browser, url):
     page.locator("details").filter(has=page.get_by_text("Previous editions", exact=True)).get_by_role("button").click()
     assert page.locator(".ts-paper pre").text_content() == "One line."
     page.get_by_role("button", name="Duplicate as a new book", exact=True).click()
-    assert page.locator(".ts-paper pre").text_content() == "One line."
+    assert page.locator(".ts-paper pre").first.text_content() == "One line."
     page.close()
     print("Reduced motion: add and reorder passages, then duplicate the displayed previous edition")
 
