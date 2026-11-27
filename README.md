@@ -7,9 +7,9 @@
 
 Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護に加え、ストア品質改善PR #51がmainへ統合されています。R01〜R37の実装・自動確認・実機待ちは [既存の受入記録](docs/store-release-polish/ACCEPTANCE.md) で区別します。
 
-**次の実装対象は、日本語・英語で書く・保存・読み返し・検索・復旧まで完成させることです。** [多言語設計・実装指示](docs/multilingual/README.md) に、2回の多言語調査、最新コードとの照合、採用仕様、I0〜I5、ML01〜ML44、合成確認データを収録しています。実装担当へは [日英対応のキックオフプロンプト](docs/multilingual/KICKOFF.md) を渡してください。
+**日英の候補版を実装しました。** アプリ情報で日本語・English・システム設定を選べます。読み返しは縦書きと横書きに対応し、縦書きでは英字を正立させます。通常の操作と保存・復旧・原文の取り出しを両言語で用意しています。
 
-**日英対応は設計を収録した段階です。** 現在のUIは日本語で、言語切替・日英native対応・横書き読書の追加実装と確認はこれからです。多言語の合否は [ML受入条件](docs/multilingual/ACCEPTANCE.md) へ記録し、既存の日本語テストを日英の合格へ転記しません。[ストア品質改善の設計](docs/store-release-polish/README.md) は、保存保護・画面品質・R項目の基盤として引き継ぎます。
+検証結果と残件は [ML01〜ML44](docs/multilingual/ACCEPTANCE.md)、実機と掲載の手順は [日英版の引継ぎ](docs/multilingual/HANDOFF.md) に記録しています。母語話者校閲、iPhone、VoiceOver、署名候補と公開 URL の確認が残っています。[ストア品質改善の設計](docs/store-release-polish/README.md) は、保存保護・画面品質・R項目の基盤です。
 
 方針は **iPhone / portrait、無料・広告なし・Premiumなし・アカウントなし・クラウド同期なし** を維持します。日英が完成した版で対応言語の宣言・情報ページ・掲載物を揃えます。古いPhase文書は当時の記録として参照し、課金・広告を追加しないでください。
 
@@ -62,7 +62,7 @@ Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護に加�
 | お気に入り | 大切な言葉を残す |
 | ローカル保存 | まずはデバイスの中に |
 | iPhone向けUI | 手のひらに収まる静けさ |
-| 文言設計 | 現在は日本語UI。日英の切替・全画面・異常時表示の設計を収録済み、製品実装はこれから |
+| 文言設計 | 日本語と英語。システム設定・明示切替、通常画面・異常時・オフライン救済 |
 
 ---
 
@@ -160,7 +160,7 @@ npm run preview
 | お気に入り切り替え | ✅ |
 | localStorage 永続化 | ✅ |
 | iPhone 向けレスポンシブ UI（safe-area 対応） | ✅ |
-| 日本語UI・英語補助文の定義 | ✅（英語UI切替は未実装） |
+| 日英UIと言語設定 | ✅（実機・校閲確認待ち） |
 
 ---
 
@@ -219,7 +219,7 @@ npm run preview
 - [全37項目の受入条件](docs/store-release-polish/ACCEPTANCE.md) に沿い、対応状況と証拠を記録する
 - 保存・復旧・縦書き・キーボード・文字拡大・VoiceOverを、最終ビルドで確認する
 - アプリ内のプライバシー・サポート導線、実在する公開URLと問い合わせ窓口を揃える
-- 日本語UIと対応言語の申告、Capacitor使用とSDK説明を一致させる
+- 日英UIと対応言語の申告、Capacitor使用とSDK説明を一致させる
 - 広告・Premium・モック課金が初版に表示されないことを確認する
 - 使用Xcode/SDK、Archive、TestFlightの実機結果を記録する
 
@@ -231,7 +231,7 @@ npm run preview
 
 | ファイル | 内容 |
 |----------|------|
-| [docs/multilingual/README.md](docs/multilingual/README.md) | 次の作業：日英の設計・最新照合・I0〜I5・ML01〜ML44・調査全文 |
+| [docs/multilingual/README.md](docs/multilingual/README.md) | 日英の設計・実装・ML01〜ML44・実機への引継ぎ |
 | [docs/multilingual/KICKOFF.md](docs/multilingual/KICKOFF.md) | 日英対応の実装担当へそのまま渡すプロンプト |
 | [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | 現在の設計・実装指示・R01〜R37の受入条件への入口 |
 | [docs/store-release-polish/KICKOFF.md](docs/store-release-polish/KICKOFF.md) | 実装担当へ渡すキックオフプロンプト |
@@ -247,7 +247,7 @@ npm run preview
 | [docs/app-store-preparation-phase-18.md](docs/app-store-preparation-phase-18.md) | Phase 18 App Store 申請準備レポート |
 | [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | ストア公開前の品質改善（設計・実装指示・受入／実装記録） |
 | [docs/ui-release-polish-report.md](docs/ui-release-polish-report.md) | UI磨き込み（紙・書体・余白）の記録。仕上げCSSは `src/release.css` に統合 |
-| [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) | **App Store 提出パック（最終版）** |
+| [docs/app-store-submission-pack.md](docs/app-store-submission-pack.md) | 日英の App Store 掲載草案 |
 | [docs/app-store-submission-checklist.md](docs/app-store-submission-checklist.md) | App Store 提出全体チェックリスト |
 | [docs/app-store-metadata-draft.md](docs/app-store-metadata-draft.md) | App Store Connect 用メタデータ草案 |
 | [docs/privacy-and-tracking-notes.md](docs/privacy-and-tracking-notes.md) | App Privacy / ATT / SDK確認メモ |

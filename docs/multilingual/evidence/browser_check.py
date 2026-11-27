@@ -21,6 +21,7 @@ COPY = {
         "horizontal": "横書き", "vertical": "縦書き", "brush": "筆あと",
         "about": "このアプリについて", "language": "言語", "close": "閉じる",
         "delete": "このメモを削除", "confirm": "削除する", "undo": "元に戻す",
+        "pin": "先頭に留める", "unpin": "先頭固定を解除",
         "view": "内容を確認する", "copy": "本文をコピー",
         "quota": "メモの保存領域が足りない", "empty": "この保存版にはメモがありません。",
     },
@@ -31,6 +32,7 @@ COPY = {
         "horizontal": "Horizontal", "vertical": "Vertical", "brush": "Writing style",
         "about": "About this app", "language": "Language", "close": "Close",
         "delete": "Delete this note", "confirm": "Delete note", "undo": "Undo",
+        "pin": "Pin to top", "unpin": "Unpin",
         "view": "View contents", "copy": "Copy text",
         "quota": "There isn’t enough space", "empty": "This version contains no notes.",
     },
@@ -159,6 +161,8 @@ def regular_flow(browser, origin, locale, viewport, output):
     page.get_by_role("textbox", name=copy["title"]).fill(long_title)
     expect(page.get_by_role("textbox", name=copy["title"])).to_have_value(long_title)
     page.get_by_role("textbox", name=copy["title"]).fill(title)
+    action(page, copy["pin"]).click()
+    expect(action(page, copy["unpin"])).to_have_attribute("aria-pressed", "true")
     action(page, copy["delete"]).click()
     double_text(page)
     action(page, copy["confirm"]).click()
@@ -300,6 +304,18 @@ def search_and_conflict(browser, origin):
     expect(second.locator("html")).to_have_attribute("lang", "en")
     second.get_by_role("link", name="Support", exact=True).click()
     expect(second.locator("html")).to_have_attribute("lang", "en")
+    search.fill("Cafe\u0301")
+    expect(page.locator("[data-note-id=MLT09]")).to_be_visible()
+    second.evaluate("key => localStorage.setItem(key, 'ja')", PREF)
+    expect(page.locator("html")).to_have_attribute("lang", "ja")
+    expect(search).to_have_value("Cafe\u0301")
+    expect(page.locator("[data-note-id=MLT09]")).to_be_visible()
+    search.fill("blue moon")
+    expect(page.locator("[data-note-id=join]")).to_be_visible()
+    expect(page.locator("[data-note-id=MLT17]")).to_have_count(0)
+    assert store(page) == old
+    second.evaluate("key => localStorage.setItem(key, 'en')", PREF)
+    expect(page.locator("html")).to_have_attribute("lang", "en")
     second.evaluate("([key,value]) => localStorage.setItem(key, value)", [PENDING, json.dumps({"version": 1, "baseRaw": old, "nextRaw": "[]"})])
     page.reload()
     action(page, COPY["en"]["view"]).click()
@@ -312,6 +328,31 @@ def search_and_conflict(browser, origin):
     expect(radio).to_contain_text(COPY["ja"]["empty"])
     double_text(page)
     assert store(page) == old
+    context.close()
+
+
+def unavailable_preferences(browser, origin):
+    context = browser.new_context(viewport={"width": 375, "height": 667}, locale="ja")
+    page = context.new_page()
+    page.goto(origin)
+    expect(page.locator("html")).to_have_attribute("lang", "ja")
+    page.evaluate("""key => {
+      const write = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(candidate, value) {
+        if (candidate === key) throw new DOMException("Synthetic test quota", "QuotaExceededError");
+        write.call(this, candidate, value);
+      };
+    }""", PREF)
+    action(page, COPY["ja"]["about"], exact=False).click()
+    select = page.get_by_label(COPY["ja"]["language"], exact=True)
+    select.select_option("en")
+    expect(page.get_by_role("dialog")).to_contain_text("This setting couldn’t be saved.")
+    assert page.evaluate("(key)=>localStorage.getItem(key)", PREF) is None
+    action(page, COPY["en"]["close"]).click()
+    action(page, COPY["en"]["new"]).click()
+    editor(page, COPY["en"], "Independent preference", "A note can still be saved.")
+    page.wait_for_function("(key)=>localStorage.getItem(key)?.includes('can still be saved')", arg=PRIMARY)
+    assert json.loads(store(page))[0]["body"] == "A note can still be saved."
     context.close()
 
 
@@ -397,6 +438,8 @@ def main():
             print(f"{width}px vertical/horizontal long mixed text, visible end, selection, clipboard, edit return")
         search_and_conflict(browser, options.origin)
         print("Unicode search / RTL excerpt / literal text / privacy-support navigation / zero-note candidate")
+        unavailable_preferences(browser, options.origin)
+        print("Preference quota, active choice preserved, independent note save")
         unavailable_segmenter(browser, options.origin)
         print("Browser with Segmenter disabled, CSS clamp and full original")
         if options.pseudo_origin:
