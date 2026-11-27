@@ -1,4 +1,5 @@
 import type { Note } from "../types/note";
+import { dataWriteAllowed } from "./dataEpoch";
 
 export const NOTES_STORAGE_KEY = "zanshin.notes.v1";
 const STORAGE_KEY = NOTES_STORAGE_KEY;
@@ -44,6 +45,8 @@ export function isRetryableSaveFailure(
 }
 
 export type SaveOptions = {
+  /** Reject a writer that was opened before a full data erase. */
+  dataEpoch?: string | null;
   /**
    * 最後にこの画面が正常に読み込んだ / 保存したメモ集合。
    * 現在の localStorage がこれと違う場合、別画面の更新とみなして保存を止める。
@@ -493,6 +496,7 @@ export function loadNotes(options: LoadOptions = {}): LoadResult {
  */
 export function saveNotes(notes: Note[], options: SaveOptions = {}): SaveResult {
   if (typeof window === "undefined") return { ok: false, reason: "unavailable" };
+  if (!dataWriteAllowed(options.dataEpoch)) return { ok: false, reason: "unavailable" };
 
   let serialized: string;
   try {
@@ -763,3 +767,12 @@ export const RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY_FOR_TESTING =
   RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY;
 export const PENDING_SAVE_KEY_FOR_TESTING = PENDING_SAVE_KEY;
 export const CORRUPT_BACKUP_KEY_FOR_TESTING = CORRUPT_BACKUP_KEY;
+
+export function eraseLocalNoteData(): void {
+  const keys = [
+    STORAGE_KEY, BACKUP_KEY, CONFLICT_BACKUP_KEY, SECONDARY_CONFLICT_BACKUP_KEY,
+    RECOVERY_CONFLICT_BACKUP_KEY, RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY, PENDING_SAVE_KEY, CORRUPT_BACKUP_KEY,
+  ];
+  for (const key of keys) window.localStorage.removeItem(key);
+  if (keys.some((key) => window.localStorage.getItem(key) !== null)) throw new Error("notesErase");
+}

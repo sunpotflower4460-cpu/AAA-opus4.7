@@ -7,6 +7,7 @@ import {
   getAppVersionInfo,
   type AppVersionInfo,
 } from "../lib/appInfo";
+import { tsuzuriMessages } from "../tsuzuri/messages";
 import { handleModalKeyDown } from "./modalKeyboard";
 
 type Props = {
@@ -87,6 +88,12 @@ export function AboutScreen({ onClose }: Props) {
           <h3 id="about-storage">{copy.aboutStorageTitle}</h3>
           <p>{copy.aboutStorageBody}</p>
           <p>{copy.aboutStorageCaution}</p>
+        </section>
+
+        <section aria-labelledby="about-tsuzuri" className="zanshin-about-section">
+          <h3 id="about-tsuzuri">{tsuzuriMessages[locale].product}</h3>
+          <p>{tsuzuriMessages[locale].aboutTsuzuri}</p>
+          <p><a href={`/support${locale === "en" ? "-en" : ""}.html#font-licenses`} target="_blank" rel="noopener noreferrer">{tsuzuriMessages[locale].licenses}</a></p>
         </section>
 
         <section aria-labelledby="about-delete" className="zanshin-about-section">

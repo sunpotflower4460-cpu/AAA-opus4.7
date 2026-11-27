@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { getLastUiLocale } from "../i18n/locales";
 import { rescueMessages } from "../i18n/rescueMessages";
+import { getBookRescue } from "../tsuzuri/bookRescue";
+import { tsuzuriMessages } from "../tsuzuri/messages";
 import { OriginalText } from "./OriginalText";
 import { getDraftRescue, getRescueNotes } from "../lib/draftRescue";
 import { CopyTextButton } from "./CopyTextButton";
@@ -38,6 +40,7 @@ export class AppErrorBoundary extends Component<Props, State> {
     const copy = rescueMessages[locale];
     const snapshot = getDraftRescue();
     const originals = getRescueNotes(snapshot);
+    const bookDraft = getBookRescue();
     const hasUnsavedEdits = originals.some(({ kind }) => kind === "edited");
 
     return (
@@ -54,7 +57,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           <p className="mt-gr-3 text-[14px] leading-ample text-sumi jp-text-discipline">
             {hasUnsavedEdits
               ? copy.renderFailureUnsaved
-              : snapshot?.savedNotes
+              : snapshot?.savedNotes && !bookDraft
                 ? copy.renderFailureNoUnsaved
                 : copy.renderFailureUnknown}
           </p>
@@ -88,6 +91,15 @@ export class AppErrorBoundary extends Component<Props, State> {
             </ul>
           )}
 
+          {bookDraft && <section className="mt-gr-4 space-y-3 text-left">
+            <h2>{tsuzuriMessages[locale].draftRescue}</h2>
+            {bookDraft.cover.title && <CopyTextButton label={tsuzuriMessages[locale].title} text={bookDraft.cover.title} feedback={copy} />}
+            {bookDraft.passages.map((piece) => <div key={piece.id} className="space-y-2">
+              {piece.title && <CopyTextButton label={tsuzuriMessages[locale].copyPieceTitle} text={piece.title} feedback={copy} />}
+              <OriginalText label={tsuzuriMessages[locale].currentPiece} text={piece.body} rows={4} />
+              <CopyTextButton label={tsuzuriMessages[locale].copyPieceBody} text={piece.body} feedback={copy} />
+            </div>)}
+          </section>}
           <button
             type="button"
             onClick={() => window.location.reload()}

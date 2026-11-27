@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -48,6 +50,10 @@ import { ReadMode } from "./components/ReadMode";
 import { PremiumSheet } from "./components/PremiumSheet";
 import { RecoveryReview, type ReviewCandidate } from "./components/RecoveryReview";
 import { AboutScreen } from "./components/AboutScreen";
+import { dataWriteAllowed, readDataEpoch } from "./lib/dataEpoch";
+import { tsuzuriMessages } from "./tsuzuri/messages";
+
+const BookStudio = lazy(() => import("./tsuzuri/BookStudio"));
 
 // editor の origin は戻り先と戻る操作の名前を決める（D06）。
 // new: 「メモを書く」から開いた新規 / read: 読み返しから「編集する」で開いた既存メモ
@@ -87,7 +93,16 @@ export default function App({ preferences }: { preferences?: UiPreferences } = {
 }
 
 function NotesApp() {
-  const { copy, preferences } = useI18n();
+  const { copy, locale, preferences } = useI18n();
+  const [dataEpoch] = useState(() => {
+    try { return readDataEpoch().id; } catch { return null; }
+  });
+  const [bookStudio, setBookStudio] = useState<{ initialNote?: Note } | null>(null);
+  const bookTrigger = useRef<HTMLButtonElement | null>(null);
+  const notesSurface = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    notesSurface.current?.toggleAttribute("inert", Boolean(bookStudio));
+  }, [bookStudio]);
   const [initialLoad] = useState(() => {
     const result = loadNotes({ checkFreshInstall: true });
     const recoveryPending = hasRecoveryCandidate(result);
@@ -203,7 +218,7 @@ function NotesApp() {
   }, []);
 
   const persistDurableSnapshot = useCallback((snapshot: readonly Note[]) => {
-    if (!isNativeDurableSnapshotAvailable()) return;
+    if (!isNativeDurableSnapshotAvailable() || !dataWriteAllowed(dataEpoch)) return;
 
     const versionAtRequest = editVersionRef.current;
     void persistNativeDurableSnapshot(snapshot).then((ok) => {
@@ -220,7 +235,7 @@ function NotesApp() {
           !externalConflictRef.current,
       );
     });
-  }, []);
+  }, [dataEpoch]);
 
   // pagehide は非常に早く来ることがあるため、paint 前に flush 用 snapshot を更新する。
   useLayoutEffect(() => {
@@ -273,6 +288,12 @@ function NotesApp() {
     // native復旧の確認中/読込障害中は、旧データを上書きし得る編集自体を開始させない。
     setNativeBackupRetryAllowed(false);
     if (nativeRecoveryGateRef.current) return false;
+    try {
+      const state = readDataEpoch();
+      if (state.erasing || state.id !== dataEpoch) return false;
+    } catch {
+      // Retain edits in RAM when storage is temporarily unavailable.
+    }
 
     editVersionRef.current += 1;
     setEditVersion(editVersionRef.current);
@@ -287,7 +308,7 @@ function NotesApp() {
     if (!notesDirtyRef.current) dirtySinceRef.current = Date.now();
     notesDirtyRef.current = true;
     return true;
-  }, []);
+  }, [dataEpoch]);
 
   const flagExternalConflict = useCallback(
     (
@@ -797,12 +818,13 @@ function NotesApp() {
       const result = saveNotes(notes, {
         expectedNotes: baselineNotesRef.current,
         writerId: persistenceWriterId,
+        dataEpoch,
       });
       applySaveResult(result, notes);
     }, delayMs);
 
     return clearPersistTimer;
-  }, [notes, applySaveResult, clearPersistTimer, persistenceWriterId]);
+  }, [notes, applySaveResult, clearPersistTimer, persistenceWriterId, dataEpoch]);
 
   const flushPendingNotes = useCallback(() => {
     if (
@@ -817,9 +839,10 @@ function NotesApp() {
     const result = saveNotes(snapshot, {
       expectedNotes: baselineNotesRef.current,
       writerId: persistenceWriterId,
+      dataEpoch,
     });
     applySaveResult(result, snapshot);
-  }, [applySaveResult, persistenceWriterId]);
+  }, [applySaveResult, persistenceWriterId, dataEpoch]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1072,10 +1095,11 @@ function NotesApp() {
     const result = saveNotes(snapshot, {
       force: true,
       writerId: persistenceWriterId,
+      dataEpoch,
     });
     applySaveResult(result, snapshot);
     if (result.ok) setLoadError(false);
-  }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
+  }, [applySaveResult, clearPersistTimer, persistenceWriterId, dataEpoch]);
 
   const retrySaveCurrentNotes = useCallback(() => {
     clearPersistTimer();
@@ -1086,9 +1110,23 @@ function NotesApp() {
     const result = saveNotes(snapshot, {
       expectedNotes: baselineNotesRef.current,
       writerId: persistenceWriterId,
+      dataEpoch,
     });
     applySaveResult(result, snapshot);
-  }, [applySaveResult, clearPersistTimer, persistenceWriterId]);
+  }, [applySaveResult, clearPersistTimer, persistenceWriterId, dataEpoch]);
+
+  function checkBookSource() {
+    if (!dataWriteAllowed(dataEpoch) || notesDirtyRef.current || saveGuardRef.current ||
+      externalConflictRef.current || nativeRecoveryGateRef.current) return null;
+    const result = loadNotes();
+    return result.ok && notesSnapshotMatches(result.notes, latestNotesRef.current) ? result.notes : null;
+  }
+
+  function openBooks(button: HTMLButtonElement, noteId?: string) {
+    const saved = noteId ? checkBookSource()?.find((item) => item.id === noteId) : undefined;
+    bookTrigger.current = button;
+    setBookStudio({ initialNote: saved });
+  }
 
   const showRecoveryCandidateSource = useCallback((source: RecoveryCandidateSource) => {
     const snapshot =
@@ -1296,6 +1334,15 @@ function NotesApp() {
 
   return (
     <AppShell>
+      {bookStudio && <Suspense fallback={<div role="status" className="ts-dialog">{tsuzuriMessages[locale].loading}</div>}>
+        <BookStudio notes={notes} notesReady={!loadError && !externalConflict && nativeRecoveryStatus === "idle" && !showGlobalSaveFailure}
+          epoch={dataEpoch} initialNote={bookStudio.initialNote} onCheckNotes={checkBookSource} onNotesApplied={applyCleanRemoteNotes}
+          onClose={() => {
+            setBookStudio(null);
+            window.requestAnimationFrame(() => bookTrigger.current?.focus({ preventScroll: true }));
+          }} />
+      </Suspense>}
+      <div className="contents" aria-hidden={bookStudio ? true : undefined} ref={notesSurface}>
       {aboutOpen && (
         <AboutScreen onClose={() => {
           setAboutOpen(false);
@@ -1603,6 +1650,7 @@ function NotesApp() {
             onCreate={createNote}
             onOpenPremium={openPremiumSheet}
             onRestorePurchase={handleRestore}
+            onOpenBooks={openBooks}
             onOpenAbout={(trigger) => {
               aboutTriggerRef.current = trigger;
               setAboutOpen(true);
@@ -1626,6 +1674,7 @@ function NotesApp() {
           onBack={() => setView({ kind: "list" })}
           position={view.position}
           onEdit={(position) => setView({ kind: "editor", id: currentNote.id, origin: "read", position })}
+          onBind={openBooks}
         />
       ) : (
         <NoteEditor
@@ -1649,6 +1698,7 @@ function NotesApp() {
           onRetrySave={externalConflict ? undefined : retrySaveCurrentNotes}
         />
       )}
+      </div>
     </AppShell>
   );
 }

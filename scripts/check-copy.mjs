@@ -27,17 +27,21 @@ function declarations(file) {
 }
 
 const dictionary = declarations(parse(read("src/lib/i18n.ts"), "i18n.ts"));
+const tsuzuri = declarations(parse(read("src/tsuzuri/messages.ts"), "tsuzuriMessages.ts"));
+const bookCopy = (locale) => [...properties(tsuzuri.get(locale).initializer.expression)]
+  .map(([key, node]) => [`tsuzuri.${key}`, node]);
 const rescue = declarations(parse(read("src/i18n/rescueMessages.ts"), "rescueMessages.ts"));
 const localeConstants = declarations(parse(read("src/i18n/locales.ts"), "locales.ts"));
 const availableLocales = localeConstants.get("PUBLIC_UI_LOCALES").initializer.expression.elements.map((item) => item.text);
 const rescueObject = rescue.get("rescueMessages").initializer.expression;
 const rescueLocale = (locale) => rescueObject.properties.find((item) => item.name.getText() === locale).initializer;
-const ja = new Map([...properties(dictionary.get("ja").initializer.expression), ...properties(rescueLocale("ja"))]);
-const en = new Map([...properties(dictionary.get("en").initializer.expression), ...properties(rescueLocale("en"))]);
+const ja = new Map([...properties(dictionary.get("ja").initializer.expression), ...properties(rescueLocale("ja")), ...bookCopy("ja")]);
+const en = new Map([...properties(dictionary.get("en").initializer.expression), ...properties(rescueLocale("en")), ...bookCopy("en")]);
 const types = new Map([
   ...properties(dictionary.get("InterfaceMessages").type),
   ...properties(rescue.get("RescueMessages").type.types[1]),
   ...properties(rescue.get("CopyFeedback").type),
+  ...bookCopy("ja").map(([key, node]) => [key, node.name]),
 ]);
 const shared = ["NoteCount", "VersionCount", "DisplayDate", "PoeticLines", "jaCount", "enCount"]
   .map((name) => dictionary.get(name).getText());

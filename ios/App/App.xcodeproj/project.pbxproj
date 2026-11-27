@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A39000000000000000000008 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A39000000000000000000005 /* InfoPlist.strings */; };
 		A39000000000000000000001 /* ZanshinAppLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39000000000000000000002 /* ZanshinAppLanguage.swift */; };
+		A39100000000000000000001 /* ZanshinTsuzuri.swift in Sources */ = {isa = PBXBuildFile; fileRef = A39100000000000000000002 /* ZanshinTsuzuri.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -24,6 +25,7 @@
 		A39000000000000000000006 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A39000000000000000000007 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A39000000000000000000002 /* ZanshinAppLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZanshinAppLanguage.swift; sourceTree = "<group>"; };
+		A39100000000000000000002 /* ZanshinTsuzuri.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZanshinTsuzuri.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -83,6 +85,7 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A39000000000000000000002 /* ZanshinAppLanguage.swift */,
+				A39100000000000000000002 /* ZanshinTsuzuri.swift */,
 				A39000000000000000000005 /* InfoPlist.strings */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -224,6 +227,7 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A39000000000000000000001 /* ZanshinAppLanguage.swift in Sources */,
+				A39100000000000000000001 /* ZanshinTsuzuri.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

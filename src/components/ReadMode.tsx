@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { useI18n } from "../i18n/useI18n";
+import { useEverydaySurface } from "../tsuzuri/everyday";
 import { captureReadingPosition, restoreReadingPosition, type ReadingPosition } from "../lib/readingPosition";
 import type { ReadingMode } from "../lib/uiPreferences";
 import { hasVisibleText } from "../lib/noteDisplay";
 import { ReadingText } from "./ReadingText";
 import { BrushPicker } from "./BrushPicker";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
+import { tsuzuriMessages } from "../tsuzuri/messages";
 
 type Props = {
   note: Note;
@@ -14,11 +16,13 @@ type Props = {
   backLabel?: string;
   onBack: () => void;
   onEdit: (position: ReadingPosition | undefined) => void;
+  onBind?: (trigger: HTMLButtonElement, noteId: string) => void;
   position?: ReadingPosition;
 };
 
-export function ReadMode({ note, backLabel, onBack, onEdit, position }: Props) {
-  const { copy, preferences, readingMode, readingWriteFailed } = useI18n();
+export function ReadMode({ note, backLabel, onBack, onEdit, position, onBind }: Props) {
+  const { copy, locale, preferences, readingMode, readingWriteFailed } = useI18n();
+  const everyday = useEverydaySurface(false);
   const hasTitle = hasVisibleText(note.title);
   const hasBody = note.body !== "";
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -133,6 +137,7 @@ export function ReadMode({ note, backLabel, onBack, onEdit, position }: Props) {
           ))}
         </div>
         {readingWriteFailed && <p role="status">{copy.preferenceWriteFailed}</p>}
+        {onBind && <button type="button" className="ts-note-link" onClick={(event) => onBind(event.currentTarget, note.id)}>{tsuzuriMessages[locale].bindNote}</button>}
       </div>
 
       <main className="read-mode-stage flex min-h-0 flex-1 flex-col pt-gr-3 pb-gr-5">
@@ -141,7 +146,7 @@ export function ReadMode({ note, backLabel, onBack, onEdit, position }: Props) {
             {copy.readModeMore}
           </p>
         )}
-        <article className="read-mode-paper editor-paper jp-text-discipline" aria-label={copy.readNote}>
+        <article {...everyday} className="read-mode-paper editor-paper jp-text-discipline" aria-label={copy.readNote}>
           <div className="read-mode-date">
             <ZanshinDateStamp isoString={note.createdAt} />
           </div>

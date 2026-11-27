@@ -2,6 +2,8 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import type { Note } from "../types/note";
 import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
 import { useI18n } from "../i18n/useI18n";
+import { tsuzuriMessages } from "../tsuzuri/messages";
+import { useEverydaySurface } from "../tsuzuri/everyday";
 import { countGraphemes } from "../lib/graphemes";
 import { RECOMMENDED_TITLE_LENGTH, UNDO_SECONDS } from "../lib/noteLimits";
 import { getSaveFailureMessage } from "../lib/saveFailureUi";
@@ -78,6 +80,7 @@ export function NoteEditor({
   onRetrySave,
 }: Props) {
   const { copy } = useI18n();
+  const everyday = useEverydaySurface(true);
   const back = backLabel ?? copy.back;
   const titleId = useId();
   const bodyId = useId();
@@ -355,7 +358,7 @@ export function NoteEditor({
       </span>
 
       <main className="flex min-h-0 flex-1 flex-col pt-gr-4">
-        <div className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
+        <div {...everyday} className="editor-paper flex flex-1 flex-col px-gr-4 py-gr-5 sm:px-gr-5 sm:py-gr-6">
           <SaveAfterglow active={displayedSaveState === "saved"} token={note.updatedAt} />
 
           <div className="mb-gr-5 self-start">
@@ -437,6 +440,7 @@ export function NoteEditor({
       {confirmingDelete && (
         <DeleteConfirm
           heading={getCardDisplay(note).heading}
+          noteId={note.id}
           onCancel={cancelDeleteConfirmation}
           onConfirm={() => {
             setConfirmingDelete(false);
@@ -450,15 +454,29 @@ export function NoteEditor({
 
 function DeleteConfirm({
   heading,
+  noteId,
   onCancel,
   onConfirm,
 }: {
   /** どのメモか分かる短い識別（本人の題名、または本文の最初の行） */
   heading: string | null;
+  noteId: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const { copy } = useI18n();
+  const { copy, locale } = useI18n();
+  const [bookCount, setBookCount] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (typeof indexedDB !== "undefined") void import("../tsuzuri/repository").then(({ readLibrary }) => readLibrary()).then((value) => {
+      if (live && value.kind === "ready") {
+        const current = new Set(value.library.books.map((book) => book.editionId));
+        setBookCount(value.library.editions.filter((edition) => current.has(edition.id) &&
+          edition.passages.some((piece) => piece.localNoteId === noteId)).length);
+      }
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [noteId]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -500,6 +518,10 @@ function DeleteConfirm({
         >
           {copy.deleteConfirmBody({ undoSeconds: UNDO_SECONDS })}
         </p>
+        {bookCount !== null && bookCount > 0 && <p className="mt-gr-3 text-sm text-sumi">
+          {tsuzuriMessages[locale].noteDeleteBookCount} · {new Intl.NumberFormat(locale).format(bookCount)}<br />
+          {tsuzuriMessages[locale].keepBooks}
+        </p>}
         <div className="mt-gr-5 flex flex-wrap items-center justify-end gap-gr-3">
           <button
             autoFocus
