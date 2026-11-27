@@ -10,7 +10,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../types/note";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import { STORAGE_KEY_FOR_TESTING } from "../lib/storage";
 
 const durable = vi.hoisted(() => ({
@@ -39,6 +39,8 @@ vi.mock("../lib/nativeAppLifecycle", () => ({
 }));
 
 import App from "../App";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -161,7 +163,7 @@ describe("復帰の入口でlocalの異なる有効版を比較前に採用し�
         expect(container.textContent).toContain(copy.storageConflictTitle);
         // どちらの候補も内容を失っていない（localは保存層に残り、nativeは別候補として提示）。
         expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(JSON.stringify(stale));
-        expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(known.length));
+        expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice({ noteCount: known.length }));
       });
 
       it("localの新しい版とnativeが同一内容なら競合にせず、安全確認後に採用する", async () => {

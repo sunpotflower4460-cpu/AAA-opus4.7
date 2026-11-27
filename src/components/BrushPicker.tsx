@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { BRUSHES, setBrush, useBrush } from "../lib/brushPreference";
+import { BRUSHES, setBrush, useBrush, useBrushWriteFailed } from "../lib/brushPreference";
+import { useI18n } from "../i18n/useI18n";
 import type { BrushId } from "../lib/brushPreference";
 
 type Props = {
@@ -13,11 +14,13 @@ type Props = {
  * 設定はどの画面からでも同じ場所に置き、選んだ瞬間に画面全体の字が変わる。
  */
 export function BrushPicker({ variant = "icon", className = "" }: Props) {
+  const { copy } = useI18n();
   const brush = useBrush();
+  const writeFailed = useBrushWriteFailed();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const current = BRUSHES.find((item) => item.id === brush) ?? BRUSHES[0];
+  const current = copy.brushes[brush];
 
   useEffect(() => {
     if (open) closeRef.current?.focus();
@@ -47,8 +50,8 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        aria-label={`筆あと：${current.label}`}
-        title="筆あとを選ぶ"
+        aria-label={copy.brushCurrent({ brushName: current.label })}
+        title={copy.brush}
         className={[
           "zanshin-brush-trigger",
           variant === "icon"
@@ -59,9 +62,11 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
           .filter(Boolean)
           .join(" ")}
       >
-        <span className="zanshin-brush-glyph font-mincho" aria-hidden="true">
-          {variant === "list" ? "筆あと" : "筆"}
-        </span>
+        {variant === "list" ? (
+          <span className="zanshin-brush-glyph font-mincho">{copy.brush}</span>
+        ) : (
+          <span className="zanshin-brush-glyph" aria-hidden="true" lang="ja">筆</span>
+        )}
       </button>
 
       {open && (
@@ -81,23 +86,24 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
               id="zanshin-brush-title"
               className="font-mincho text-[18px] tracking-mincho text-sumi"
             >
-              筆あと
+              {copy.brush}
             </h2>
             <p className="mt-gr-2 text-[12px] leading-ample text-ink-muted">
-              書いた言葉の、字の表情を選びます。メモの内容は変わりません。
+              {copy.brushDescription}
             </p>
 
-            <div role="radiogroup" aria-label="筆あと" className="mt-gr-4 flex flex-col gap-gr-2">
-              {BRUSHES.map((item) => {
-                const selected = item.id === brush;
+            <div role="radiogroup" aria-label={copy.brush} className="mt-gr-4 flex flex-col gap-gr-2">
+              {BRUSHES.map((id) => {
+                const item = copy.brushes[id];
+                const selected = id === brush;
                 return (
                   <button
-                    key={item.id}
+                    key={id}
                     type="button"
                     role="radio"
                     aria-checked={selected}
-                    onClick={() => choose(item.id)}
-                    data-brush-option={item.id}
+                    onClick={() => choose(id)}
+                    data-brush-option={id}
                     className={[
                       "zanshin-brush-option flex w-full flex-col gap-[3px] rounded-[10px] border px-gr-4 py-gr-3 text-left transition-soft active:scale-[0.995]",
                       selected
@@ -109,7 +115,7 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
                       <span className="font-mincho text-[13px] tracking-[0.12em] text-ink-muted">
                         {item.label}
                         <span className="ml-gr-2 text-[10px] tracking-[0.1em] opacity-80">
-                          {item.note}
+                          {item.description}
                         </span>
                       </span>
                       <span
@@ -122,15 +128,16 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
                     </span>
                     <span
                       className="zanshin-brush-sample text-[20px] leading-[1.7] text-sumi"
-                      data-sample-brush={item.id}
+                      data-sample-brush={id}
                     >
-                      {item.sample}
+                      {copy.brushSample}
                     </span>
                   </button>
                 );
               })}
             </div>
 
+            {writeFailed && <p role="status" className="mt-gr-2 text-sm text-ink-muted">{copy.preferenceWriteFailed}</p>}
             <div className="mt-gr-4 flex justify-end">
               <button
                 ref={closeRef}
@@ -138,7 +145,7 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
                 onClick={close}
                 className="min-h-[44px] whitespace-nowrap rounded-full px-gr-4 py-gr-2 font-mincho text-[14px] text-ink-muted transition-soft hover:bg-paper/60 hover:text-sumi"
               >
-                閉じる
+                {copy.close}
               </button>
             </div>
           </div>

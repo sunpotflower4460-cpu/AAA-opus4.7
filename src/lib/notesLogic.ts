@@ -8,21 +8,28 @@ export function sortNotes(notes: Note[]): Note[] {
   });
 }
 
-/**
- * 検索語は前後の空白を意味として扱わない。
- * 全角空白を含む ECMAScript WhiteSpace も trim() の対象になる。
- */
-export function normalizeSearchQuery(query: string): string {
-  return query.trim().toLocaleLowerCase();
+export const HORIZONTAL_SPACES = /[\t\p{Zs}]+/gu;
+export const LINE_BREAKS = /\r\n|[\r\n\u2028\u2029]/u;
+
+function searchValue(text: string): string {
+  return text.normalize("NFC").replace(HORIZONTAL_SPACES, " ").toLowerCase();
 }
 
-/** タイトルまたは本文に検索語が含まれるか。空白だけの検索は未検索として扱う。 */
+export function normalizeSearchQuery(query: string): string {
+  return searchValue(query).trim();
+}
+
+export function findSearchMatch(text: string, needle: string) {
+  if (!needle) return null;
+  for (const line of text.split(LINE_BREAKS)) {
+    const comparison = searchValue(line);
+    const index = comparison.indexOf(needle);
+    if (index !== -1) return { line, comparison, index };
+  }
+  return null;
+}
+
 export function matchesNote(note: Note, query: string): boolean {
   const needle = normalizeSearchQuery(query);
-  if (!needle) return true;
-
-  return (
-    note.title.toLocaleLowerCase().includes(needle) ||
-    note.body.toLocaleLowerCase().includes(needle)
-  );
+  return !needle || findSearchMatch(note.title, needle) !== null || findSearchMatch(note.body, needle) !== null;
 }

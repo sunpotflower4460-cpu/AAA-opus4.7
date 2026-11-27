@@ -11,10 +11,12 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "check": "npm run typecheck && npm run lint && npm run copy:check && npm run test && npm run build",
     "deploy": "npm run build && wrangler deploy",
     "cap:sync:ios": "npm run build && cap sync ios",
-    "cap:open:ios": "cap open ios"
+    "cap:open:ios": "cap open ios",
+    "copy:check": "node scripts/check-copy.mjs",
+    "copy:release": "node scripts/check-copy.mjs --release"
   },
   "dependencies": {
     "@capacitor/app": "7.1.2",

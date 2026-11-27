@@ -1,6 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { readNativePreferredLanguages } from "./i18n/nativeLanguages";
+import { isUiLocale, rememberUiLocale } from "./i18n/locales";
+import { createUiPreferences, LANGUAGE_STORAGE_KEY } from "./lib/uiPreferences";
+import { readDisplaySetting } from "./lib/displayStorage";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import "@fontsource/yuji-syuku/japanese-400.css";
 import "@fontsource/yuji-syuku/latin-400.css";
@@ -31,10 +35,20 @@ if (!root) {
   throw new Error('Root element #root not found in index.html. Ensure the HTML template includes <div id="root"></div>.');
 }
 
-ReactDOM.createRoot(root).render(
-  <React.StrictMode>
-    <AppErrorBoundary>
-      <App />
-    </AppErrorBoundary>
-  </React.StrictMode>,
-);
+async function start(container: HTMLElement) {
+  const explicit = isUiLocale(readDisplaySetting(LANGUAGE_STORAGE_KEY).value);
+  const nativeLanguages = readNativePreferredLanguages();
+  const preferences = createUiPreferences(explicit ? null : await nativeLanguages);
+  if (explicit) void nativeLanguages.then(preferences.setNativeLanguages);
+  rememberUiLocale(preferences.getSnapshot().locale);
+
+  ReactDOM.createRoot(container).render(
+    <React.StrictMode>
+      <AppErrorBoundary>
+        <App preferences={preferences} />
+      </AppErrorBoundary>
+    </React.StrictMode>,
+  );
+}
+
+void start(root);

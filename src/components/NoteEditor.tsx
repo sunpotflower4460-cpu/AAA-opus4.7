@@ -1,7 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Note } from "../types/note";
 import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
-import { copy } from "../lib/i18n";
+import { useI18n } from "../i18n/useI18n";
+import { countGraphemes } from "../lib/graphemes";
+import { RECOMMENDED_TITLE_LENGTH, UNDO_SECONDS } from "../lib/noteLimits";
 import { getSaveFailureMessage } from "../lib/saveFailureUi";
 import { useSaveTrace } from "../hooks/useSaveTrace";
 import { BrushPicker } from "./BrushPicker";
@@ -67,18 +69,29 @@ const ANNOUNCE_SAVED_DELAY_MS = 2500;
 export function NoteEditor({
   note,
   onChange,
-  backLabel = copy.back,
+  backLabel,
   onBack,
   onDelete,
   saveResult = null,
-  conflictMessage = copy.saveConflict,
+  conflictMessage,
   onRetrySave,
 }: Props) {
+  const { copy } = useI18n();
+  const back = backLabel ?? copy.back;
+  const titleId = useId();
+  const bodyId = useId();
+  const bodyGuideId = useId();
+  const titleGuideId = useId();
+  const graphemeCount = useMemo(() => countGraphemes(note.title), [note.title]);
+  const titleGuide = graphemeCount !== null && graphemeCount > RECOMMENDED_TITLE_LENGTH
+    ? copy.titleLengthGuide({ graphemeCount, recommendedCount: RECOMMENDED_TITLE_LENGTH })
+    : null;
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [announcedSaved, setAnnouncedSaved] = useState(false);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const titleBeforeComposition = useRef<string | null>(null);
   const keyboardOpen = useOnScreenKeyboard();
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const isDateSettling = useSaveTrace(saveState === "saved" ? note.updatedAt : null, 640);
@@ -146,16 +159,21 @@ export function NoteEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
 
-  function handleTitle(event: React.ChangeEvent<HTMLTextAreaElement>) {
-    // 以前の単一行入力と同じく、貼り付けた改行は空白として扱う（題名は1行の名前）。
-    onChange({ title: event.target.value.replace(/\r?\n/g, " ") });
+  function updateTitle(input: HTMLTextAreaElement) {
+    const value = titleBeforeComposition.current !== null ? input.value : input.value.replace(/\n/g, " ");
+    if (value !== input.value) {
+      const { selectionStart, selectionEnd, selectionDirection } = input;
+      input.value = value;
+      input.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+    }
+    onChange({ title: value });
     markDirty();
   }
 
   function handleTitleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter") return;
     // 日本語変換中の Enter は確定操作。横取りしない。
-    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    if (titleBeforeComposition.current !== null || event.nativeEvent.isComposing || event.keyCode === 229) return;
     event.preventDefault();
     bodyRef.current?.focus();
   }
@@ -202,8 +220,8 @@ export function NoteEditor({
   const retryableSaveError = isRetryableSaveFailure(saveResult);
   const saveErrorMessage =
     saveResult?.ok === false && saveResult.reason === "conflict"
-      ? conflictMessage
-      : getSaveFailureMessage(saveResult) ?? copy.saveError;
+      ? conflictMessage ?? copy.saveConflict
+      : getSaveFailureMessage(copy, saveResult) ?? copy.saveError;
 
   function retrySave() {
     if (!retryableSaveError || !onRetrySave) return;
@@ -224,7 +242,7 @@ export function NoteEditor({
         <button
           type="button"
           onClick={onBack}
-          aria-label={backLabel}
+          aria-label={back}
           className="
             zanshin-nav-button -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
@@ -246,7 +264,7 @@ export function NoteEditor({
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-mincho tracking-mincho">{backLabel}</span>
+          <span className="font-mincho tracking-mincho">{back}</span>
         </button>
 
         <div className="flex items-center gap-gr-2">
@@ -324,8 +342,8 @@ export function NoteEditor({
               </button>
             )}
             {/* 保存できていない最新の文章を、保存の成否と無関係に取り出せる出口（R24）。原文のまま渡す。 */}
-            {note.body !== "" && <CopyTextButton label={copy.copyBody} text={note.body} />}
-            {note.title !== "" && <CopyTextButton label={copy.copyTitle} text={note.title} />}
+            {note.body !== "" && <CopyTextButton label={copy.copyBody} text={note.body} feedback={copy} />}
+            {note.title !== "" && <CopyTextButton label={copy.copyTitle} text={note.title} feedback={copy} />}
           </div>
         </div>
       )}
@@ -345,32 +363,54 @@ export function NoteEditor({
 
           {/* 題名は単一行の意味のまま、長い題名は折り返して全文を編集できる（R11）。
               改行は入れない（Enter は本文へ移動。IME の変換確定は横取りしない）。 */}
-          <textarea
-            ref={titleRef}
-            rows={1}
-            value={note.title}
-            onChange={handleTitle}
-            onKeyDown={handleTitleKeyDown}
-            placeholder={copy.titlePlaceholder}
-            aria-label={copy.titlePlaceholder}
-            maxLength={200}
-            className="note-title-input jp-writing-surface"
-          />
+          <div className="relative">
+            <label htmlFor={titleId} className={note.title === "" ? "zanshin-title-placeholder" : "sr-only"}>
+              {copy.titlePlaceholder}
+            </label>
+            <textarea
+              id={titleId}
+              ref={titleRef}
+              rows={1}
+              dir="auto"
+              lang=""
+              value={note.title}
+              onChange={(event) => updateTitle(event.currentTarget)}
+              onCompositionStart={(event) => { titleBeforeComposition.current = event.currentTarget.value; }}
+              onCompositionEnd={(event) => {
+                const before = titleBeforeComposition.current;
+                titleBeforeComposition.current = null;
+                const field = event.currentTarget;
+                if (field.value !== before && field.value.includes("\n")) updateTitle(field);
+              }}
+              onKeyDown={handleTitleKeyDown}
+              aria-describedby={titleGuide ? titleGuideId : undefined}
+              className="note-title-input jp-writing-surface"
+            />
+          </div>
+          {titleGuide && <p id={titleGuideId} className="text-sm text-ink-muted">{titleGuide}</p>}
 
           <div
             aria-hidden="true"
             className="mt-gr-4 h-px w-gr-4 bg-gradient-to-r from-transparent via-gold/22 to-transparent"
           />
 
-          <textarea
-            ref={bodyRef}
-            value={note.body}
-            onChange={handleBody}
-            placeholder={copy.bodyPlaceholder}
-            aria-label={copy.bodyPlaceholder}
-            className="writing-textarea jp-writing-surface mt-gr-5 flex-1"
-            style={keyboardOpen ? undefined : { minHeight: "42dvh" }}
-          />
+          <div className="relative mt-gr-5 flex flex-1 flex-col">
+            <label htmlFor={bodyId} className="sr-only">{copy.bodyLabel}</label>
+            {note.body === "" && (
+              <p id={bodyGuideId} className="zanshin-body-placeholder">{copy.bodyPlaceholder}</p>
+            )}
+            <textarea
+              id={bodyId}
+              ref={bodyRef}
+              dir="auto"
+              lang=""
+              value={note.body}
+              onChange={handleBody}
+              aria-describedby={note.body === "" ? bodyGuideId : undefined}
+              className="writing-textarea jp-writing-surface flex-1"
+              style={keyboardOpen ? undefined : { minHeight: "42dvh" }}
+            />
+          </div>
         </div>
 
         <div className="flex items-end gap-gr-4 pb-gr-5 pt-gr-3 text-[10px] tracking-[0.12em] text-ink-muted/72">
@@ -413,10 +453,11 @@ function DeleteConfirm({
   onConfirm,
 }: {
   /** どのメモか分かる短い識別（本人の題名、または本文の最初の行） */
-  heading: string;
+  heading: string | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { copy } = useI18n();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
 
@@ -475,12 +516,12 @@ function DeleteConfirm({
         >
           {copy.deleteConfirmTitle}
         </h2>
-        <p className="zanshin-delete-target mt-gr-2 text-[15px] leading-ample text-sumi">「{heading}」</p>
+        <p className="zanshin-delete-target mt-gr-2 text-[15px] leading-ample text-sumi"><bdi lang={heading === null ? undefined : ""}>{heading ?? copy.untitled}</bdi></p>
         <p
           id="zanshin-delete-description"
           className="mt-gr-3 whitespace-pre-line text-[13px] leading-ample text-ink-muted jp-text-discipline"
         >
-          {copy.deleteConfirmBody}
+          {copy.deleteConfirmBody({ undoSeconds: UNDO_SECONDS })}
         </p>
         <div className="mt-gr-5 flex flex-wrap items-center justify-end gap-gr-3">
           <button

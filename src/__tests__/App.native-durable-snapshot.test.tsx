@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../types/note";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import {
   BACKUP_KEY_FOR_TESTING,
   PENDING_SAVE_KEY_FOR_TESTING,
@@ -22,6 +22,8 @@ vi.mock("../lib/nativeDurableSnapshot", () => ({
 }));
 
 import App from "../App";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -134,7 +136,7 @@ describe("App native durable snapshot", () => {
     renderApp();
     expect(container.textContent).toContain(copy.nativeRecoveryChecking);
 
-    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => click(findButton(container, copy.newNote)));
     act(() => vi.advanceTimersByTime(1_000));
     await flushPromises();
 
@@ -163,7 +165,7 @@ describe("App native durable snapshot", () => {
 
     expect(container.textContent).toContain(copy.nativeRecoveryReadError);
     expect(hasButton(container, copy.nativeRecoveryRetry)).toBe(true);
-    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => click(findButton(container, copy.newNote)));
     act(() => vi.advanceTimersByTime(1_000));
     await flushPromises();
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
@@ -173,7 +175,7 @@ describe("App native durable snapshot", () => {
     await flushPromises();
     expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
 
-    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => click(findButton(container, copy.newNote)));
     expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).not.toBeNull();
     act(() => vi.advanceTimersByTime(500));
     await flushPromises();
@@ -237,7 +239,7 @@ describe("App native durable snapshot", () => {
 
     expect(container.textContent).toContain("localの正本");
     expect(container.textContent).toContain(copy.storageConflictTitle);
-    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(native.length));
+    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice({ noteCount: native.length }));
     expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(JSON.stringify(local));
     expect(durable.persist).not.toHaveBeenCalled();
 
@@ -738,7 +740,7 @@ describe("App native durable snapshot", () => {
     expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("local edited by user");
     await flushPromises();
     expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("local edited by user");
-    expect(container.textContent).toContain(copy.storageRecoveryCandidateCount(2));
+    expect(container.textContent).toContain(copy.storageRecoveryCandidateCount({ noteCount: 2 }));
 
     act(() => click(findButton(container, copy.dirtyRecoveryShowScreen)));
     expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")?.value).toBe("screen dirty");
@@ -829,7 +831,7 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     act(() => click(findButton(container, copy.nativeRecoveryShowAlternative)));
-    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(1));
+    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice({ noteCount: 1 }));
 
     const backButton = container.querySelector(`button[aria-label="${copy.backToRead}"]`);
     if (!(backButton instanceof HTMLButtonElement)) throw new Error("editor back button not found");
@@ -837,8 +839,8 @@ describe("App native durable snapshot", () => {
     act(() => click(findButton(container, copy.back)));
     act(() => click(findButton(container, copy.newNote)));
 
-    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice(2));
-    expect(container.textContent).not.toContain(copy.nativeRecoveryAlternativeNotice(1));
+    expect(container.textContent).toContain(copy.nativeRecoveryAlternativeNotice({ noteCount: 2 }));
+    expect(container.textContent).not.toContain(copy.nativeRecoveryAlternativeNotice({ noteCount: 1 }));
   });
 
   it("dirty三者競合でnative読込失敗中は候補を保持したままforce確定を出さない", async () => {
@@ -981,7 +983,7 @@ describe("App native durable snapshot", () => {
       "データの読み込みに問題がありました。メモが復元できない可能性があります。",
     );
     expect(container.querySelector('[data-testid="native-recovery-error"]')).not.toBeNull();
-    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => click(findButton(container, copy.newNote)));
     act(() => vi.advanceTimersByTime(1_000));
     await flushPromises();
     expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).toBeNull();
@@ -992,7 +994,7 @@ describe("App native durable snapshot", () => {
     await flushPromises();
 
     expect(container.textContent).not.toContain(copy.nativeRecoveryReadError);
-    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => click(findButton(container, copy.newNote)));
     expect(container.querySelector<HTMLTextAreaElement>("textarea.writing-textarea")).not.toBeNull();
   });
 
@@ -1006,7 +1008,7 @@ describe("App native durable snapshot", () => {
     expect(container.textContent).toContain(copy.storageRecoveryTitle);
     expect(hasButton(container, copy.storageRecoverySave)).toBe(true);
 
-    act(() => click(findButton(container, copy.emptyAction)));
+    act(() => click(findButton(container, copy.newNote)));
     act(() => vi.advanceTimersByTime(1_000));
     await flushPromises();
 

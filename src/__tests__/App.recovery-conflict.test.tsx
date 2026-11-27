@@ -6,8 +6,10 @@ import {
   BACKUP_KEY_FOR_TESTING,
   STORAGE_KEY_FOR_TESTING,
 } from "../lib/storage";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import type { Note } from "../types/note";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -106,7 +108,7 @@ describe("App corrupt recovery conflict", () => {
     renderRecovery("{ broken primary");
 
     expect(container.textContent).toContain(copy.storageRecoveryTitle);
-    expect(container.textContent).toContain("復元候補を1件表示しています");
+    expect(container.textContent).toContain(copy.storageRecoveryCandidateCount({ noteCount: 1 }));
     expect(findButton(container, copy.storageConflictLoad)).toBeNull();
     expect(findButton(container, copy.storageRecoverySave)).not.toBeNull();
 

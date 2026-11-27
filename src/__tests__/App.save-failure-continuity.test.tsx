@@ -7,8 +7,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { PENDING_SAVE_KEY_FOR_TESTING, STORAGE_KEY_FOR_TESTING } from "../lib/storage";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import type { Note } from "../types/note";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

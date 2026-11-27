@@ -128,16 +128,6 @@ html[data-brush="tegaki"] {
 .zanshin-brush-sample[data-sample-brush="boku"] { font-family: "Yuji Boku", var(--font-writing) !important; }
 .zanshin-brush-sample[data-sample-brush="tegaki"] { font-family: "Klee One", var(--font-writing) !important; }
 
-/* 字体ごとの目の大きさ・行の呼吸を揃える。 */
-html[data-brush="tegaki"] .writing-textarea,
-html[data-brush="tegaki"] .read-mode-body {
-  letter-spacing: 0.03em;
-}
-html[data-brush="fude"] .writing-textarea,
-html[data-brush="boku"] .writing-textarea {
-  letter-spacing: 0.05em;
-}
-
 /* 墨がわずかに紙へ滲む。textarea でも効き、保存や選択には影響しない。 */
 .note-title-input,
 .writing-textarea,
@@ -309,14 +299,6 @@ html[data-brush="boku"] .writing-textarea {
 .writing-textarea,
 .note-title-input {
   color: #2f261e;
-}
-
-/* ─────────── 2. 手で書いた行の揺れ（読み返し） ─────────── */
-.read-line {
-  display: block;
-  transform: translate(var(--jx, 0), var(--jy, 0)) rotate(var(--jr, 0deg));
-  transform-origin: 50% 0;
-  opacity: var(--jo, 1);
 }
 
 /* ─────────── 3. カードの不揃い ─────────── */
@@ -542,7 +524,7 @@ body::after {
  *     └ .read-mode-scroll          縦書きの文書。ここだけが横スクロールを持つ
  *         ├ h1.read-mode-title     右端の列から始まる
  *         ├ .read-mode-divider     細い線（ブロック境界）
- *         └ p.read-mode-body       右から左へ流れる
+ *         └ pre.read-mode-body       右から左へ流れる
  * 縦書きの物理方向: inline = 上→下（行の長さ）、block = 右→左（次の列）。
  */
 .read-mode-paper {
@@ -550,6 +532,7 @@ body::after {
   flex-direction: column !important;
   writing-mode: horizontal-tb !important;
   flex: 1 1 auto;
+  min-height: 56vh !important;
   min-height: 56svh !important;
   max-height: none !important;
   padding: 21px 13px 21px !important;
@@ -566,7 +549,9 @@ body::after {
 
 .read-mode-scroll {
   position: relative;
-  flex: 1 1 0;
+  flex: 1 1 auto;
+  height: clamp(15rem, 62vh, 40rem);
+  height: clamp(15rem, 62svh, 40rem);
   min-height: 0;
   display: block;
   writing-mode: vertical-rl;
@@ -593,7 +578,9 @@ body::after {
   margin: 0 0 0 0;
   margin-block-end: 26px;
   line-height: 2.1;
-  letter-spacing: 0.12em;
+  letter-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   /* 長い題は縦に上限（行の長さ）を置かず、列の高さいっぱいで自然に次の列へ折り返す。 */
   text-wrap: balance;
 }
@@ -601,6 +588,8 @@ body::after {
 .read-mode-divider {
   display: block;
   /* vertical-rl では inline-size が縦、block-size が横。細い縦線。 */
+  width: auto;
+  height: auto;
   inline-size: 48px;
   block-size: 1px;
   margin-block-end: 26px;
@@ -611,7 +600,79 @@ body::after {
   margin: 0;
   white-space: pre-wrap;
   line-height: 2.2;
-  letter-spacing: 0.08em;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+
+.read-mode-scroll[data-reading-mode="horizontal"] {
+  writing-mode: horizontal-tb;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-inline: 13px;
+  padding-block: 8px 34px;
+}
+
+/* Give a final LF a line box without adding a character to the selected text. */
+.read-final-line {
+  display: inline-block;
+  inline-size: 0;
+  block-size: 1em;
+}
+
+[data-reading-mode="vertical"] .read-upright-latin {
+  text-orientation: upright;
+}
+
+[data-reading-mode="horizontal"] .read-mode-body {
+  font-size: 1.125rem;
+  line-height: 1.85;
+}
+
+[data-reading-mode="horizontal"] .read-mode-divider {
+  width: 48px;
+  height: 1px;
+  margin-block-end: 16px;
+  background: linear-gradient(to right, transparent, rgba(201, 166, 70, 0.28), transparent);
+}
+
+.read-mode-options {
+  align-self: flex-end;
+  max-width: 100%;
+  font-size: 0.875rem;
+  color: var(--text-body, #4a423a);
+}
+
+.read-mode-option {
+  min-height: 44px;
+  padding: 4px 12px;
+  border-bottom: 1px solid transparent;
+}
+
+.read-mode-option[aria-pressed="true"] {
+  border-color: #a78339;
+  color: var(--ink);
+}
+
+.read-mode-title[lang=""],
+.read-mode-body[lang=""],
+.note-title-input,
+.writing-textarea,
+.zanshin-copy-fallback {
+  unicode-bidi: plaintext;
+  text-align: start;
+  letter-spacing: normal;
+}
+
+.zanshin-note-card__title[lang=""],
+.zanshin-note-card__preview {
+  letter-spacing: normal;
+}
+
+.read-mode-body::selection,
+.read-mode-title::selection {
+  background: #e2d2ac;
+  -webkit-text-fill-color: #231c16;
 }
 
 /* 続きの案内は、実際に続きがある時だけ。補助にすぎず、読めなくても内容へ届く。 */
@@ -729,6 +790,20 @@ textarea.note-title-input {
   overflow-wrap: anywhere;
 }
 
+.zanshin-title-placeholder,
+.zanshin-body-placeholder {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  margin: 0;
+  pointer-events: none;
+  color: var(--text-soft, #6a6055);
+  line-height: 1.6;
+}
+
+.zanshin-title-placeholder { font-size: 1.375rem; }
+.zanshin-body-placeholder { font-size: 1.0625rem; }
+
 /* ───────── 11. キーボード表示中の編集領域（R32）─────────
  * 画面キーボードが開いている間は、日付・題名まわりの上下の余白と装飾を詰め、本文の入力と選択に場所を譲る。
  * 本文の最低高さ（42dvh）も外す。実際の見える行数は実機で測る（要実機）。
@@ -796,4 +871,35 @@ textarea.note-title-input {
 /* 「このアプリについて」への入口は、作成操作より弱く、いつも同じ場所に。 */
 .zanshin-about-entry {
   z-index: 2;
+}
+
+/* Language settings and recovery use the same safe-area inset. */
+.zanshin-info-panel {
+  padding-top: max(21px, env(safe-area-inset-top));
+  padding-bottom: max(21px, env(safe-area-inset-bottom));
+}
+
+.zanshin-about-entry {
+  margin-left: auto;
+  text-align: end;
+}
+
+.zanshin-about-entry [lang="en"] {
+  font-family: system-ui, sans-serif;
+  letter-spacing: normal;
+}
+
+.zanshin-screen-bar > div {
+  flex-shrink: 0;
+}
+
+.zanshin-notices button,
+.zanshin-nav-button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.zanshin-nav-button svg {
+  flex-shrink: 0;
 }

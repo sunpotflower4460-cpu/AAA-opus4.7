@@ -1,5 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { copy } from "../lib/i18n";
+import { getLastUiLocale } from "../i18n/locales";
+import { rescueMessages } from "../i18n/rescueMessages";
+import { OriginalText } from "./OriginalText";
 import { getDraftRescue, getUnsavedNotes } from "../lib/draftRescue";
 import { CopyTextButton } from "./CopyTextButton";
 
@@ -32,12 +34,14 @@ export class AppErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children;
 
+    const locale = getLastUiLocale();
+    const copy = rescueMessages[locale];
     const snapshot = getDraftRescue();
     const unsavedNotes = getUnsavedNotes(snapshot);
     const known = snapshot !== null;
 
     return (
-      <div className="flex min-h-dvh items-start justify-center px-gr-4 py-gr-6 text-center sm:items-center">
+      <div lang={locale} className="flex min-h-dvh items-start justify-center px-gr-4 py-gr-6 text-center sm:items-center">
         <div
           className="w-full max-w-[460px] border border-[color:var(--color-line)] bg-paper px-gr-4 py-gr-5 shadow-paper-soft sm:px-gr-5"
           style={{ borderRadius: "8px 16px 9px 14px" }}
@@ -64,26 +68,13 @@ export class AppErrorBoundary extends Component<Props, State> {
                 >
                   <span className="text-[12px] text-ink-muted">{copy.unsavedNoteLabel}</span>
                   {note.title !== "" && (
-                    <input
-                      readOnly
-                      aria-label={copy.titlePlaceholder}
-                      value={note.title}
-                      onFocus={(event) => event.currentTarget.select()}
-                      className="w-full rounded-[8px] border border-[color:var(--color-line)] bg-paper px-gr-3 py-gr-2 text-[16px] text-sumi"
-                    />
+                    <OriginalText label={copy.originalTitle} text={note.title} rows={3} />
                   )}
-                  <textarea
-                    readOnly
-                    aria-label={copy.bodyPlaceholder}
-                    value={note.body}
-                    rows={Math.min(12, Math.max(4, note.body.split("\n").length + 1))}
-                    onFocus={(event) => event.currentTarget.select()}
-                    className="w-full rounded-[8px] border border-[color:var(--color-line)] bg-paper px-gr-3 py-gr-2 text-[16px] leading-ample text-sumi"
-                  />
+                  <OriginalText label={copy.originalText} text={note.body} rows={6} />
                   <div className="flex flex-wrap gap-gr-3">
-                    <CopyTextButton label={copy.copyBody} text={note.body} />
+                    <CopyTextButton label={copy.copyBody} text={note.body} feedback={copy} />
                     {note.title !== "" && (
-                      <CopyTextButton label={copy.copyTitle} text={note.title} />
+                      <CopyTextButton label={copy.copyTitle} text={note.title} feedback={copy} />
                     )}
                   </div>
                 </li>

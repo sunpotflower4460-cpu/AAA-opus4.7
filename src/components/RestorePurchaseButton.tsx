@@ -1,4 +1,4 @@
-import { copy } from "../lib/i18n";
+import { copy } from "../lib/monetizationCopy";
 
 type Props = {
   onRestore: () => void | Promise<void>;

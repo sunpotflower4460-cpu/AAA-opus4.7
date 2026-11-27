@@ -7,8 +7,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { STORAGE_KEY_FOR_TESTING } from "../lib/storage";
-import { copy } from "../lib/i18n";
+import { messages } from "../lib/i18n";
 import type { Note } from "../types/note";
+
+const copy = messages.ja;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -110,19 +112,19 @@ describe("戻り先と未操作の新規下書き", () => {
       expect(cardCount()).toBe(3);
     }
     expect(storedNotes(storage)).toHaveLength(3);
-    expect(container.textContent).toContain(copy.notesCountLabel(3));
+    expect(container.textContent).toContain(copy.notesCountLabel({ noteCount: 3 }));
   });
 
   it("検索中の新規→何もせず戻ると、検索語と結果が元のまま復元され、戻る操作の名前は「検索結果へ」", () => {
     setValue(searchInput(), "朝");
-    expect(container.textContent).toContain(copy.searchResultCountLabel(2));
+    expect(container.textContent).toContain(copy.searchResultCountLabel({ noteCount: 2 }));
 
     act(() => click(findButton(container, copy.newNote)));
     expect(findButton(container, copy.backToSearch)).toBeDefined();
     act(() => click(findButton(container, copy.backToSearch)));
 
     expect(searchInput().value).toBe("朝");
-    expect(container.textContent).toContain(copy.searchResultCountLabel(2));
+    expect(container.textContent).toContain(copy.searchResultCountLabel({ noteCount: 2 }));
     expect(storedNotes(storage)).toHaveLength(3);
   });
 
@@ -178,7 +180,7 @@ describe("戻り先と未操作の新規下書き", () => {
     expect(findButton(container, copy.backToSearch)).toBeDefined();
     act(() => click(findButton(container, copy.backToSearch)));
     expect(searchInput().value).toBe("朝");
-    expect(container.textContent).toContain(copy.searchResultCountLabel(2));
+    expect(container.textContent).toContain(copy.searchResultCountLabel({ noteCount: 2 }));
   });
 
   it("無題のメモは、本文の最初の行で見分けられ、保存されている題名は空のまま", () => {
@@ -215,12 +217,12 @@ describe("検索の解除（R18）", () => {
     setValue(input, "存在しない語");
     expect(container.textContent).toContain(copy.noSearchResult);
     expect(container.textContent).toContain(copy.noSearchResultHint);
-    expect(container.textContent).toContain(copy.searchResultCountLabel(0));
+    expect(container.textContent).toContain(copy.searchResultCountLabel({ noteCount: 0 }));
 
     act(() => click(findButton(container, copy.clearSearch)));
     expect(input.value).toBe("");
     expect(document.activeElement).toBe(input);
-    expect(container.textContent).toContain(copy.notesCountLabel(1));
+    expect(container.textContent).toContain(copy.notesCountLabel({ noteCount: 1 }));
 
     act(() => root.unmount());
     container.remove();

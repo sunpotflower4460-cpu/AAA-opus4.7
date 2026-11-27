@@ -1,4 +1,4 @@
-import { copy } from "../lib/i18n";
+import { copy } from "../lib/monetizationCopy";
 import type { MonetizationState } from "../types/monetization";
 import { RestorePurchaseButton } from "./RestorePurchaseButton";
 

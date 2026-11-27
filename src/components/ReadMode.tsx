@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Note } from "../types/note";
-import { copy } from "../lib/i18n";
-import { lineWobble } from "../lib/inkJitter";
+import { useI18n } from "../i18n/useI18n";
+import { captureReadingPosition, restoreReadingPosition, type ReadingPosition } from "../lib/readingPosition";
+import type { ReadingMode } from "../lib/uiPreferences";
+import { hasVisibleText } from "../lib/noteDisplay";
+import { ReadingText } from "./ReadingText";
 import { BrushPicker } from "./BrushPicker";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 
@@ -10,45 +13,61 @@ type Props = {
   /** 戻る操作の名前。行き先（一覧へ／検索結果へ）で呼ぶ。 */
   backLabel?: string;
   onBack: () => void;
-  onEdit: () => void;
+  onEdit: (position: ReadingPosition | undefined) => void;
+  position?: ReadingPosition;
 };
 
-/**
- * 読み返し専用モード。
- * 編集は横書きの実用、読み返しは縦書きの余韻として分ける。
- */
-export function ReadMode({ note, backLabel = copy.back, onBack, onEdit }: Props) {
-  const hasTitle = note.title.trim().length > 0;
-  const hasBody = note.body.trim().length > 0;
+export function ReadMode({ note, backLabel, onBack, onEdit, position }: Props) {
+  const { copy, preferences, readingMode, readingWriteFailed } = useI18n();
+  const hasTitle = hasVisibleText(note.title);
+  const hasBody = note.body !== "";
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastPosition = useRef(position);
   const [hasMore, setHasMore] = useState(false);
 
-  // 実際に続きがある時だけ「左へ続きます」を出す。scrollLeft の符号はエンジンで異なるので、
-  // 絶対値で「残りの距離」を測る。表示が無くても、タッチ・キーボードで末尾まで読める。
   const measureMore = useCallback(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || readingMode !== "vertical") return;
     const remaining = el.scrollWidth - el.clientWidth - Math.abs(el.scrollLeft);
     setHasMore(remaining > 4);
-  }, []);
+  }, [readingMode]);
 
   useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el && lastPosition.current) {
+      restoreReadingPosition(el, note.body, readingMode, lastPosition.current);
+    }
     measureMore();
-  }, [measureMore, note.id, note.title, note.body]);
+  }, [measureMore, note.id, note.title, note.body, readingMode]);
 
   useEffect(() => {
     window.addEventListener("resize", measureMore);
     const el = scrollRef.current;
-    let observer: ResizeObserver | null = null;
-    if (el && typeof ResizeObserver !== "undefined") {
-      observer = new ResizeObserver(measureMore);
-      observer.observe(el);
-    }
+    const observer = el && typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(measureMore)
+      : null;
+    if (el) observer?.observe(el);
+    const body = el?.querySelector(".read-mode-body");
+    if (body) observer?.observe(body);
     return () => {
       window.removeEventListener("resize", measureMore);
       observer?.disconnect();
     };
   }, [measureMore]);
+
+  function recordPosition() {
+    if (scrollRef.current) {
+      lastPosition.current = captureReadingPosition(scrollRef.current, note.body, readingMode);
+    }
+    return lastPosition.current;
+  }
+
+  function chooseDirection(mode: ReadingMode) {
+    recordPosition();
+    preferences.selectReadingMode(mode);
+  }
+
+  const back = backLabel ?? copy.back;
 
   return (
     <div className="read-mode-shell mx-auto flex min-h-full w-full max-w-[560px] flex-1 flex-col pt-gr-3 animate-washiFade">
@@ -56,7 +75,7 @@ export function ReadMode({ note, backLabel = copy.back, onBack, onEdit }: Props)
         <button
           type="button"
           onClick={onBack}
-          aria-label={backLabel}
+          aria-label={back}
           className="
             zanshin-nav-button -ml-gr-2 flex items-center gap-gr-2 rounded-full
             px-gr-3 py-gr-2 text-[14px] text-ink-muted
@@ -78,14 +97,14 @@ export function ReadMode({ note, backLabel = copy.back, onBack, onEdit }: Props)
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-mincho tracking-mincho">{backLabel}</span>
+          <span className="font-mincho tracking-mincho">{back}</span>
         </button>
 
         <div className="flex items-center gap-gr-2">
         <BrushPicker variant="icon" />
         <button
           type="button"
-          onClick={onEdit}
+          onClick={() => onEdit(recordPosition())}
           aria-label={copy.editNote}
           className="
             zanshin-secondary-button rounded-full border border-[color:var(--color-line)]
@@ -99,8 +118,25 @@ export function ReadMode({ note, backLabel = copy.back, onBack, onEdit }: Props)
         </div>
       </header>
 
+      <div className="read-mode-options">
+        <div role="group" aria-label={copy.readingDirection} className="flex flex-wrap gap-gr-2">
+          {(["vertical", "horizontal"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              aria-pressed={readingMode === mode}
+              onClick={() => chooseDirection(mode)}
+              className="read-mode-option"
+            >
+              {copy[mode]}
+            </button>
+          ))}
+        </div>
+        {readingWriteFailed && <p role="status">{copy.preferenceWriteFailed}</p>}
+      </div>
+
       <main className="read-mode-stage flex min-h-0 flex-1 flex-col pt-gr-3 pb-gr-5">
-        {hasMore && (
+        {readingMode === "vertical" && hasMore && (
           <p className="read-mode-more font-mincho" aria-hidden="true">
             {copy.readModeMore}
           </p>
@@ -113,43 +149,27 @@ export function ReadMode({ note, backLabel = copy.back, onBack, onEdit }: Props)
           <div
             ref={scrollRef}
             className="read-mode-scroll"
+            data-reading-mode={readingMode}
             tabIndex={0}
             role="region"
             aria-label={copy.readNote}
-            onScroll={measureMore}
+            onScroll={() => {
+              recordPosition();
+              measureMore();
+            }}
           >
             {(hasTitle || !hasBody) && (
-              // 題名のないメモに、大きな代替題名は加えない。本文もない確定済みメモだけ代替表示を残す。
-              <h1 className="read-mode-title jp-text-discipline">
-                {hasTitle ? note.title : copy.untitled}
+              <h1 className="read-mode-title jp-text-discipline" dir="auto" lang={hasTitle ? "" : undefined}>
+                {hasTitle ? <ReadingText text={note.title} /> : copy.untitled}
               </h1>
             )}
             {hasTitle && hasBody && <span className="read-mode-divider" aria-hidden="true" />}
 
             {hasBody ? (
-              // 空判定だけ trim() を使い、表示内容は原文の改行・先頭末尾の余白を保つ。
-              <p className="read-mode-body jp-text-discipline">
-                {note.body.split("\n").map((line, index) => {
-                  const w = lineWobble(note.id, index);
-                  return (
-                    // 行ごとに、手で書いたようなごく小さなズレを与える（見た目だけ。内容は変えない）。
-                    <span
-                      key={index}
-                      className="read-line"
-                      style={
-                        {
-                          "--jx": `${w.x}px`,
-                          "--jy": `${w.y}px`,
-                          "--jr": `${w.rotate}deg`,
-                          "--jo": w.opacity,
-                        } as React.CSSProperties
-                      }
-                    >
-                      {line === "" ? "\u200b" : line}
-                    </span>
-                  );
-                })}
-              </p>
+              <pre className="read-mode-body jp-text-discipline" dir="auto" lang="">
+                <ReadingText text={note.body} />
+                {note.body.endsWith("\n") && <span className="read-final-line" aria-hidden="true" />}
+              </pre>
             ) : (
               <p className="read-mode-body read-mode-empty-body jp-text-discipline">
                 {copy.emptyReadBody}
@@ -172,6 +192,7 @@ export function ReadMode({ note, backLabel = copy.back, onBack, onEdit }: Props)
           <g filter="url(#zanshin-seal-rough)">
             <rect x="3" y="3" width="28" height="28" rx="2.5" fill="#b14a36" />
             <text
+              lang="ja"
               x="17"
               y="25.5"
               textAnchor="middle"

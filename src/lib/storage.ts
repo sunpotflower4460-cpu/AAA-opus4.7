@@ -56,6 +56,7 @@ export type SaveOptions = {
 };
 
 export type LoadOptions = {
+  checkFreshInstall?: boolean;
   /**
    * 中断 journal より現在の正常 primary を明示採用する。
    * 未採用の next は conflict backup へ退避できた場合だけ journal を解消する。
@@ -64,7 +65,7 @@ export type LoadOptions = {
 };
 
 export type LoadResult =
-  | { ok: true; notes: Note[] }
+  | { ok: true; notes: Note[]; freshInstall?: true }
   | {
       ok: false;
       notes: Note[];
@@ -361,6 +362,29 @@ function resolvePendingSaveWithPrimary(
   return { ok: true, notes: primary };
 }
 
+/** Review reads the existing primary only. It does not repair mirrors or finalize a journal. */
+export function readPrimaryForReview(): Note[] | null {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw === null ? null : parseValidNotesSnapshot(raw);
+  } catch {
+    return null;
+  }
+}
+
+/** Only called when the regular startup read found no primary or usable recovery data. */
+function hasNoLocalHistory(): boolean {
+  try {
+    const storage = window.localStorage;
+    return [
+      BACKUP_KEY, PENDING_SAVE_KEY, CONFLICT_BACKUP_KEY, SECONDARY_CONFLICT_BACKUP_KEY,
+      RECOVERY_CONFLICT_BACKUP_KEY, RECOVERY_CONFLICT_SECONDARY_BACKUP_KEY, CORRUPT_BACKUP_KEY,
+    ].every((key) => storage.getItem(key) === null);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * localStorage からメモを読み込む。
  * - 正常データはそのまま返し、Phase31形式の backup は最新版ミラーへ安全に移行する
@@ -418,6 +442,9 @@ export function loadNotes(options: LoadOptions = {}): LoadResult {
           recoveredFromBackup: true,
           recoveryCandidate: true,
         };
+      }
+      if (options.checkFreshInstall && hasNoLocalHistory()) {
+        return { ok: true, notes: [], freshInstall: true };
       }
       return { ok: true, notes: [] };
     }
