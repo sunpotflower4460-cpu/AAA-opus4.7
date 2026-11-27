@@ -38,6 +38,8 @@ The Phase 1–3 rules below describe those historical stages; Phase 1 is no long
 
 The initial release remains free, ad-free, and without Premium, login, or cloud sync. Keep the hard prohibitions below. Retain the existing journal, conflict checks, recovery candidates, and native durability protections.
 
+A separate user-requested design handoff for the future paid experience, **Zanshin Tsuzuri / 残心 綴り**, is in `docs/paid-experience/README.md`. This addition contains design and kickoff documents only; it does not enable billing or change the current free/bilingual release. When the user requests that implementation, follow its DESIGN, P0–P6 instructions, and AC01–AC26 while preserving the multilingual contracts and existing data-safety protections. The old ad-removal mock and product plan are historical references, not the Tsuzuri product specification. Do not add billing as part of unrelated store-polish or bilingual work. These documents do not grant deployment, store submission, or permission to bypass access controls.
+
 ### Phase 1 (Historical)
 
 - ✅ Work on README and docs only
@@ -148,6 +150,10 @@ If you believe one of these is needed, **stop and ask the user first.** Do not i
 | `docs/multilingual/README.md` | Japanese/English design handoff and current work entry point |
 | `docs/multilingual/IMPLEMENTATION.md` | I0–I5 instructions, current-code integration and data invariants |
 | `docs/multilingual/ACCEPTANCE.md` | ML01–ML44 status, checks and evidence |
+| `docs/paid-experience/README.md` | Tsuzuri paid-experience design handoff; separate from the current free release |
+| `docs/paid-experience/IMPLEMENTATION.md` | P0–P6 implementation sequence, data boundaries and integration |
+| `docs/paid-experience/ACCEPTANCE.md` | AC01–AC26 status and verification evidence, initially untested |
+| `docs/paid-experience/KICKOFF.md` | Prompt to use when the user requests Tsuzuri implementation |
 | `docs/store-release-polish/README.md` | Current store-polish scope and document entry point |
 | `docs/store-release-polish/IMPLEMENTATION.md` | W0–W5 implementation instructions |
 | `docs/store-release-polish/ACCEPTANCE.md` | R01–R37 status and verification evidence |
