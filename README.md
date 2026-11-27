@@ -3,15 +3,15 @@
 > 書いたあとにも、心がそこに残るメモ帳。  
 > A note-taking app where the heart lingers, even after the writing ends.
 
-## 現在の作業入口（2026-11-26）
+## 現在の作業入口（2026-11-27）
 
-Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護が実装されています。現在は、ストア公開前の見やすさ・書きやすさ・保存の信頼性を仕上げる段階です。
+Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護に加え、ストア品質改善PR #51がmainへ統合されています。R01〜R37の実装・自動確認・実機待ちは [既存の受入記録](docs/store-release-polish/ACCEPTANCE.md) で区別します。
 
-**[ストア公開前の設計・実装指示書](docs/store-release-polish/README.md)** に、2回のレビュー全37項目、採用する画面仕様、実装順、受入条件、監査原文を統合しています。実装担当へは [キックオフプロンプト](docs/store-release-polish/KICKOFF.md) を渡してください。
+**次の実装対象は、日本語・英語で書く・保存・読み返し・検索・復旧まで完成させることです。** [多言語設計・実装指示](docs/multilingual/README.md) に、2回の多言語調査、最新コードとの照合、採用仕様、I0〜I5、ML01〜ML44、合成確認データを収録しています。実装担当へは [日英対応のキックオフプロンプト](docs/multilingual/KICKOFF.md) を渡してください。
 
-文書を収録した段階で、37項目のアプリ改修・実機確認が完了したわけではありません。進捗は [ACCEPTANCE.md](docs/store-release-polish/ACCEPTANCE.md) で区別して記録します。
+**日英対応は設計を収録した段階です。** 現在のUIは日本語で、言語切替・日英native対応・横書き読書の追加実装と確認はこれからです。多言語の合否は [ML受入条件](docs/multilingual/ACCEPTANCE.md) へ記録し、既存の日本語テストを日英の合格へ転記しません。[ストア品質改善の設計](docs/store-release-polish/README.md) は、保存保護・画面品質・R項目の基盤として引き継ぎます。
 
-初版の方針は **iPhone / portrait、日本語UI、無料・広告なし・Premiumなし・アカウントなし・クラウド同期なし** です。古いPhase文書は当時の記録として参照し、初版の実装に課金・広告を追加しないでください。
+方針は **iPhone / portrait、無料・広告なし・Premiumなし・アカウントなし・クラウド同期なし** を維持します。日英が完成した版で対応言語の宣言・情報ページ・掲載物を揃えます。古いPhase文書は当時の記録として参照し、課金・広告を追加しないでください。
 
 ---
 
@@ -62,7 +62,7 @@ Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護が実�
 | お気に入り | 大切な言葉を残す |
 | ローカル保存 | まずはデバイスの中に |
 | iPhone向けUI | 手のひらに収まる静けさ |
-| 文言設計 | 日本語UI。英語の補助文はあるが、英語UI切替は未実装 |
+| 文言設計 | 現在は日本語UI。日英の切替・全画面・異常時表示の設計を収録済み、製品実装はこれから |
 
 ---
 
@@ -80,7 +80,7 @@ Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護が実�
 
 ## 開発フェーズ
 
-以下は初期フェーズの履歴です。現在の作業は [W0〜W5の実装指示](docs/store-release-polish/IMPLEMENTATION.md) と [Phase 42報告](docs/phase-42-native-startup-divergence-report.md) を参照してください。
+以下は初期フェーズの履歴です。現在の日英対応は [I0〜I5の実装指示](docs/multilingual/IMPLEMENTATION.md)、既存の保全契約は [W0〜W5の実装指示](docs/store-release-polish/IMPLEMENTATION.md) と [Phase 42報告](docs/phase-42-native-startup-divergence-report.md) を参照してください。
 
 | フェーズ | 内容 | Cloudflareデプロイ |
 |----------|------|-------------------|
@@ -231,6 +231,8 @@ npm run preview
 
 | ファイル | 内容 |
 |----------|------|
+| [docs/multilingual/README.md](docs/multilingual/README.md) | 次の作業：日英の設計・最新照合・I0〜I5・ML01〜ML44・調査全文 |
+| [docs/multilingual/KICKOFF.md](docs/multilingual/KICKOFF.md) | 日英対応の実装担当へそのまま渡すプロンプト |
 | [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | 現在の設計・実装指示・R01〜R37の受入条件への入口 |
 | [docs/store-release-polish/KICKOFF.md](docs/store-release-polish/KICKOFF.md) | 実装担当へ渡すキックオフプロンプト |
 | [docs/concept.md](docs/concept.md) | 「残心」の思想と世界観 |

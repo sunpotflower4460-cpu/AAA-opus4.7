@@ -4,6 +4,8 @@
 監査の基準コミット：`481e57d8bc041e573353d3ed312d9a626913db42`  
 対象：初回の iPhone / portrait リリース
 
+2026-11-27追記：以下の実装はPR #51でmainへ統合されています。ここにあるR01〜R37の状態・過去の証拠は維持します。次段階の日英対応の追加確認は [ML01〜ML44](../multilingual/ACCEPTANCE.md)、最新差分は [多言語着手基準](../multilingual/BASELINE.md) を参照してください。既存の日本語確認結果を日英の合格へ転記しません。
+
 ## 1. この文書の使い方と現在地
 
 本書は、[第1回監査](audits/round-1.md) の R01〜R30 と、[第2回監査](audits/round-2.md) の R31〜R37 を、実装後に確認できる条件へまとめたものです。製品上の採用仕様は [DESIGN.md](DESIGN.md)、作業順は [IMPLEMENTATION.md](IMPLEMENTATION.md)、入口は [README.md](README.md) を参照してください。監査原文の代替案と採用仕様が異なる場合は、採用仕様に従い、原文を過去の実装報告として書き換えません。

@@ -28,7 +28,11 @@ The goal is to make writing feel **quiet, spacious, and intentional**.
 
 ### Current state and store-polish work
 
-Phase 42 is implemented. The approved documentation handoff for the next store-polish work lives in `docs/store-release-polish/README.md`, with `DESIGN.md`, `IMPLEMENTATION.md`, and `ACCEPTANCE.md`. Read those documents before work on that scope, and compare the current branch with the audited baseline. A documented finding is not a completed fix.
+Phase 42 and store-polish PR #51 are on main. Preserve the implementation and the verification limits recorded in `docs/store-release-polish/ACCEPTANCE.md`; its W1 contracts remain the data-safety baseline.
+
+The next approved design handoff is Japanese/English support in `docs/multilingual/README.md`. Read its `BASELINE.md`, `DESIGN.md`, `COPY_AND_RELEASE.md`, `IMPLEMENTATION.md`, and `ACCEPTANCE.md` before that work. Follow I0–I5 and record ML01–ML44 separately from the earlier R01–R37 evidence. The multilingual documents were added as design, not as completed product implementation. Compare the latest code with the recorded baseline; do not revert the title textarea, card display, recovery review, fonts, or Japanese native declarations to old audit code.
+
+For the bilingual release, horizontal reading is required. Keep UI language separate from Note.locale, user text, writing mode, text direction, regional formatting, and time zone. Language changes must preserve drafts, save versions, recovery candidates, protected raw data, and Undo deadlines. The in-memory rescue mechanism does not guarantee unsaved drafts survive a process restart.
 
 The Phase 1–3 rules below describe those historical stages; Phase 1 is no longer the current stage. Follow the user's actual task authorization. The store-polish documents do not grant deployment, store submission, or permission to bypass branch protection or data-safety checks.
 
@@ -141,6 +145,9 @@ If you believe one of these is needed, **stop and ask the user first.** Do not i
 
 | File | Purpose |
 |------|---------|
+| `docs/multilingual/README.md` | Japanese/English design handoff and current work entry point |
+| `docs/multilingual/IMPLEMENTATION.md` | I0–I5 instructions, current-code integration and data invariants |
+| `docs/multilingual/ACCEPTANCE.md` | ML01–ML44 status, checks and evidence |
 | `docs/store-release-polish/README.md` | Current store-polish scope and document entry point |
 | `docs/store-release-polish/IMPLEMENTATION.md` | W0–W5 implementation instructions |
 | `docs/store-release-polish/ACCEPTANCE.md` | R01–R37 status and verification evidence |

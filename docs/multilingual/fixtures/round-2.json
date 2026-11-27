@@ -1,0 +1,600 @@
+{
+  "schema_version": "zanshin-multilingual-research-fixtures/1",
+  "created_date_jst": "2026-11-26",
+  "repository": "sunpotflower4460-cpu/AAA-opus4.7",
+  "baseline_commit": "6b40f44fe630b094aa0aad4fb1e79f5def3bc5b9",
+  "status": "research_fixture_proposal",
+  "instructions": [
+    "\u3053\u308c\u306f\u5408\u6210\u30c6\u30ad\u30b9\u30c8\u3068\u671f\u5f85\u6761\u4ef6\u306e\u8cc7\u6599\u3002\u30a2\u30d7\u30ea\u306e\u30e1\u30e2\u4fdd\u5b58JSON\u3078\u76f4\u63a5\u30a4\u30f3\u30dd\u30fc\u30c8\u3057\u306a\u3044\u3002",
+    "\u5916\u56fd\u8a9e\u306e\u6587\u4f8b\u306f\u7d44\u7248\u30fb\u539f\u6587\u4fdd\u6301\u78ba\u8a8d\u7528\u3067\u3042\u308a\u3001\u88fd\u54c1\u30b3\u30d4\u30fc\u306e\u6bcd\u8a9e\u8a71\u8005\u6821\u95b2\u6e08\u307f\u8a33\u3067\u306f\u306a\u3044\u3002",
+    "ui_locales_to_check\u306fUI\u306e\u8a00\u8a9e\u3002Note.locale\u3084\u672c\u6587\u306e\u8a00\u8a9e\u3068\u3057\u3066\u4fdd\u5b58\u3057\u306a\u3044\u3002",
+    "expected_under_proposed_policy\u306f\u7b2c2\u56de\u8a2d\u8a08\u6848\u306e\u671f\u5f85\u5024\u3067\u3001\u73fe\u884c\u30a2\u30d7\u30ea\u306e\u5408\u683c\u3092\u793a\u3055\u306a\u3044\u3002",
+    "UI\u30fb\u4fdd\u5b58\u57fa\u76e4\u30fb\u539f\u6587\u6551\u6e08\u3092\u5909\u66f4\u3057\u306a\u3044\u8aad\u307f\u53d6\u308a\u78ba\u8a8d\u3068\u3001\u5b9f\u88c5\u5f8c\u306e\u5408\u6210\u30c7\u30fc\u30bf\u8a66\u9a13\u306b\u4f7f\u3046\u3002"
+  ],
+  "proposed_search_policy": {
+    "version": "round2-proposal-1",
+    "sequence": [
+      "NFC",
+      "collapse TAB plus Unicode Zs to one U+0020",
+      "locale-independent Unicode lowercasing"
+    ],
+    "query_outer_whitespace": "trim, preserving the existing outer-whitespace policy",
+    "line_boundaries": "Do not collapse CR, LF, U+2028 or U+2029 into spaces.",
+    "original_text": "Never write comparison strings back into notes.",
+    "excluded_equivalences": [
+      "accent removal",
+      "fullwidth letters to ASCII",
+      "soft-hyphen deletion",
+      "ZWSP/ZWJ/ZWNJ deletion",
+      "transliteration",
+      "cross-language translation"
+    ]
+  },
+  "text_cases": [
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT01",
+      "name": "\u65e5\u672c\u8a9e\u3068\u82f1\u8a9e\u306e\u6b4c\u8a5e\u30fb\u7a7a\u884c",
+      "title": "\u6708\u306e\u5e30\u308a\u9053",
+      "body": "  \u6708\u306e\u5e30\u308a\u9053\nI keep a little light.\n\n    \u307e\u3060\u540d\u524d\u306e\u306a\u3044\u6c17\u6301\u3061\nand a little room to breathe.\n",
+      "checks": [
+        "\u5b57\u4e0b\u3052\u30fb\u7a7a\u884c\u30fb\u672b\u5c3e\u6539\u884c\u3092\u4fdd\u5b58\u3059\u308b",
+        "UI\u8a00\u8a9e\u5909\u66f4\u3067\u8aad\u66f8\u65b9\u5411\u3068\u539f\u6587\u3092\u5909\u3048\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT02",
+      "name": "\u6bb5\u843d\u3054\u3068\u306b\u7570\u306a\u308b\u5de6\u53f3\u65b9\u5411",
+      "title": "Three paragraphs",
+      "body": "A quiet evening.\n\n\u0645\u0633\u0627\u0621 \u0647\u0627\u062f\u0626 (2026).\n\n\u9759\u304b\u306a\u591c\u3002",
+      "checks": [
+        "\u7b2c1\u6bb5\u843dLTR\u30fb\u7b2c2\u6bb5\u843dRTL\u30fb\u7b2c3\u6bb5\u843dLTR\u3092\u5225\u3005\u306b\u6271\u3046",
+        "\u8868\u793a\u306e\u5de6\u53f3\u9806\u306b\u539f\u6587\u3092\u4e26\u3079\u66ff\u3048\u3066\u4fdd\u5b58\u3057\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT03",
+      "name": "RTL\u984c\u540d\u3068\u6570\u5b57\u30fb\u62ec\u5f27",
+      "title": "\u0645\u0644\u0627\u062d\u0638\u0629 (2) \u2014 2026",
+      "body": "A synthetic note for title isolation.",
+      "checks": [
+        "\u984c\u540d\u306e\u65b9\u5411\u304c\u65e5\u4ed8\u3084\u96a3\u306e\u64cd\u4f5c\u30e9\u30d9\u30eb\u3078\u6f0f\u308c\u306a\u3044",
+        "\u984c\u540d\u30fb\u64cd\u4f5c\u8aac\u660e\u3092\u8a00\u8a9e\u60c5\u5831\u3082\u542b\u3081\u3066\u5206\u3051\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT04",
+      "name": "RTL\u6bb5\u843d\u304b\u3089URL\u3067\u59cb\u307e\u308b\u629c\u7c8b",
+      "title": "Snippet direction",
+      "body": "\u0647\u0630\u0627 \u0631\u0627\u0628\u0637 \u0644\u0644\u0645\u0644\u0627\u062d\u0638\u0629 https://example.com/notes (\u0646\u0633\u062e\u0629 2).",
+      "snippet": {
+        "source_paragraph_base_direction": "rtl",
+        "text": "https://example.com/notes (\u0646\u0633\u062e\u0629 2)."
+      },
+      "checks": [
+        "\u629c\u7c8b\u5148\u982d\u306eLatin\u6587\u5b57\u3060\u3051\u3067\u5143\u6bb5\u843d\u306e\u65b9\u5411\u3092\u5931\u308f\u306a\u3044",
+        "\u691c\u7d22\u5f37\u8abf\u306e\u5404\u65ad\u7247\u3078bdi\u3092\u5206\u3051\u3066\u4ed8\u3051\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT05",
+      "name": "\u30da\u30eb\u30b7\u30a2\u8a9e\u306eZWNJ",
+      "title": "\u0645\u06cc\u200c\u0631\u0648\u0645",
+      "body": "\u0645\u06cc\u200c\u0631\u0648\u0645",
+      "significant_code_points": [
+        "U+200C ZERO WIDTH NON-JOINER"
+      ],
+      "checks": [
+        "ZWNJ\u3092\u4e0d\u53ef\u8996\u3068\u3044\u3046\u7406\u7531\u3067\u524a\u9664\u3057\u306a\u3044",
+        "\u4fdd\u5b58\u30fb\u30b3\u30d4\u30fc\u3067\u7d50\u5408\u5236\u5fa1\u6587\u5b57\u3092\u4fdd\u6301\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT06",
+      "name": "\u5148\u982d\u672b\u5c3e\u6539\u884c\u30fb\u5b57\u4e0b\u3052",
+      "title": "White space",
+      "body": "\n\n  first line\n\n\tsecond line  \n\n",
+      "checks": [
+        "\u6539\u884c\u6570\u30fb\u5b57\u4e0b\u3052\u30fb\u672b\u5c3e\u7a7a\u767d\u3092\u8868\u793a\u306e\u90fd\u5408\u3067\u66f8\u304d\u63db\u3048\u306a\u3044",
+        "pre\u8981\u7d20\u63a1\u7528\u6642\u3082\u5148\u982dLF\u3068\u30d5\u30a9\u30f3\u30c8\u3092\u78ba\u8a8d\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT07",
+      "name": "\u5bb6\u65cf\u7d75\u6587\u5b57\u3068\u808c\u8272",
+      "title": "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66 \ud83c\udf19",
+      "body": "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66 \ud83d\udc69\ud83c\udffd\u200d\ud83d\udcbb \ud83d\udc4d\ud83c\udfff \ud83c\uddef\ud83c\uddf5",
+      "checks": [
+        "\u66f8\u8a18\u7d20\u306e\u9014\u4e2d\u3067\u629c\u7c8b\u3092\u5207\u3089\u306a\u3044",
+        "ZWJ\u30fb\u808c\u8272\u30fb\u56fd\u65d7\u3092\u524a\u9664\u3057\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT08",
+      "name": "\u6587\u5b57\u8868\u793a\u3068\u7d75\u6587\u5b57\u8868\u793a\u306e\u9078\u629e\u5b50",
+      "title": "Two hearts",
+      "body": "\u2764\ufe0e / \u2764\ufe0f",
+      "significant_code_points": [
+        "U+FE0E VARIATION SELECTOR-15",
+        "U+FE0F VARIATION SELECTOR-16"
+      ],
+      "checks": [
+        "\u8868\u793a\u7528\u30d5\u30a9\u30f3\u30c8\u3092\u5909\u3048\u3066\u3082\u9078\u629e\u5b50\u3092\u539f\u6587\u304b\u3089\u9664\u53bb\u3057\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT09",
+      "name": "\u5408\u6210\u6e08\u307f\u3068\u5206\u89e3\u3055\u308c\u305f\u30a2\u30af\u30bb\u30f3\u30c8",
+      "title": "Accent variants",
+      "body": "caf\u00e9",
+      "queries": [
+        {
+          "text": "cafe\u0301",
+          "expected_under_proposed_policy": true
+        },
+        {
+          "text": "cafe",
+          "expected_under_proposed_policy": false
+        }
+      ],
+      "checks": [
+        "NFC\u6bd4\u8f03\u3060\u3051\u306b\u6b63\u898f\u5316\u3092\u4f7f\u3046",
+        "\u30a2\u30af\u30bb\u30f3\u30c8\u3092\u81ea\u52d5\u3067\u9664\u53bb\u3057\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT10",
+      "name": "\u7d50\u5408\u6fc1\u70b9",
+      "title": "\u6fc1\u70b9",
+      "body": "\u304c",
+      "queries": [
+        {
+          "text": "\u304b\u3099",
+          "expected_under_proposed_policy": true
+        },
+        {
+          "text": "\u304b",
+          "expected_under_proposed_policy": false
+        }
+      ],
+      "checks": [
+        "\u6bd4\u8f03\u5f8c\u3082\u4fdd\u5b58\u6e08\u307f\u539f\u6587\u306e\u30b3\u30fc\u30c9\u5217\u3092\u5909\u3048\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT11",
+      "name": "\u30cf\u30f3\u30b0\u30eb\u306e\u6b63\u6e96\u7b49\u4fa1\u8868\u73fe",
+      "title": "Hangul",
+      "body": "\uac00",
+      "queries": [
+        {
+          "text": "\u1100\u1161",
+          "expected_under_proposed_policy": true
+        }
+      ],
+      "checks": [
+        "\u691c\u7d22\u306fNFC\u306e\u6b63\u6e96\u7b49\u4fa1\u3092\u6271\u3046",
+        "\u5165\u529b\u6642\u306e\u5b50\u97f3\u30fb\u6bcd\u97f3\u7d44\u7acb\u3066\u306f\u5225\u9014\u5b9f\u6a5f\u8a66\u9a13\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT12",
+      "name": "\u7d50\u5408\u306e\u3042\u308b\u30c7\u30fc\u30f4\u30a1\u30ca\u30fc\u30ac\u30ea\u30fc\u6587\u5b57",
+      "title": "\u0928\u092e\u0938\u094d\u0924\u0947",
+      "body": "\u0928\u092e\u0938\u094d\u0924\u0947",
+      "checks": [
+        "\u6587\u5b57\u30921\u30b3\u30fc\u30c9\u30dd\u30a4\u30f3\u30c8\u305a\u3064\u8981\u7d20\u5206\u5272\u3057\u306a\u3044",
+        "\u30d5\u30a9\u30f3\u30c8\u30fb\u7d50\u5408\u30fb\u4e0a\u90e8\u3068\u4e0b\u90e8\u306e\u6b20\u3051\u3092\u5b9f\u6a5f\u3067\u78ba\u8a8d\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT13",
+      "name": "\u5358\u8a9e\u306e\u9593\u306b\u7a7a\u767d\u304c\u306a\u3044\u30bf\u30a4\u8a9e",
+      "title": "\u0e20\u0e32\u0e29\u0e32\u0e44\u0e17\u0e22",
+      "body": "\u0e27\u0e31\u0e19\u0e19\u0e35\u0e49\u0e09\u0e31\u0e19\u0e2d\u0e22\u0e32\u0e01\u0e40\u0e02\u0e35\u0e22\u0e19\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e2a\u0e31\u0e49\u0e19\u0e46",
+      "checks": [
+        "\u30b9\u30da\u30fc\u30b9\u533a\u5207\u308a\u3060\u3051\u3092\u6587\u7ae0\u51e6\u7406\u306e\u524d\u63d0\u306b\u3057\u306a\u3044",
+        "\u6539\u884c\u3068\u5b57\u4f53\u3092\u5bfe\u8c61OS\u3067\u78ba\u8a8d\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT14",
+      "name": "NBSP\u3068\u901a\u5e38\u7a7a\u767d\u306e\u691c\u7d22",
+      "title": "Greeting",
+      "body": "good\u00a0morning",
+      "queries": [
+        {
+          "text": "good morning",
+          "expected_under_proposed_policy": true
+        }
+      ],
+      "baseline_observation": {
+        "preview": "good morning",
+        "matches_note": false
+      },
+      "significant_code_points": [
+        "U+00A0 NO-BREAK SPACE"
+      ],
+      "checks": [
+        "\u6bd4\u8f03\u7528\u3060\u3051\u6c34\u5e73\u7a7a\u767d\u3092\u6298\u308a\u7573\u3080",
+        "\u8aad\u66f8\u30fb\u4fdd\u5b58\u30fb\u5168\u6587\u30b3\u30d4\u30fc\u306fNBSP\u3092\u4fdd\u6301\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT15",
+      "name": "narrow NBSP\u3092\u542b\u3080\u6570\u5b57",
+      "title": "Amount",
+      "body": "10\u202f000",
+      "queries": [
+        {
+          "text": "10 000",
+          "expected_under_proposed_policy": true
+        }
+      ],
+      "baseline_observation": {
+        "preview": "10 000",
+        "matches_note": false
+      },
+      "significant_code_points": [
+        "U+202F NARROW NO-BREAK SPACE"
+      ],
+      "checks": [
+        "\u6587\u5b57\u306e\u6bd4\u8f03\u3068\u6570\u5024\u306e\u8a08\u7b97\u3092\u6df7\u540c\u3057\u306a\u3044",
+        "\u6570\u5024\u3092\u89e3\u6790\u3057\u3066\u539f\u6587\u3092\u66f8\u304d\u63db\u3048\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT16",
+      "name": "\u30bf\u30d6\u30fb\u9023\u7d9a\u7a7a\u767d",
+      "title": "Spacing",
+      "body": "blue\tmoon\nblue  moon",
+      "queries": [
+        {
+          "text": "blue moon",
+          "expected_under_proposed_policy": true
+        }
+      ],
+      "checks": [
+        "\u6c34\u5e73\u7a7a\u767d\u306e\u9055\u3044\u3067\u30ab\u30fc\u30c9\u306e\u8a9e\u53e5\u304c\u898b\u3064\u304b\u3089\u306a\u304f\u306a\u3089\u306a\u3044",
+        "\u5b57\u4e0b\u3052\u3084\u5143\u306e\u7a7a\u767d\u6570\u306f\u4fdd\u5b58\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT17",
+      "name": "\u6bb5\u843d\u3092\u8de8\u3050\u507d\u306e\u691c\u7d22\u4e00\u81f4\u3092\u4f5c\u3089\u306a\u3044",
+      "title": "Line boundary",
+      "body": "blue\nmoon",
+      "queries": [
+        {
+          "text": "blue moon",
+          "expected_under_proposed_policy": false
+        }
+      ],
+      "checks": [
+        "\u6c34\u5e73\u7a7a\u767d\u306e\u6bd4\u8f03\u3067LF\u3092\u901a\u5e38\u7a7a\u767d\u3078\u5909\u3048\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT18",
+      "name": "\u4e0d\u53ef\u8996\u6587\u5b57\u3060\u3051\u306e\u984c\u540d",
+      "title": "\u200b",
+      "body": "Visible words for identification.",
+      "significant_code_points": [
+        "U+200B ZERO WIDTH SPACE"
+      ],
+      "checks": [
+        "\u30ab\u30fc\u30c9\u306b\u8b58\u5225\u3067\u304d\u308b\u4ee3\u66ff\u8868\u793a\u3092\u51fa\u3059",
+        "\u4fdd\u5b58\u6e08\u307f\u984c\u540d\u3092\u81ea\u52d5\u3067\u7a7a\u6587\u5b57\u3078\u66f8\u304d\u63db\u3048\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT19",
+      "name": "\u4e0d\u53ef\u8996\u6587\u5b57\u3060\u3051\u306e\u7de8\u96c6\u6e08\u307f\u672c\u6587",
+      "title": "",
+      "body": "\u200d\u2060",
+      "significant_code_points": [
+        "U+200D ZERO WIDTH JOINER",
+        "U+2060 WORD JOINER"
+      ],
+      "checks": [
+        "\u8868\u793a\u4e0a\u306e\u7a7a\u5224\u5b9a\u3068\u672a\u64cd\u4f5c\u4e0b\u66f8\u304d\u5224\u5b9a\u3092\u5206\u3051\u308b",
+        "\u5229\u7528\u8005\u304c\u5165\u529b\u3057\u305f\u539f\u6587\u3092\u81ea\u52d5\u524a\u9664\u3057\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT20",
+      "name": "\u5c0f\u6587\u5b57\u306e\u8a69\u30fb\u9020\u8a9e\u30fb\u56fa\u6709\u540d\u8a5e",
+      "title": "luma",
+      "body": "i keep a little moon\nin my pocket\nluma is a word i made.",
+      "checks": [
+        "\u691c\u7d22\u6b04\u306e\u81ea\u52d5\u8a02\u6b63\u30fb\u81ea\u52d5\u5927\u6587\u5b57\u5316\u3092\u660e\u793a\u3059\u308b",
+        "\u672c\u6587\u306eOS\u5165\u529b\u652f\u63f4\u306f\u8a2d\u5b9a\u3092\u8a18\u9332\u3057\u3066\u5b9f\u6a5f\u3067\u78ba\u8a8d\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT21",
+      "name": "CJK\u5171\u901a\u30b3\u30fc\u30c9\u3068\u5b57\u4f53",
+      "title": "\u9aa8 \u76f4 \u4ee4",
+      "body": "\u9aa8 \u76f4 \u4ee4 \u8fd4",
+      "review_language_hints": [
+        "ja",
+        "zh-Hans",
+        "zh-Hant"
+      ],
+      "checks": [
+        "\u5b57\u5f62\u306e\u9069\u5426\u3092UI\u8a00\u8a9e\u3060\u3051\u304b\u3089\u5224\u65ad\u3057\u306a\u3044",
+        "\u6bcd\u8a9e\u8a71\u8005\u3068\u5bfe\u8c61\u7aef\u672b\u3067\u5b57\u4f53\u3092\u78ba\u8a8d\u3059\u308b"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT22",
+      "name": "HTML\u306b\u898b\u3048\u308b\u6587\u5b57\u3068\u5dee\u3057\u8fbc\u307f\u8a18\u53f7",
+      "title": "<em>moon</em> & \"\u661f\" {noteCount}",
+      "body": "<b>\u3053\u306e\u6587\u5b57\u3082\u539f\u6587</b>\n{count} is text, not a placeholder.",
+      "checks": [
+        "\u539f\u6587\u3092HTML\u3084\u30e1\u30c3\u30bb\u30fc\u30b8\u69cb\u6587\u3068\u3057\u3066\u89e3\u91c8\u3057\u306a\u3044",
+        "\u7ffb\u8a33\u6587\u3078\u5dee\u3057\u8fbc\u3093\u3060\u984c\u540d\u3092\u518d\u5e30\u7684\u306b\u5c55\u958b\u3057\u306a\u3044"
+      ]
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT23",
+      "name": "\u65e2\u5b58\u4fdd\u5b58\u5024\u3068HTML\u5165\u529b\u6b04\u306e\u6539\u884c\u5883\u754c",
+      "title": "first\r\nsecond",
+      "body": "first\r\nsecond\rthird\n",
+      "checks": [
+        "\u958b\u304f\u3060\u3051\u3067\u306f\u30e2\u30c7\u30eb\u306e\u6587\u5b57\u5217\u3092\u66f8\u304d\u63db\u3048\u306a\u3044",
+        "text input\u306e\u6539\u884c\u9664\u53bb\u3068textarea\u306eLF\u6b63\u898f\u5316\u3092\u5165\u529b\u5951\u7d04\u3078\u660e\u8a18\u3059\u308b",
+        "\u6551\u6e08\u306fDOM\u304b\u3089\u518d\u69cb\u6210\u305b\u305a\u4fdd\u6301\u4e2d\u306e\u30e2\u30c7\u30eb\u6587\u5b57\u5217\u3092\u4f7f\u3046"
+      ],
+      "scope_note": "\u65e2\u5b58\u6709\u52b9\u4fdd\u5b58\u30c7\u30fc\u30bf\u306e\u8a66\u9a13\u3002iPhone\u306e\u8cbc\u4ed8\u3051\u7d50\u679c\u3092\u518d\u73fe\u6e08\u307f\u3068\u306f\u6271\u308f\u306a\u3044\u3002"
+    },
+    {
+      "ui_locales_to_check": [
+        "ja",
+        "en"
+      ],
+      "verification": "proposed_fixture_not_device_verified",
+      "id": "MLT24",
+      "name": "\u5168\u6587\u53d6\u308a\u51fa\u3057\u3068\u629c\u7c8b\u306e\u5206\u96e2",
+      "title": "Full text rescue",
+      "body": "BEGIN-\u6700\u521d-\ud83c\udf19\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\n\u98a8\u306e\u97f3\u3092\u3072\u3068\u3064\u6b8b\u3059\u3002 A line that can wait. \u00a0\nMIDDLE-\u4e2d\u9593-\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nKeep the spaces.  \u4f59\u767d\u3082\u6587\u7ae0\u306e\u4e00\u90e8\u3002\t\nEND-\u6700\u5f8c-\u304c\n",
+      "checks": [
+        "\u8868\u793a\u629c\u7c8b\u306e\u9577\u3055\u3092\u5168\u6587\u30b3\u30d4\u30fc\u3078\u9069\u7528\u3057\u306a\u3044",
+        "\u5148\u982d\u30fb\u4e2d\u9593\u30fb\u672b\u5c3e\u306e\u76ee\u5370\u304c\u3059\u3079\u3066\u539f\u6587\u3069\u304a\u308a\u6e21\u308b",
+        "\u30b3\u30d4\u30fc\u6210\u529f\u3092\u30a2\u30d7\u30ea\u4fdd\u5b58\u6210\u529f\u3068\u8868\u793a\u3057\u306a\u3044"
+      ]
+    }
+  ],
+  "length_examples": [
+    {
+      "text": "A",
+      "utf16_units": 1,
+      "reference_graphemes": 1
+    },
+    {
+      "text": "\u00e9",
+      "utf16_units": 1,
+      "reference_graphemes": 1
+    },
+    {
+      "text": "e\u0301",
+      "utf16_units": 2,
+      "reference_graphemes": 1
+    },
+    {
+      "text": "\u304b\u3099",
+      "utf16_units": 2,
+      "reference_graphemes": 1
+    },
+    {
+      "text": "\ud83c\udf19",
+      "utf16_units": 2,
+      "reference_graphemes": 1
+    },
+    {
+      "text": "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66",
+      "utf16_units": 11,
+      "reference_graphemes": 1
+    }
+  ],
+  "recovery_semantic_cases": [
+    {
+      "id": "MRS01",
+      "state": "valid_snapshot_with_zero_notes",
+      "note_count": 0,
+      "prior_deletion_known": false,
+      "must_not_infer": [
+        "all notes were deleted",
+        "no recovery version exists"
+      ],
+      "draft_en": "This version contains no notes."
+    },
+    {
+      "id": "MRS02",
+      "state": "viewing_another_snapshot",
+      "note_count": 3,
+      "version_count": 1,
+      "committed": false,
+      "must_not_infer": [
+        "3 recovery versions",
+        "restored",
+        "saved"
+      ],
+      "draft_en": "This version contains 3 notes."
+    },
+    {
+      "id": "MRS03",
+      "state": "latest_primary_saved_recovery_copy_failed",
+      "current_primary_saved": true,
+      "recovery_copy_updated": false,
+      "must_not_infer": [
+        "latest note lost",
+        "cloud backup is current"
+      ],
+      "draft_en": "Your changes are saved. The on-device recovery copy couldn\u2019t be updated."
+    },
+    {
+      "id": "MRS04",
+      "state": "latest_changes_not_saved_old_version_saved",
+      "current_primary_saved": false,
+      "older_primary_saved": true,
+      "must_not_infer": [
+        "all changes are saved"
+      ],
+      "draft_en": "Your latest changes couldn\u2019t be saved."
+    }
+  ],
+  "date_reference_examples": {
+    "environment": "Node v24.22.3 / ICU 78.3; not an iPhone rendering test",
+    "instant": "2026-11-26T09:30:00.000Z",
+    "time_zone": "Asia/Tokyo",
+    "values": [
+      {
+        "locale": "en-US",
+        "formatted": "November 26, 2026",
+        "calendar": "gregory",
+        "numbering_system": "latn"
+      },
+      {
+        "locale": "en-GB",
+        "formatted": "26 November 2026",
+        "calendar": "gregory",
+        "numbering_system": "latn"
+      },
+      {
+        "locale": "th-TH",
+        "formatted": "26 \u0e1e\u0e24\u0e28\u0e08\u0e34\u0e01\u0e32\u0e22\u0e19 2569",
+        "calendar": "buddhist",
+        "numbering_system": "latn"
+      },
+      {
+        "locale": "ja-JP-u-ca-japanese",
+        "formatted": "\u4ee4\u548c8\u5e7411\u670826\u65e5",
+        "calendar": "japanese",
+        "numbering_system": "latn"
+      },
+      {
+        "locale": "ar-EG",
+        "formatted": "\u0662\u0666 \u0646\u0648\u0641\u0645\u0628\u0631 \u0662\u0660\u0662\u0666",
+        "calendar": "gregory",
+        "numbering_system": "arab"
+      }
+    ],
+    "contract": "Locale formatting must not change the saved instant or chronological sort keys."
+  }
+}
+
