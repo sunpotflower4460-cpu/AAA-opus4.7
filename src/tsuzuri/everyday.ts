@@ -40,6 +40,16 @@ export function saveEveryday(value: Everyday): boolean {
   return true;
 }
 
+export function clearEverydayBrush(): boolean {
+  const previous = read();
+  if (previous.brush === null) return true;
+  const next = { ...previous, brush: null };
+  const saved = writeDisplaySetting(KEY, JSON.stringify(next));
+  current = next;
+  listeners.forEach((listener) => listener());
+  return saved;
+}
+
 export function useEverydaySurface(writing: boolean) {
   const prefs = useEveryday();
   const paper = PAPERS[paperId(prefs.paper)];

@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { BRUSHES, setBrush, useBrush, useBrushWriteFailed } from "../lib/brushPreference";
 import { useI18n } from "../i18n/useI18n";
 import type { BrushId } from "../lib/brushPreference";
+import { clearEverydayBrush, useEveryday } from "../tsuzuri/everyday";
+import { ALL_BRUSHES, BRUSH_NAMES } from "../tsuzuri/catalog";
+import { tsuzuriMessages } from "../tsuzuri/messages";
 import { handleModalKeyDown } from "./modalKeyboard";
 
 type Props = {
@@ -15,13 +18,16 @@ type Props = {
  * 設定はどの画面からでも同じ場所に置き、選んだ瞬間に画面全体の字が変わる。
  */
 export function BrushPicker({ variant = "icon", className = "" }: Props) {
-  const { copy } = useI18n();
+  const { copy, locale } = useI18n();
+  const extraBrush = useEveryday().brush;
+  const [everydayWriteFailed, setEverydayWriteFailed] = useState(false);
   const brush = useBrush();
   const writeFailed = useBrushWriteFailed();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const current = copy.brushes[brush];
+  const index = ALL_BRUSHES.findIndex((id) => id === extraBrush);
+  const currentName = index >= 0 ? tsuzuriMessages[locale][BRUSH_NAMES[index]] : copy.brushes[brush].label;
 
   useEffect(() => {
     if (open) closeRef.current?.focus();
@@ -33,6 +39,7 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
   }
 
   function choose(id: BrushId) {
+    setEverydayWriteFailed(!clearEverydayBrush());
     setBrush(id);
   }
 
@@ -43,7 +50,7 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        aria-label={copy.brushCurrent({ brushName: current.label })}
+        aria-label={copy.brushCurrent({ brushName: currentName })}
         title={copy.brush}
         className={[
           "zanshin-brush-trigger",
@@ -88,7 +95,7 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
             <div role="radiogroup" aria-label={copy.brush} className="mt-gr-4 flex flex-col gap-gr-2">
               {BRUSHES.map((id) => {
                 const item = copy.brushes[id];
-                const selected = id === brush;
+                const selected = !extraBrush && id === brush;
                 return (
                   <button
                     key={id}
@@ -130,7 +137,7 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
               })}
             </div>
 
-            {writeFailed && <p role="status" className="mt-gr-2 text-sm text-ink-muted">{copy.preferenceWriteFailed}</p>}
+            {(writeFailed || everydayWriteFailed) && <p role="status" className="mt-gr-2 text-sm text-ink-muted">{copy.preferenceWriteFailed}</p>}
             <div className="mt-gr-4 flex justify-end">
               <button
                 ref={closeRef}
