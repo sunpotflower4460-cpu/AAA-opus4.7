@@ -45,6 +45,23 @@ describe("immutable editions", () => {
     expect(removeBook(amended.library, amended.book.id).books.map((book) => book.id)).toEqual([duplicate.book.id]);
   });
 
+  it("refuses a colliding inline source before it can replace an already bound passage", () => {
+    const first = bindDraft(emptyLibrary(), blankDraft("vertical", note));
+    // Give the passage an independent text snapshot, separate from the source baseline.
+    const edit = editionDraft(first.library, first.book);
+    edit.passages[0].body = "Original book-only text";
+    const revised = bindDraft(first.library, edit);
+    const original = revised.library.editions[1];
+    const collision = blankDraft("vertical", { ...note, body: "Distinct draft text" });
+    collision.passages[0].sourceBase = {
+      ...collision.passages[0].sourceBase!,
+      id: original.passages[0].textSnapshotId,
+    };
+    expect(validLibrary({ ...revised.library, drafts: [collision] })).toBe(true);
+    expect(() => bindDraft(revised.library, collision)).toThrow("invalidLibrary");
+    expect(editionText(revised.library, original)[0].body).toBe("Original book-only text");
+  });
+
   it("keeps the exact selected text despite later source edits", () => {
     const source = { ...note };
     const draft = blankDraft("horizontal", source);
@@ -128,11 +145,25 @@ describe("transactional library and restore", () => {
     await expect(writeLibrary(existing, library, null)).rejects.toThrow("blocked");
     expect(saveNotes(plan.journal.nextNotes, { expectedNotes: [current], writerId: plan.journal.id }).ok).toBe(true);
     let synced: Note[] = [];
-    await applyRestoreNotes(plan.journal, null, (notes) => { synced = notes; });
+    await applyRestoreNotes(plan.journal.id, null, (notes) => { synced = notes; });
     expect(synced.map((item) => item.body)).toEqual([current.body, note.body]);
     expect((await readLibraryRecords()).restore).toBeUndefined();
     expect(loadNotes().notes).toEqual(synced);
     expect(makeArchive(synced, plan.library)).not.toHaveProperty("entitlement");
+  });
+
+  it("does not apply note writes from a restore plan that is no longer active", async () => {
+    const before = emptyLibrary();
+    const firstPlan = planRestore([], before, makeArchive([note], emptyLibrary()));
+    const staged = await writeLibrary(before, firstPlan.library, null, firstPlan.journal);
+    const replacement = planRestore([], staged, makeArchive([{ ...note, body: "Use this version" }], emptyLibrary()));
+    await writeLibrary(staged, replacement.library, null, replacement.journal, firstPlan.journal.id);
+
+    await expect(applyRestoreNotes(firstPlan.journal.id, null, () => {})).rejects.toThrow("restoreIncomplete");
+    expect(loadNotes().notes).toEqual([]);
+    expect((await readLibraryRecords()).restore?.id).toBe(replacement.journal.id);
+    await applyRestoreNotes(replacement.journal.id, null, () => {});
+    expect(loadNotes().notes[0].body).toBe("Use this version");
   });
 
   it("protects a pending operation from changed notes and rejects unresolved references and future versions", async () => {
@@ -145,14 +176,14 @@ describe("transactional library and restore", () => {
     const installed = await writeLibrary(existing, plan.library, null, plan.journal);
     const changed = { ...note, body: "Other window" };
     expect(saveNotes([changed]).ok).toBe(true);
-    await expect(applyRestoreNotes(plan.journal, null, () => {})).rejects.toThrow("restoreIncomplete");
+    await expect(applyRestoreNotes(plan.journal.id, null, () => {})).rejects.toThrow("restoreIncomplete");
     expect((await readLibraryRecords()).restore?.id).toBe(plan.journal.id);
     expect((await readLibraryRecords()).current).toEqual(installed);
     expect(loadNotes().notes).toEqual([changed]);
     const resumable = replanRestoreNotes([changed], installed, plan.journal);
     expect(resumable.conflicts).toBe(1);
     const installedAgain = await writeLibrary(installed, resumable.library, null, resumable.journal, plan.journal.id);
-    await applyRestoreNotes(resumable.journal, null, () => {});
+    await applyRestoreNotes(resumable.journal.id, null, () => {});
     expect(loadNotes().notes.map((item) => item.body)).toEqual([changed.body, note.body]);
     expect(installedAgain.editions[0].passages[0].localNoteId).toBe(resumable.journal.nextNotes[1].id);
   });

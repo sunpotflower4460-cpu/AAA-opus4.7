@@ -193,11 +193,10 @@ export function bindDraft(library: Library, draft: BookDraft): { library: Librar
       const source = passage.sourceBase;
       const text = previous && sameText(previous, passage) ? previous
         : source && sameText(source, passage) ? source : capture(passage.title, passage.body, source?.origin);
-      snapshots.set(text.id, text);
-      if (source) {
-        const known = snapshots.get(source.id);
-        if (known && JSON.stringify(known) !== JSON.stringify(source)) throw new Error("invalidLibrary");
-        snapshots.set(source.id, source);
+      for (const snapshot of source ? [source, text] : [text]) {
+        const known = snapshots.get(snapshot.id);
+        if (known && JSON.stringify(known) !== JSON.stringify(snapshot)) throw new Error("invalidLibrary");
+        if (!known) snapshots.set(snapshot.id, snapshot);
       }
       return {
         id: passage.id, textSnapshotId: text.id,

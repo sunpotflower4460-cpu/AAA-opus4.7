@@ -1,8 +1,8 @@
-import { BRUSH_FILES, PAPERS, brushFamily, paperId, paperTexture } from "./catalog";
+import { ALL_BRUSHES, BRUSH_FILES, PAPERS, brushFamily, paperId, paperTexture } from "./catalog";
 import { fileBlob } from "./exportFile";
 import { layoutPages, paintText, type Layout } from "./pageLayout";
 
-const fonts = new Map<string, Promise<ArrayBuffer>>();
+let outputFont: Promise<ArrayBuffer> | undefined;
 const textures = new Map<string, HTMLImageElement>();
 
 async function loadTexture(paper: string) {
@@ -17,23 +17,19 @@ async function loadTexture(paper: string) {
   textures.set(paper, image);
 }
 
-function bundledFont(id: keyof typeof BRUSH_FILES) {
-  const cached = fonts.get(id);
-  if (cached) return cached;
-  const loading = (async () => {
-    const response = await fetch(`/fonts/tsuzuri/${BRUSH_FILES[id]}`);
+function loadOutputFont() {
+  if (outputFont) return outputFont;
+  outputFont = (async () => {
+    const response = await fetch(`/fonts/tsuzuri/${BRUSH_FILES.base}`);
     if (!response.ok) throw new Error("fontLoad");
     const bytes = await response.arrayBuffer();
-    if (id === "base") {
-      const face = new FontFace("Tsuzuri-base", bytes);
-      await face.load();
-      document.fonts.add(face);
-    }
+    const face = new FontFace("Tsuzuri-base", bytes);
+    await face.load();
+    document.fonts.add(face);
     return bytes;
   })();
-  fonts.set(id, loading);
-  void loading.catch(() => fonts.delete(id));
-  return loading;
+  void outputFont.catch(() => { outputFont = undefined; });
+  return outputFont;
 }
 
 function canvas(width: number, height: number) {
@@ -46,13 +42,14 @@ function canvas(width: number, height: number) {
 }
 
 export async function prepareLayout(options: Parameters<typeof layoutPages>[1]) {
-  await Promise.all([bundledFont("base"), loadTexture(options.appearance.paper)]);
   const { brush } = options.appearance;
-  if (brush !== "mincho") {
-    if (Object.prototype.hasOwnProperty.call(BRUSH_FILES, brush)) await bundledFont(brush as keyof typeof BRUSH_FILES);
-    const sample = options.text.map((piece) => piece.title + piece.body).join("");
-    await document.fonts.load(`14px ${brushFamily(brush, true)}`, sample || "残心 Aa");
-  }
+  const sample = [
+    ...Object.values(options.cover ?? {}),
+    ...options.text.flatMap((piece) => [piece.title, piece.body]),
+  ].join("\n");
+  const font = brush === "mincho" || !ALL_BRUSHES.some((id) => id === brush)
+    ? loadOutputFont() : document.fonts.load(`14px ${brushFamily(brush, true)}`, sample || "残心 Aa");
+  await Promise.all([font, options.surface === "white" ? undefined : loadTexture(options.appearance.paper)]);
   return layoutPages(canvas(1, 1).context, options);
 }
 
@@ -111,17 +108,24 @@ function paintCover(context: CanvasRenderingContext2D, layout: Layout) {
   }
 }
 
-export function pagePng(layout: Layout, index: number): Promise<Blob> {
-  const node = paintPage(layout, index, 2048);
-  return new Promise((resolve, reject) => node.toBlob((blob) => {
+async function encodePage(node: HTMLCanvasElement, type: "image/png" | "image/jpeg", quality?: number) {
+  try {
+    return await new Promise<Blob>((resolve, reject) => node.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("exportFailed"));
+    }, type, quality));
+  } finally {
     node.width = 0;
-    if (blob) resolve(blob);
-    else reject(new Error("exportFailed"));
-  }, "image/png"));
+    node.height = 0;
+  }
+}
+
+export function pagePng(layout: Layout, index: number): Promise<Blob> {
+  return encodePage(paintPage(layout, index, 2048), "image/png");
 }
 
 export async function bookPdf(layout: Layout): Promise<Blob> {
-  const [api, fontkit, fontBytes] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit"), bundledFont("base")]);
+  const [api, fontkit, fontBytes] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit"), loadOutputFont()]);
   const {
     PDFDocument, PDFHexString, PDFName, PDFOperator, PDFOperatorNames, beginText, endText,
     setFontAndSize, setTextMatrix, showText, setTextRenderingMode, TextRenderingMode,
@@ -132,9 +136,8 @@ export async function bookPdf(layout: Layout): Promise<Blob> {
   const characters = new Set(font.getCharacterSet());
   for (const [index, pageLayout] of layout.pages.entries()) {
     const page = pdf.addPage([layout.width, layout.height]);
-    const raster = paintPage(layout, index, 1540);
-    const image = await pdf.embedJpg(raster.toDataURL("image/jpeg", 0.92));
-    raster.width = 0;
+    const raster = await encodePage(paintPage(layout, index, 1540), "image/jpeg", 0.92);
+    const image = await pdf.embedJpg(await raster.arrayBuffer());
     page.drawImage(image, { x: 0, y: 0, width: layout.width, height: layout.height });
     const fontKey = page.node.newFontDictionary(font.name, font.ref);
     for (const line of pageLayout.lines) {

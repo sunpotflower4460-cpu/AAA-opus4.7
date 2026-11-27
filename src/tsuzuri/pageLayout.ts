@@ -5,7 +5,11 @@ import { brushFamily } from "./catalog";
 export type PageSize = "A5" | "A6" | "square" | "portrait";
 export type Surface = "paper" | "light" | "white";
 export type OutputText = { title: string; body: string };
-export type Line = { text: string; x: number; y: number; size: number; vertical: boolean; rtl: boolean; advance: number };
+type SidewaysRun = { start: number; end: number; rtl: boolean };
+export type Line = {
+  text: string; x: number; y: number; size: number; vertical: boolean; rtl: boolean; advance: number;
+  sideways: SidewaysRun[];
+};
 export type Page = { lines: Line[]; cover: boolean };
 export type Layout = {
   width: number; height: number; pages: Page[]; appearance: Appearance; surface: Surface;
@@ -72,6 +76,14 @@ function firstStrongRtl(text: string) {
   return Boolean(firstLetter && RTL.test(firstLetter));
 }
 
+function sidewaysRuns(text: string): SidewaysRun[] {
+  return [...text.matchAll(SIDEWAYS)].map((match) => ({
+    start: match.index,
+    end: match.index + match[0].length,
+    rtl: firstStrongRtl(match[0]),
+  }));
+}
+
 export function layoutPages(
   context: CanvasRenderingContext2D,
   options: { text: OutputText[]; cover?: Cover; appearance: Appearance; size: PageSize; surface: Surface; contents?: boolean },
@@ -98,19 +110,32 @@ export function layoutPages(
     cursor += gap;
     for (const originalLine of value.split(/\r\n|[\r\n\u2028\u2029]/u)) {
       const isRtl = firstStrongRtl(originalLine);
+      const runs = vertical ? sidewaysRuns(originalLine) : [];
+      let start = 0;
+      let runIndex = 0;
       const available = inline - MARGIN * 2;
       const fits = (line: string) => vertical
         ? [...graphemeSegments(line)].length * size * 1.13 <= available
         : context.measureText(line.replace(/\t/g, "    ")).width <= available;
       for (const line of splitLine(originalLine, fits)) {
         if (cursor + advance > block - MARGIN) nextPage(page.cover && text.length === 0);
+        const end = start + line.length;
+        const sideways: SidewaysRun[] = [];
+        // Find runs in the source line so a URL stays sideways after wrapping.
+        while (runIndex < runs.length && runs[runIndex].end <= start) runIndex++;
+        for (let index = runIndex; index < runs.length && runs[index].start < end; index++) {
+          const run = runs[index];
+          sideways.push({ start: Math.max(0, run.start - start), end: Math.min(line.length, run.end - start), rtl: run.rtl });
+        }
         page.lines.push({
           text: line, size, vertical, rtl: isRtl,
           x: vertical ? width - cursor - size : isRtl ? width - MARGIN : MARGIN,
           y: vertical ? MARGIN : cursor + size,
           advance: vertical ? [...graphemeSegments(line)].length * size * 1.13
             : context.measureText(line.replace(/\t/g, "    ")).width,
+          sideways,
         });
+        start = end;
         cursor += advance;
       }
     }
@@ -164,17 +189,18 @@ export function paintText(context: CanvasRenderingContext2D, page: Page, appeara
       }
     }
     let offset = 0;
-    for (const run of line.text.matchAll(SIDEWAYS)) {
-      paintUpright(line.text.slice(offset, run.index));
-      const reserved = [...graphemeSegments(run[0])].length * interval;
+    for (const run of line.sideways) {
+      paintUpright(line.text.slice(offset, run.start));
+      const text = line.text.slice(run.start, run.end);
+      const reserved = [...graphemeSegments(text)].length * interval;
       context.save();
       context.translate(center, y - line.size * 0.75 + reserved / 2);
       context.rotate(Math.PI / 2);
-      context.direction = firstStrongRtl(run[0]) ? "rtl" : "ltr";
-      context.fillText(run[0], 0, line.size * 0.3, reserved);
+      context.direction = run.rtl ? "rtl" : "ltr";
+      context.fillText(text, 0, line.size * 0.3, reserved);
       context.restore();
       y += reserved;
-      offset = run.index + run[0].length;
+      offset = run.end;
     }
     paintUpright(line.text.slice(offset));
   }

@@ -192,6 +192,119 @@ def run_free_brush(browser, url):
     print("Existing brush picker: selecting a free brush also applies after an added everyday brush")
 
 
+def run_restore_polish(browser, url):
+    copy = COPY["en"]
+    page = browser.new_page(locale="en", viewport={"width": 375, "height": 667})
+    page.add_init_script("""(() => {
+      const read = File.prototype.text;
+      File.prototype.text = async function () {
+        if (this.name === 'slow.json') {
+          await new Promise(resolve => window.finishSlowBackup = resolve);
+          window.readSlowBackup = true;
+        }
+        return read.call(this);
+      };
+    })()""")
+    page.goto(url)
+    click(page, copy, "shelf")
+    click(page, copy, "backup")
+    field = page.get_by_label(copy["file"])
+    time = "2026-11-27T04:00:00Z"
+    library = {"schemaVersion": 1, "libraryId": "fixture", "storeRevision": 0, "books": [],
+               "editions": [], "snapshots": [], "drafts": [], "presets": [], "hiddenSamples": []}
+
+    def backup(name, titles):
+        notes = [{"id": f"note-{i}", "title": title, "body": BODY, "createdAt": time,
+                  "updatedAt": time, "isFavorite": False} for i, title in enumerate(titles)]
+        archive = {"format": "zanshin.backup", "schemaVersion": 1, "exportedAt": time,
+                   "notes": notes, "library": library}
+        return {"name": name, "mimeType": "application/json", "buffer": json.dumps(archive).encode()}
+
+    field.set_input_files(backup("slow.json", ["Older choice", "Extra note"]))
+    page.wait_for_function("typeof window.finishSlowBackup === 'function'")
+    field.set_input_files(backup("chosen.json", ["Chosen note"]))
+    expect(page.get_by_text("Notes to add · 1", exact=True)).to_be_visible()
+    page.evaluate("window.finishSlowBackup()")
+    page.wait_for_function("window.readSlowBackup === true")
+    click(page, copy, "import")
+    expect(page.get_by_text(copy["done"], exact=True)).to_be_visible()
+    restored = json.loads(page.evaluate("(key) => localStorage.getItem(key)", PRIMARY))
+    assert [note["title"] for note in restored] == ["Chosen note"]
+    assert restored[0]["body"] == BODY
+    page.close()
+    print("Notes-only restore: the last file selected wins, and only the reviewed note is written")
+
+
+def run_reader_navigation(browser, url, out):
+    copy = COPY["en"]
+    page = browser.new_page(locale="en", viewport={"width": 375, "height": 667}, accept_downloads=True)
+    text = "\n".join(f"Line {index:02}. 窓辺に光。This is a long passage." for index in range(1, 81))
+    time = "2026-11-27T04:00:00Z"
+    note = {"id": "long-note", "title": "Morning reflections", "body": text, "createdAt": time,
+            "updatedAt": time, "isFavorite": False}
+    original = json.dumps([note])
+    page.add_init_script(f"localStorage.setItem({json.dumps(PRIMARY)}, {json.dumps(original)})")
+    page.goto(url)
+    click(page, copy, "shelf")
+    click(page, copy, "make")
+    page.get_by_role("checkbox", name="Morning reflections", exact=False).check()
+    click(page, copy, "next", exact=False)
+    click(page, copy, "bind")
+    expect(page.get_by_text(copy["saved"], exact=True)).to_be_visible()
+    page.add_style_tag(content="html { font-size: 200% }")
+    viewport = page.locator(".ts-dialog")
+    pane = page.locator(".ts-reading")
+    axis = "scrollLeft" if pane.get_attribute("data-direction") == "vertical" else "scrollTop"
+    offset = -280 if axis == "scrollLeft" else 280
+    pane.evaluate("(el, [axis, offset]) => { el[axis] = offset; }", [axis, offset])
+    assert pane.evaluate("(el, axis) => el[axis]", axis) == offset
+    button = page.get_by_role("button", name=copy["free"], exact=True)
+    button.scroll_into_view_if_needed()
+    prior = viewport.evaluate("el => el.scrollTop")
+    assert prior > 100
+    button.click()
+    expect(page.get_by_role("heading", name="Preview the output")).to_be_in_viewport()
+    assert viewport.evaluate("el => el.scrollTop") <= 2
+    page.get_by_role("button", name=copy["back"], exact=True).press("Enter")
+    expect(button).to_be_focused()
+    restored_top = viewport.evaluate("el => el.scrollTop")
+    assert abs(restored_top - prior) < 12, (restored_top, prior)
+    assert abs(pane.evaluate("(el, axis) => el[axis]", axis) - offset) <= 2
+    saved = json.loads(page.evaluate("(key) => localStorage.getItem(key)", PRIMARY))
+    assert saved == [note]
+    print("Output at 200%: opens at the top, returns to the exact passage and triggering control")
+
+    # Reopen a foldbook through the same validated import available without purchase.
+    click(page, copy, "back")
+    click(page, copy, "backup")
+    backup = out / "long-reader.json"
+    save_file(page, copy, "out", backup)
+    archive = json.loads(backup.read_text())
+    archive["library"]["editions"][0]["appearance"]["format"] = "BK02"
+    page.close()
+    page = browser.new_page(locale="en", viewport={"width": 375, "height": 667})
+    page.goto(url)
+    click(page, copy, "shelf")
+    click(page, copy, "backup")
+    page.get_by_label(copy["file"]).set_input_files({
+        "name": "foldbook.json", "mimeType": "application/json", "buffer": json.dumps(archive).encode(),
+    })
+    click(page, copy, "import")
+    expect(page.get_by_text(copy["done"], exact=True)).to_be_visible()
+    click(page, copy, "back")
+    page.get_by_role("button", name="Read · Morning reflections", exact=True).click()
+    pane = page.locator(".ts-reading")
+    pane.evaluate("(el, [axis, offset]) => { el[axis] = offset; }", [axis, offset])
+    assert pane.evaluate("(el, axis) => el[axis]", axis) == offset
+    click(page, copy, "overview")
+    expect(page.locator(".ts-fold-overview")).to_be_visible()
+    page.locator('button[aria-pressed="true"]').filter(has_text="Read").click()
+    expect(pane).to_be_visible()
+    assert abs(pane.evaluate("(el, axis) => el[axis]", axis) - offset) <= 2
+    page.close()
+    print("Foldbook: the same passage and position remain after the overview")
+
+
 def run_files(browser, origin, out):
     page = browser.new_page(accept_downloads=True)
     page.goto(origin)
@@ -202,7 +315,8 @@ def run_files(browser, origin, out):
               const appearance = { paper: 'PA02', brush: 'BR02', cover: 'CV01', format: 'BK03',
                 direction: kind === 'pdf' ? 'vertical' : 'horizontal', binding: 'right', ink: 'clear' };
               const body = kind === 'pdf'
-                ? '始端 Cairo Café 👩🏽‍💻\n' + '短い文章を繰り返す。かな、漢字。'.repeat(640) + '\n終端 end𠮷'
+                ? '始端 Cairo Café 👩🏽‍💻\n' + '短い文章を繰り返す。かな、漢字。'.repeat(640) + '\n' +
+                    'https://example.test/' + 'long-path/'.repeat(40) + '?key=word\n終端 end𠮷'
                 : '始端\n' + '長文の画像を複数の面へ。'.repeat(170) + '\n終端';
               const layout = await prepareLayout({ text: [{ title: '確認用', body }], appearance, size: 'A6', surface: 'paper' });
               const file = kind === 'pdf' ? await bookPdf(layout) : await imagesZip(layout);
@@ -221,6 +335,7 @@ def run_files(browser, origin, out):
             assert "始端 Cairo Café 👩🏽‍💻" in text
             assert "終端 end𠮷" in text
             assert "短い文章を繰り返す。かな、漢字。" * 640 in compact
+            assert "https://example.test/" + "long-path/" * 40 + "?key=word" in compact
             assert "ShipporiMincho" in subprocess.check_output(["pdffonts", path], text=True)
         else:
             with ZipFile(path) as zip_file:
@@ -264,6 +379,8 @@ def main():
         for locale in ("ja", "en"):
             run_ui(browser, args.origin, args.output, locale)
         run_free_brush(browser, args.origin)
+        run_restore_polish(browser, args.origin)
+        run_reader_navigation(browser, args.origin, args.output)
         if not args.webkit:
             run_order(browser, args.origin)
         if args.dev_origin:

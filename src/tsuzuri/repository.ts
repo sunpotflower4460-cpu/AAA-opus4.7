@@ -138,6 +138,20 @@ export async function finishJournal(id: string, epoch: string | null) {
   });
 }
 
+/** A replacement cannot commit while the synchronous note write is using this plan. */
+export function withRestoreJournal<T>(
+  id: string,
+  epoch: string | null,
+  apply: (journal: RestoreJournal, library: Library) => T,
+): Promise<T> {
+  return access("readonly", ({ restore, current }) => {
+    if (!dataWriteAllowed(epoch) || restore?.id !== id || !validLibrary(current)) {
+      throw new Error("restoreIncomplete");
+    }
+    return apply(restore, current);
+  });
+}
+
 export async function eraseLibrary() {
   await access("readwrite", (_records, store) => store.clear());
   const records = await readLibraryRecords();

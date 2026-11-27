@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { captureReadingPosition, restoreReadingPosition } from "../lib/readingPosition";
+import { useLayoutEffect, useRef, useState } from "react";
+import { captureReadingPosition, restoreReadingPosition, type ReadingPosition } from "../lib/readingPosition";
 import { CopyTextButton } from "../components/CopyTextButton";
 import { rescueMessages } from "../i18n/rescueMessages";
 import type { UiLocale } from "../i18n/locales";
@@ -7,10 +7,10 @@ import { BookPage } from "./BookPage";
 import { tsuzuriMessages } from "./messages";
 import { editionText, pieceText, type Book, type BookEdition, type Bookmark, type Library } from "./model";
 
-export function BookReader({ library, book, edition, locale, onBookmark, onOutput, onOriginal, onArrange, onDelete, onHistory, onDuplicate }: {
-  library: Library; book: Book; edition: BookEdition; locale: UiLocale;
+export function BookReader({ library, book, edition, locale, visible, onBookmark, onOutput, onOriginal, onArrange, onDelete, onHistory, onDuplicate }: {
+  library: Library; book: Book; edition: BookEdition; locale: UiLocale; visible: boolean;
   onBookmark: (bookmark: Bookmark) => void;
-  onOutput: (kind: "basic" | "styled" | "image", passage: number) => void;
+  onOutput: (kind: "basic" | "styled" | "image", passage: number, trigger: HTMLButtonElement) => void;
   onOriginal: (pieces: ReturnType<typeof editionText>) => void;
   onArrange?: () => void; onDelete?: () => void; onHistory?: (editionId: string) => void; onDuplicate?: () => void;
 }) {
@@ -25,18 +25,35 @@ export function BookReader({ library, book, edition, locale, onBookmark, onOutpu
   const bookmark = book.bookmark;
   const [mode, setMode] = useState(edition.appearance.direction);
   const openingBookmark = useRef(bookmark);
-  useEffect(() => {
+  const priorPosition = useRef<{ passageId: string; position: ReadingPosition } | null>(null);
+
+  function rememberPosition() {
+    if (pane.current) {
+      priorPosition.current = { passageId: piece.id, position: captureReadingPosition(pane.current, piece.body, mode) };
+    }
+  }
+
+  function openOutput(kind: "basic" | "styled" | "image", trigger: HTMLButtonElement) {
+    rememberPosition();
+    onOutput(kind, index, trigger);
+  }
+
+  useLayoutEffect(() => {
     const node = pane.current;
-    if (!node || overview) return;
+    if (!node || overview || !visible) return;
+    const previous = priorPosition.current;
+    priorPosition.current = null;
     const position = openingBookmark.current;
     openingBookmark.current = null;
-    if (position?.passageId === piece.id) {
+    if (previous?.passageId === piece.id) {
+      restoreReadingPosition(node, piece.body, mode, previous.position);
+    } else if (position?.passageId === piece.id) {
       restoreReadingPosition(node, piece.body, mode, {
         mode: mode === "horizontal" ? "vertical" : "horizontal", body: piece.body,
         offset: position.offset, distance: 0, progress: position.progress,
       });
     } else node.scrollTo?.(0, 0);
-  }, [piece.id, piece.body, mode, overview]);
+  }, [piece.id, piece.body, mode, overview, visible]);
   const number = new Intl.NumberFormat(locale);
   return (
     <>
@@ -47,8 +64,11 @@ export function BookReader({ library, book, edition, locale, onBookmark, onOutpu
       <div className="ts-row">
         {onArrange && <button type="button" onClick={onArrange}>{c.arrange}</button>}
         <a href="#ts-book-export">{c.export}</a>
-        {edition.appearance.format === "BK03" && <button type="button" onClick={() => onOutput("image", index)}>{c.image}</button>}
-        {edition.appearance.format === "BK02" && <button aria-pressed={overview} type="button" onClick={() => setOverview((value) => !value)}>{overview ? c.reading : c.overview}</button>}
+        {edition.appearance.format === "BK03" && <button type="button" onClick={(event) => openOutput("image", event.currentTarget)}>{c.image}</button>}
+        {edition.appearance.format === "BK02" && <button aria-pressed={overview} type="button" onClick={() => {
+          if (!overview) rememberPosition();
+          setOverview(!overview);
+        }}>{overview ? c.reading : c.overview}</button>}
       </div>
       <details>
         <summary>{c.toc}</summary>
@@ -89,10 +109,8 @@ export function BookReader({ library, book, edition, locale, onBookmark, onOutpu
           <div role="group" aria-label={c.direction} className="ts-row">
             {(["vertical", "horizontal"] as const).map((direction) => <button type="button" key={direction}
               aria-pressed={mode === direction} onClick={() => {
-                if (pane.current) {
-                  const position = captureReadingPosition(pane.current, piece.body, mode);
-                  openingBookmark.current = { passageId: piece.id, offset: position.offset, progress: position.progress };
-                }
+                if (direction === mode) return;
+                rememberPosition();
                 setMode(direction);
               }}>{c[direction]}</button>)}
           </div>
@@ -102,9 +120,9 @@ export function BookReader({ library, book, edition, locale, onBookmark, onOutpu
       </details>
       <section className="ts-controls" id="ts-book-export" aria-label={c.export}>
         <h2>{c.export}</h2>
-        <button type="button" onClick={() => onOutput("basic", index)}>{c.basicPdf}</button>
-        <button type="button" onClick={() => onOutput("styled", index)}>{c.styledPdf}</button>
-        {edition.appearance.format !== "BK03" && <button type="button" onClick={() => onOutput("image", index)}>{c.image}</button>}
+        <button type="button" onClick={(event) => openOutput("basic", event.currentTarget)}>{c.basicPdf}</button>
+        <button type="button" onClick={(event) => openOutput("styled", event.currentTarget)}>{c.styledPdf}</button>
+        {edition.appearance.format !== "BK03" && <button type="button" onClick={(event) => openOutput("image", event.currentTarget)}>{c.image}</button>}
         <CopyTextButton label={c.copyOriginal} text={pieces.map(pieceText).join("\n\n")} feedback={rescueMessages[locale]} />
         <details><summary>{c.currentPiece}</summary>
           {piece.title && <CopyTextButton label={c.copyPieceTitle} text={piece.title} feedback={rescueMessages[locale]} />}

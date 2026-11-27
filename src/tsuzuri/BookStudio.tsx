@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { listProtectedRecoveryCandidates } from "../lib/storage";
 import type { Note } from "../types/note";
 import { useI18n } from "../i18n/useI18n";
@@ -57,6 +57,7 @@ export default function BookStudio(props: Props) {
   const [draft, setDraft] = useState<BookDraft | null>(() => initialNote ? blankDraft(readingMode, initialNote) : null);
   const draftRef = useRef(draft);
   const dialog = useRef<HTMLDivElement>(null);
+  const readerReturn = useRef<{ top: number; trigger: HTMLButtonElement } | null>(null);
   const [library, setLibrary] = useState<Library | null>(null);
   const latest = useRef<Library | null>(null);
   const sequence = useRef<Promise<unknown>>(Promise.resolve());
@@ -66,6 +67,7 @@ export default function BookStudio(props: Props) {
   const [recovery, setRecovery] = useState<Recovery | null>(null);
   const [restore, setRestore] = useState<RestoreJournal | undefined>();
   const [archive, setArchive] = useState<Archive | null>(null);
+  const fileSelection = useRef(0);
   const [needsRestoreConfirm, setNeedsRestoreConfirm] = useState(false);
   const [previewPlan, setPreviewPlan] = useState<ReturnType<typeof planRestore> | null>(null);
   const [status, setStatus] = useState<TsuzuriMessage | null>(null);
@@ -117,9 +119,22 @@ export default function BookStudio(props: Props) {
     if (draftRef.current) rememberBookDraft(draftRef.current);
   }, []);
 
-  useEffect(() => {
-    dialog.current?.focus({ preventScroll: true });
-  }, [view]);
+  useLayoutEffect(() => {
+    const surface = dialog.current;
+    if (!surface) return;
+    if (view === "read" && readerReturn.current) {
+      const { top, trigger } = readerReturn.current;
+      readerReturn.current = null;
+      surface.scrollTop = top;
+      if (trigger.isConnected) {
+        trigger.focus({ preventScroll: true });
+        return;
+      }
+    } else {
+      surface.scrollTop = 0;
+    }
+    surface.focus({ preventScroll: true });
+  }, [view, selected]);
 
   function changeDraft(value: BookDraft | null) {
     draftRef.current = value;
@@ -132,10 +147,13 @@ export default function BookStudio(props: Props) {
       const previous = latest.current;
       if (!previous) throw new LibraryError("blocked");
       const next = change(previous);
-      if (next === previous) return previous;
+      if (next === previous && !journal) return previous;
       const saved = await writeLibrary(previous, next, epoch, journal, replacesJournalId);
       applyLibrary(saved);
-      if (journal) setRestore(journal);
+      if (journal) {
+        setRestore(journal);
+        return saved;
+      }
       const mirrored = await mirrorLibrary(saved, epoch);
       setNativeWarning(!mirrored);
       return saved;
@@ -185,8 +203,9 @@ export default function BookStudio(props: Props) {
     return { edition, pieces: editionText(source, edition), kind, index };
   }
 
-  function openOutput(kind: OutputKind, index = 0) {
+  function openOutput(kind: OutputKind, index: number, trigger: HTMLButtonElement) {
     if (!library || !selected) return;
+    readerReturn.current = { top: dialog.current?.scrollTop ?? 0, trigger };
     setRequest(getRequest(library, selected.id, kind, index, selected.edition));
     setView("output");
   }
@@ -225,6 +244,7 @@ export default function BookStudio(props: Props) {
     if (value && (value.passages.length > 0 || library?.drafts.some((item) => item.id === value.id))) {
       if (!await saveDraft(value)) return;
     }
+    if (draftRef.current !== value) return;
     changeDraft(null);
     if (destination === "exit") onClose();
     else setView(destination);
@@ -243,6 +263,7 @@ export default function BookStudio(props: Props) {
     if (purchase) { setPurchase(false); return; }
     if (view === "output") { setView("read"); return; }
     if (view === "draft" || view === "choose") { void leaveDraft("shelf"); return; }
+    if (view === "data") fileSelection.current++;
     if (view !== "shelf") { setView("shelf"); return; }
     onClose();
   }
@@ -265,16 +286,20 @@ export default function BookStudio(props: Props) {
   }
 
   async function selectArchive(file: File) {
+    const selection = ++fileSelection.current;
     setArchive(null);
     setPreviewPlan(null);
     setStatus(null);
     try {
-      const currentNotes = onCheckNotes();
-      if (!currentNotes || !library) throw new Error("notesWait");
       const value = readArchive(await file.text());
+      if (selection !== fileSelection.current) return;
+      const currentNotes = onCheckNotes();
+      const baseline = latest.current;
+      if (!currentNotes || !baseline) throw new Error("notesWait");
       setArchive(value);
-      setPreviewPlan(planRestore(currentNotes, library, value));
+      setPreviewPlan(planRestore(currentNotes, baseline, value));
     } catch (error) {
+      if (selection !== fileSelection.current) return;
       setStatus(errorMessage(error, "invalidArchive"));
     }
   }
@@ -311,7 +336,8 @@ export default function BookStudio(props: Props) {
         setNeedsRestoreConfirm(false);
       }
       if (!journal) return;
-      await applyRestoreNotes(journal, epoch, onNotesApplied);
+      await applyRestoreNotes(journal.id, epoch, onNotesApplied);
+      setNativeWarning(false);
       setRestore(undefined);
       setStatus("restoreDone");
     } catch (error) {
@@ -456,7 +482,7 @@ export default function BookStudio(props: Props) {
               })).catch((error) => setStatus(errorMessage(error, "saveFailed")))} />}
             {limit && <button type="button" onClick={openPurchase}>{c.purchaseInfo}</button>}
           </DraftStudio></fieldset>}
-          {(view === "read" || view === "output") && book && edition && <div className="ts-reader-holder" hidden={view !== "read"}><BookReader library={library} book={book} edition={edition} key={readerKey} locale={locale}
+          {(view === "read" || view === "output") && book && edition && <div className="ts-reader-holder" hidden={view !== "read"}><BookReader library={library} book={book} edition={edition} key={readerKey} locale={locale} visible={view === "read"}
             onArrange={edition.id === book.editionId ? () => {
               changeDraft(library.drafts.find((item) => item.bookId === book.id && item.baseEditionId === book.editionId) ?? editionDraft(library, book));
               setView("draft");

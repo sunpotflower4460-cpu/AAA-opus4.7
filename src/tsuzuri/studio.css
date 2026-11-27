@@ -12,6 +12,7 @@
   inset: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  scroll-padding-block-start: calc(max(env(safe-area-inset-top), 13px) + 64px);
   background: #f5f0e6;
   color: #302922;
   padding: max(env(safe-area-inset-top), 13px) max(env(safe-area-inset-right), 16px)
@@ -19,7 +20,18 @@
   outline: none;
 }
 .ts-inner { width: min(100%, 40rem); margin-inline: auto; display: grid; gap: 21px; }
-.ts-bar { display: flex; justify-content: space-between; gap: 13px; align-items: center; color: #665746; }
+.ts-bar {
+  position: sticky;
+  top: max(env(safe-area-inset-top), 0px);
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 13px;
+  align-items: center;
+  padding-block: 4px 8px;
+  background: #f5f0e6;
+  color: #665746;
+}
 .ts-intro { display: grid; gap: 8px; margin-block: 13px; }
 .ts-intro h1 { font: 1.9rem/1.35 var(--font-mincho, serif); font-weight: 500; overflow-wrap: anywhere; }
 .ts-intro p { max-width: 48ch; color: #5e5042; }

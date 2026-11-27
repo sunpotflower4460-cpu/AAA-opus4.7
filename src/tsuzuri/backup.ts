@@ -2,7 +2,8 @@ import { parseValidNotesSnapshot, saveNotes } from "../lib/storage";
 import { persistNativeDurableSnapshot } from "../lib/nativeDurableSnapshot";
 import type { Note } from "../types/note";
 import { newId, type Library } from "./model";
-import { finishJournal, type RestoreJournal } from "./repository";
+import { mirrorLibrary } from "./nativeFiles";
+import { finishJournal, withRestoreJournal, type RestoreJournal } from "./repository";
 import { validLibrary } from "./validation";
 
 export type Archive = {
@@ -140,18 +141,23 @@ export function replanRestoreNotes(notes: Note[], library: Library, pending: Res
   return {
     baseLibrary: library,
     library: revised,
-    journal: { ...pending, baseNotes: notes, nextNotes: [...notes, ...additions] },
+    journal: { ...pending, id: newId(), baseNotes: notes, nextNotes: [...notes, ...additions] },
     addedNotes: additions.length, addedBooks: 0, conflicts: redirects.size,
   };
 }
 
-export async function applyRestoreNotes(journal: RestoreJournal, epoch: string | null, synced: (notes: Note[]) => void) {
-  const { baseNotes, nextNotes, id } = journal;
-  const result = saveNotes(nextNotes, { expectedNotes: baseNotes, writerId: id, dataEpoch: epoch });
-  // Resuming after the primary write uses the same bytes, including if IDB cleanup failed.
-  const alreadyApplied = !result.ok &&
-    saveNotes(nextNotes, { expectedNotes: nextNotes, writerId: id, dataEpoch: epoch }).ok;
-  if (!result.ok && !alreadyApplied) throw new Error("restoreIncomplete");
+export async function applyRestoreNotes(id: string, epoch: string | null, synced: (notes: Note[]) => void) {
+  const library = await withRestoreJournal(id, epoch, (_journal, saved) => saved);
+  if (!await mirrorLibrary(library, epoch)) throw new Error("restoreIncomplete");
+
+  const nextNotes = await withRestoreJournal(id, epoch, ({ baseNotes, nextNotes }) => {
+    const result = saveNotes(nextNotes, { expectedNotes: baseNotes, writerId: id, dataEpoch: epoch });
+    // Resuming after the primary write uses the same bytes, including if IDB cleanup failed.
+    const alreadyApplied = !result.ok &&
+      saveNotes(nextNotes, { expectedNotes: nextNotes, writerId: id, dataEpoch: epoch }).ok;
+    if (!result.ok && !alreadyApplied) throw new Error("restoreIncomplete");
+    return nextNotes;
+  });
   synced(nextNotes);
   if (!await persistNativeDurableSnapshot(nextNotes, epoch)) throw new Error("restoreIncomplete");
   await finishJournal(id, epoch);
