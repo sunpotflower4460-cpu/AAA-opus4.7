@@ -14,6 +14,7 @@ import { ZanshinMark } from "./ZanshinMark";
 import { AdSlot } from "./AdSlot";
 import { PremiumCard } from "./PremiumCard";
 import { ZanshinPaperSlip } from "./ZanshinPaperSlip";
+import { tsuzuriMessages } from "../tsuzuri/messages";
 
 type Props = {
   notes: Note[];
@@ -25,6 +26,7 @@ type Props = {
   onOpenPremium: () => void;
   /** 「このアプリについて」を開く */
   onOpenAbout?: (trigger: HTMLButtonElement) => void;
+  onOpenBooks?: (trigger: HTMLButtonElement) => void;
   onRestorePurchase: () => void | Promise<void>;
 };
 
@@ -42,6 +44,7 @@ export function NotesList({
   onOpenPremium,
   onRestorePurchase,
   onOpenAbout,
+  onOpenBooks,
 }: Props) {
   const { copy, locale, preferences } = useI18n();
   const formatCreationDate = makeNoteDateFormatter({ formatLocale: locale });
@@ -110,6 +113,7 @@ export function NotesList({
             {isSearching ? copy.searchResultCountLabel({ noteCount }) : copy.notesCountLabel({ noteCount })}
           </p>
           <div className="flex min-w-0 flex-wrap items-center gap-gr-2">
+            {onOpenBooks && <button type="button" className="ts-note-link" onClick={(event) => onOpenBooks(event.currentTarget)}>{tsuzuriMessages[locale].shelf}</button>}
             <BrushPicker variant="list" className="-my-gr-2" />
             <p className="text-[10px] tracking-[0.14em] text-ink-muted/80">
               {copy.localOnly}

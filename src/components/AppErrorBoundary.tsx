@@ -1,6 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { getLastUiLocale } from "../i18n/locales";
 import { rescueMessages } from "../i18n/rescueMessages";
+import { getBookRescue } from "../tsuzuri/bookRescue";
+import { DraftRescue } from "../tsuzuri/DraftRescue";
+import { tsuzuriMessages } from "../tsuzuri/messages";
 import { OriginalText } from "./OriginalText";
 import { getDraftRescue, getRescueNotes } from "../lib/draftRescue";
 import { CopyTextButton } from "./CopyTextButton";
@@ -38,6 +41,7 @@ export class AppErrorBoundary extends Component<Props, State> {
     const copy = rescueMessages[locale];
     const snapshot = getDraftRescue();
     const originals = getRescueNotes(snapshot);
+    const bookDraft = getBookRescue();
     const hasUnsavedEdits = originals.some(({ kind }) => kind === "edited");
 
     return (
@@ -54,7 +58,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           <p className="mt-gr-3 text-[14px] leading-ample text-sumi jp-text-discipline">
             {hasUnsavedEdits
               ? copy.renderFailureUnsaved
-              : snapshot?.savedNotes
+              : snapshot?.savedNotes && !bookDraft
                 ? copy.renderFailureNoUnsaved
                 : copy.renderFailureUnknown}
           </p>
@@ -88,6 +92,10 @@ export class AppErrorBoundary extends Component<Props, State> {
             </ul>
           )}
 
+          {bookDraft && <section className="mt-gr-4 space-y-3 text-left">
+            <h2>{tsuzuriMessages[locale].draftRescue}</h2>
+            <DraftRescue draft={bookDraft} locale={locale} />
+          </section>}
           <button
             type="button"
             onClick={() => window.location.reload()}

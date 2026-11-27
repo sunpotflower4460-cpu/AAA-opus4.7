@@ -17,5 +17,6 @@ public class ZanshinAppLanguagePlugin: CAPPlugin, CAPBridgedPlugin {
 class ZanshinViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(ZanshinAppLanguagePlugin())
+        bridge?.registerPluginInstance(ZanshinTsuzuriPlugin())
     }
 }

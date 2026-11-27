@@ -1,7 +1,7 @@
 import type { KeyboardEvent } from "react";
 
 const controls =
-  "button:not(:disabled), a[href], select:not(:disabled), textarea:not(:disabled), summary";
+  "button:not(:disabled), a[href], select:not(:disabled), textarea:not(:disabled), input:not(:disabled):not([type=hidden]), summary, [tabindex='0']";
 
 export function handleModalKeyDown(event: KeyboardEvent<HTMLDivElement>, onClose: () => void) {
   if (event.defaultPrevented) return;

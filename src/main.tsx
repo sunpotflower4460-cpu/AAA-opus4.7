@@ -25,6 +25,9 @@ import "./phase28.css";
 import "./phase29.css";
 import "./phase30.css";
 import "./release.css";
+import "./tsuzuri/studio.css";
+import { resumeInterruptedErase } from "./tsuzuri/erase";
+import { tsuzuriMessages } from "./tsuzuri/messages";
 
 // 描画前に筆あとを反映し、字体の切り替わりでちらつかないようにする。
 initBrush();
@@ -42,13 +45,30 @@ async function start(container: HTMLElement) {
   if (explicit) void nativeLanguages.then(preferences.setNativeLanguages);
   rememberUiLocale(preferences.getSnapshot().locale);
 
-  ReactDOM.createRoot(container).render(
-    <React.StrictMode>
-      <AppErrorBoundary>
-        <App preferences={preferences} />
-      </AppErrorBoundary>
-    </React.StrictMode>,
-  );
+  const root = ReactDOM.createRoot(container);
+  async function open() {
+    try {
+      let erased = await resumeInterruptedErase();
+      try {
+        erased = sessionStorage.getItem("zanshin.erased") === "1" || erased;
+        sessionStorage.removeItem("zanshin.erased");
+      } catch {
+        // The data operation is complete even when session feedback is unavailable.
+      }
+      root.render(
+        <React.StrictMode>
+          <AppErrorBoundary>
+            {erased && <p role="status" className="ts-erase-complete">{tsuzuriMessages[preferences.getSnapshot().locale].eraseDone}</p>}
+            <App preferences={preferences} />
+          </AppErrorBoundary>
+        </React.StrictMode>,
+      );
+    } catch {
+      const copy = tsuzuriMessages[preferences.getSnapshot().locale];
+      root.render(<main className="ts-inner"><p role="alert">{copy.erasePending}</p><button type="button" onClick={() => void open()}>{copy.retry}</button></main>);
+    }
+  }
+  await open();
 }
 
 void start(root);

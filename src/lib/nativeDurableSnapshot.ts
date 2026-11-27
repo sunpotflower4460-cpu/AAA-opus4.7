@@ -2,6 +2,7 @@ import { Capacitor } from "@capacitor/core";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import type { Note } from "../types/note";
 import { parseValidNotesSnapshot } from "./storage";
+import { dataWriteAllowed, readDataEpoch } from "./dataEpoch";
 
 const PRIMARY_PATH = "zanshin/notes.snapshot.v1.json";
 const BACKUP_PATH = "zanshin/notes.snapshot.backup.v1.json";
@@ -121,11 +122,13 @@ async function writeSnapshotRaw(nextRaw: string): Promise<void> {
  * localStorage の同期保存を置き換えず、native 側に耐久スナップショットを直列保存する。
  * 呼び出し順を Promise chain で固定し、古い非同期 write が新しい内容を後から巻き戻すのを防ぐ。
  */
-export function persistNativeDurableSnapshot(notes: readonly Note[]): Promise<boolean> {
+export function persistNativeDurableSnapshot(notes: readonly Note[], epoch?: string | null): Promise<boolean> {
   if (!isNativeDurableSnapshotAvailable()) return Promise.resolve(true);
 
   let raw: string;
+  let writerEpoch: string | null;
   try {
+    writerEpoch = epoch === undefined ? readDataEpoch().id : epoch;
     raw = JSON.stringify(notes);
   } catch {
     return Promise.resolve(false);
@@ -136,7 +139,10 @@ export function persistNativeDurableSnapshot(notes: readonly Note[]): Promise<bo
     .catch(() => {
       // 前回失敗が次回のretryを永久に止めないようchainだけ回復する。
     })
-    .then(() => writeSnapshotRaw(raw));
+    .then(() => {
+      if (!dataWriteAllowed(writerEpoch)) throw new Error("dataErase");
+      return writeSnapshotRaw(raw);
+    });
 
   writeChain = operation.catch(() => {
     // 次回保存を継続可能にするため内部chainでは吸収する。
@@ -207,6 +213,19 @@ export async function readNativeDurableSnapshot(): Promise<NativeDurableSnapshot
 
 export function resetNativeDurableSnapshotQueueForTesting(): void {
   writeChain = Promise.resolve();
+}
+
+export async function eraseNativeNoteData(): Promise<void> {
+  if (!isNativeDurableSnapshotAvailable()) return;
+  await writeChain;
+  for (const path of [PRIMARY_PATH, BACKUP_PATH, SECONDARY_BACKUP_PATH, CORRUPT_PATH]) {
+    try {
+      await Filesystem.deleteFile({ path, directory: DIRECTORY });
+    } catch (error) {
+      if (nativeErrorCode(error) !== FILE_NOT_FOUND_CODE) throw error;
+    }
+    if ((await readRaw(path)).status !== "missing") throw new Error("nativeNotesErase");
+  }
 }
 
 export const NATIVE_SNAPSHOT_PATHS_FOR_TESTING = {
