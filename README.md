@@ -11,7 +11,11 @@ Phase 42までのWebアプリ・Capacitor iOS・端末内の保存保護に加�
 
 検証結果と残件は [ML01〜ML44](docs/multilingual/ACCEPTANCE.md)、実機と掲載の手順は [日英版の引継ぎ](docs/multilingual/HANDOFF.md) に記録しています。母語話者校閲、iPhone、VoiceOver、署名候補と公開 URL の確認が残っています。[ストア品質改善の設計](docs/store-release-polish/README.md) は、保存保護・画面品質・R項目の基盤です。
 
-方針は **iPhone / portrait、無料・広告なし・Premiumなし・アカウントなし・クラウド同期なし** を維持します。日英が完成した版で対応言語の宣言・情報ページ・掲載物を揃えます。古いPhase文書は当時の記録として参照し、課金・広告を追加しないでください。
+現在の無料初版・日英対応の範囲は **iPhone / portrait、無料・広告なし・Premiumなし・アカウントなし・クラウド同期なし** を維持します。日英が完成した版で対応言語の宣言・情報ページ・掲載物を揃えます。古いPhase文書は当時の記録として参照し、日英対応の作業で課金・広告を追加しないでください。
+
+**後続の有料拡張「残心 綴り」の設計も収録しました。** [有料体験の設計・実装指示](docs/paid-experience/README.md) に、紙8種・追加筆あと4候補・綴じ方3形式・仕立て6種・装丁6種、無料一冊、原文保護、作品出力、P0〜P6、AC01〜AC26をまとめています。実装担当へは [「綴り」のキックオフプロンプト](docs/paid-experience/KICKOFF.md) を渡してください。
+
+「綴り」は設計段階です。今回の文書追加で機能フラグ・製品コード・購入商品・公開版は変更していません。実装依頼を受けた段階でこの文書群を使い、日英の基盤と保存保護を引き継いで完成させます。全データの一般バックアップ・復元と作品出力は「綴り」の工程で追加する範囲です。旧広告削除Premiumのモックを商品として有効化しません。
 
 ---
 
@@ -169,7 +173,8 @@ npm run preview
 - Phase 7 では広告 SDK や StoreKit の本番実装ではなく、広告位置確認用の `AdSlot` と購入状態のモック層を追加しています。
 - 現在は [featureFlags.ts](src/lib/featureFlags.ts) の `APP_STORE_INITIAL_RELEASE=true`、`ADS_ENABLED=false`、`PREMIUM_ENABLED=false` により、初版の広告・課金導線を無効化しています。
 - **初版公開のためにStoreKitや広告SDKを導入する必要はありません。** 公開ビルドにモックの購入・復元操作が出ないことを確認します。
-- [Phase 7の設計](docs/monetization-phase-7.md) と [monetization checklist](docs/app-store-monetization-checklist.md) は、将来その機能を明示的に採用した時の参考資料です。
+- 新しい収益化の設計は [「残心 綴り」](docs/paid-experience/README.md) です。買い切りの紙・筆・綴じる体験を扱い、現在は設計の収録段階です。
+- [Phase 7の設計](docs/monetization-phase-7.md)、[旧StoreKit計画](docs/storekit-production-plan.md)、[monetization checklist](docs/app-store-monetization-checklist.md) は広告削除を検討していた時点の参考資料です。旧商品ID・広告方針・Review Notesを「綴り」へ流用しないでください。
 
 ---
 
@@ -233,6 +238,8 @@ npm run preview
 |----------|------|
 | [docs/multilingual/README.md](docs/multilingual/README.md) | 日英の設計・実装・ML01〜ML44・実機への引継ぎ |
 | [docs/multilingual/KICKOFF.md](docs/multilingual/KICKOFF.md) | 日英対応の実装担当へそのまま渡すプロンプト |
+| [docs/paid-experience/README.md](docs/paid-experience/README.md) | 「残心 綴り」の詳細設計・P0〜P6・AC01〜AC26。設計段階 |
+| [docs/paid-experience/KICKOFF.md](docs/paid-experience/KICKOFF.md) | 紙・筆・綴じる有料体験の実装担当へ渡すプロンプト |
 | [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | 現在の設計・実装指示・R01〜R37の受入条件への入口 |
 | [docs/store-release-polish/KICKOFF.md](docs/store-release-polish/KICKOFF.md) | 実装担当へ渡すキックオフプロンプト |
 | [docs/concept.md](docs/concept.md) | 「残心」の思想と世界観 |
@@ -241,9 +248,9 @@ npm run preview
 | [docs/development-phases.md](docs/development-phases.md) | 開発フェーズ |
 | [docs/final-polish-and-deploy-phase-4.md](docs/final-polish-and-deploy-phase-4.md) | Phase 4 最終調整・デプロイ報告 |
 | [docs/zanshin-experience-phase-6.md](docs/zanshin-experience-phase-6.md) | Phase 6 残心体験強化レポート |
-| [docs/monetization-phase-7.md](docs/monetization-phase-7.md) | Phase 7 の広告 / Premium 設計 |
+| [docs/monetization-phase-7.md](docs/monetization-phase-7.md) | 旧Phase 7 の広告 / Premium 設計（履歴） |
 | [docs/uiux-integrity-review-phase-8.md](docs/uiux-integrity-review-phase-8.md) | Phase 8 UI/UX監査レポート |
-| [docs/app-store-monetization-checklist.md](docs/app-store-monetization-checklist.md) | App Store monetization 申請チェックリスト |
+| [docs/app-store-monetization-checklist.md](docs/app-store-monetization-checklist.md) | 旧広告 / Premium の申請確認項目（履歴） |
 | [docs/app-store-preparation-phase-18.md](docs/app-store-preparation-phase-18.md) | Phase 18 App Store 申請準備レポート |
 | [docs/store-release-polish/README.md](docs/store-release-polish/README.md) | ストア公開前の品質改善（設計・実装指示・受入／実装記録） |
 | [docs/ui-release-polish-report.md](docs/ui-release-polish-report.md) | UI磨き込み（紙・書体・余白）の記録。仕上げCSSは `src/release.css` に統合 |
@@ -251,7 +258,7 @@ npm run preview
 | [docs/app-store-submission-checklist.md](docs/app-store-submission-checklist.md) | App Store 提出全体チェックリスト |
 | [docs/app-store-metadata-draft.md](docs/app-store-metadata-draft.md) | App Store Connect 用メタデータ草案 |
 | [docs/privacy-and-tracking-notes.md](docs/privacy-and-tracking-notes.md) | App Privacy / ATT / SDK確認メモ |
-| [docs/storekit-production-plan.md](docs/storekit-production-plan.md) | StoreKit 本番化計画 |
+| [docs/storekit-production-plan.md](docs/storekit-production-plan.md) | 旧広告削除PremiumのStoreKit計画（履歴） |
 | [docs/ios-wrapper-plan.md](docs/ios-wrapper-plan.md) | iOS ラッパー導入計画 |
 | [docs/app-review-risk-notes.md](docs/app-review-risk-notes.md) | App Review の事前リスク整理 |
 | [docs/japanese-wrap-paper-moon-phase-10.md](docs/japanese-wrap-paper-moon-phase-10.md) | Phase 10 日本語改行・紙質感・月モチーフ改善レポート |

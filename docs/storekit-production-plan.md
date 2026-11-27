@@ -1,6 +1,6 @@
 # StoreKit Production Plan
 
-> 将来の収益化計画です。2026-11-26現在の初版は無料・広告なし・Premiumなしで、本書の実装は初版公開の必須条件ではありません。現在は [ストア品質改善の指示書](store-release-polish/README.md) に従い、無効の課金導線を追加・有効化しないでください。
+> **旧広告削除Premiumの計画です（2026-11-27追記）。** 新商品の正本は [「残心 綴り」の設計](paid-experience/DESIGN.md) と [P5の実装指示](paid-experience/IMPLEMENTATION.md) です。本書の `remove_ads` 商品ID、サブスク候補、広告削除を説明するReview Notesは「綴り」へ流用しません。現在の無料初版・日英対応で課金導線を有効化する指示ではなく、新商品も設計を収録した段階です。以下は以前の計画として保持します。
 
 ## 目的
 残心 Premium の mock 実装を、本番の StoreKit 実装へ差し替えるための計画。
