@@ -79,6 +79,28 @@ def clipboard_text(page, browser):
     return pasted
 
 
+def copy_selection(page, browser):
+    if browser.browser_type.name == "chromium":
+        page.keyboard.press("Control+c")
+        return
+    # Headless WPE doesn't bind Ctrl+C to copying a document selection.
+    page.evaluate("""() => {
+      const button = document.createElement("button");
+      button.id = "test-copy-selection";
+      button.textContent = "Copy selection";
+      button.style.cssText = "position: fixed; top: 0; left: 0; z-index: 100;";
+      button.addEventListener("mousedown", event => event.preventDefault());
+      button.addEventListener("click", () => {
+        button.dataset.copied = document.execCommand("copy");
+      });
+      document.body.append(button);
+    }""")
+    trigger = page.locator("#test-copy-selection")
+    trigger.click()
+    expect(trigger).to_have_attribute("data-copied", "true")
+    trigger.evaluate("el => el.remove()")
+
+
 def editor(page, copy, title, body):
     page.get_by_role("textbox", name=copy["title"]).fill(title)
     page.get_by_role("textbox", name=copy["body"]).fill(body)
@@ -241,6 +263,7 @@ def long_reader(browser, origin, width):
             word.top < viewport.bottom && word.bottom > viewport.top];
         }""", axis)
         assert extent > 0 and abs(extent - distance) <= 2 and at_end, (direction, extent, distance, at_end)
+        pane.focus()
         selection = original.evaluate("""el => {
           const range = document.createRange();
           range.selectNodeContents(el);
@@ -254,7 +277,7 @@ def long_reader(browser, origin, width):
         orientation = "upright" if direction == "Vertical" else "mixed"
         expect(latin).to_have_css("text-orientation", orientation)
         expect(original.locator(".read-upright-latin", has_text="https")).to_have_count(0)
-    page.keyboard.press("Control+c")
+    copy_selection(page, browser)
     clipboard = clipboard_text(page, browser)
     assert clipboard == body
     page.evaluate("getSelection().removeAllRanges()")
