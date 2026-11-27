@@ -5,6 +5,7 @@ import type { Messages } from "../lib/i18n";
 import { getNoteHeading } from "../lib/noteDisplay";
 import type { DiscardProtectedResult, ProtectedRecoverySlot } from "../lib/storage";
 import { makeNoteDateFormatter } from "../lib/zanshinDate";
+import { handleModalKeyDown } from "./modalKeyboard";
 import { OriginalText } from "./OriginalText";
 import { CopyTextButton } from "./CopyTextButton";
 
@@ -61,6 +62,7 @@ export function RecoveryReview({ candidates, archiveFull, onDiscard, onClose }: 
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [notice, setNotice] = useState<DiscardProtectedResult | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const selectedButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -74,16 +76,14 @@ export function RecoveryReview({ candidates, archiveFull, onDiscard, onClose }: 
   // 候補が整理されて消えたら、選択を残っている候補へ移す。
   const selected = candidates.find((candidate) => candidate.id === selectedId) ?? candidates[0];
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-    }
+  function closeDiscardConfirmation() {
+    setConfirmingId(null);
+    window.requestAnimationFrame(() => (selectedButtonRef.current ?? closeRef.current)?.focus());
   }
 
   function discard(candidate: ReviewCandidate) {
     const result = onDiscard(candidate);
-    setConfirmingId(null);
+    closeDiscardConfirmation();
     setNotice(result);
   }
 
@@ -93,7 +93,10 @@ export function RecoveryReview({ candidates, archiveFull, onDiscard, onClose }: 
       aria-modal="true"
       aria-labelledby="zanshin-review-title"
       className="fixed inset-0 z-40 overflow-y-auto bg-paper"
-      onKeyDown={handleKeyDown}
+      onKeyDown={(event) => handleModalKeyDown(
+        event,
+        selected && confirmingId === selected.id ? closeDiscardConfirmation : onClose,
+      )}
     >
       <div className="zanshin-info-panel mx-auto flex min-h-full w-full max-w-[560px] flex-col px-gr-4">
         <header className="flex items-center justify-between gap-gr-3">
@@ -136,10 +139,14 @@ export function RecoveryReview({ candidates, archiveFull, onDiscard, onClose }: 
             return (
               <button
                 key={candidate.id}
+                ref={isSelected ? selectedButtonRef : undefined}
                 type="button"
                 role="radio"
                 aria-checked={isSelected}
-                onClick={() => setSelectedId(candidate.id)}
+                onClick={() => {
+                  setSelectedId(candidate.id);
+                  setConfirmingId(null);
+                }}
                 className={[
                   "flex min-h-[44px] w-full flex-col items-start gap-[2px] rounded-[10px] border px-gr-4 py-gr-3 text-left transition-soft",
                   isSelected ? "border-gold/60 bg-washi/80" : "border-[color:var(--color-line)]",
@@ -208,7 +215,7 @@ export function RecoveryReview({ candidates, archiveFull, onDiscard, onClose }: 
                       <button
                         type="button"
                         autoFocus
-                        onClick={() => setConfirmingId(null)}
+                        onClick={closeDiscardConfirmation}
                         className="min-h-[44px] rounded-full border border-[color:var(--color-line)] px-gr-4 py-gr-2 font-mincho text-[14px] text-sumi"
                       >
                         {copy.cancel}

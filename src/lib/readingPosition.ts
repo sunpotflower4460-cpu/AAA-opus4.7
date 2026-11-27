@@ -64,10 +64,9 @@ export function restoreReadingPosition(
 
   const body = element.querySelector("pre");
   if (position.offset !== null && position.body === text && body) {
-    const caret = locateCharacter(body, position.offset);
-    if (caret) {
+    const bounds = locateCharacter(body, position.offset)?.getBoundingClientRect();
+    if (bounds && (bounds.width > 0 || bounds.height > 0)) {
       const viewport = element.getBoundingClientRect();
-      const bounds = caret.getBoundingClientRect();
       if (mode === "horizontal") element.scrollTop += bounds.top - viewport.top - 8;
       else element.scrollLeft += bounds.right - viewport.right + 12;
       return;
@@ -79,21 +78,20 @@ export function restoreReadingPosition(
   else element.scrollLeft = -distance;
 }
 
-
 function locateCharacter(body: HTMLElement, offset: number): Range | null {
   const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
-  let node = walker.nextNode();
   let remaining = offset;
-  while (node) {
-    const length = node.textContent?.length ?? 0;
-    if (remaining < length) {
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.textContent ?? "";
+    if (remaining < text.length) {
       const range = document.createRange();
       range.setStart(node, remaining);
-      range.collapse(true);
+      // WebKit can return an empty rectangle for a collapsed vertical range.
+      const codePoint = text.codePointAt(remaining) ?? 0;
+      range.setEnd(node, remaining + (codePoint > 0xffff ? 2 : 1));
       return range;
     }
-    remaining -= length;
-    node = walker.nextNode();
+    remaining -= text.length;
   }
   return null;
 }

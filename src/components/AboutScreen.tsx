@@ -7,6 +7,7 @@ import {
   getAppVersionInfo,
   type AppVersionInfo,
 } from "../lib/appInfo";
+import { handleModalKeyDown } from "./modalKeyboard";
 
 type Props = {
   onClose: () => void;
@@ -36,26 +37,6 @@ export function AboutScreen({ onClose }: Props) {
     };
   }, []);
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-    }
-
-    if (event.key === "Tab") {
-      const controls = event.currentTarget.querySelectorAll<HTMLElement>("button, select, a[href]");
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    }
-  }
-
   const versionLabel = version === "loading" ? ""
     : version === "web" ? copy.aboutVersionDev
     : version === null ? copy.aboutVersionUnknown
@@ -67,7 +48,7 @@ export function AboutScreen({ onClose }: Props) {
       aria-modal="true"
       aria-labelledby="zanshin-about-title"
       className="fixed inset-0 z-40 overflow-y-auto bg-paper"
-      onKeyDown={handleKeyDown}
+      onKeyDown={(event) => handleModalKeyDown(event, onClose)}
     >
       <div className="zanshin-info-panel mx-auto flex min-h-full w-full max-w-[560px] flex-col px-gr-4">
         <header className="flex items-center justify-between gap-gr-3">

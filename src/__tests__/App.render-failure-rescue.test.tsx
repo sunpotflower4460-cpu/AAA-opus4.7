@@ -10,8 +10,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../App";
 import { AppErrorBoundary } from "../components/AppErrorBoundary";
 import { clearDraftRescueForTesting } from "../lib/draftRescue";
-import { PENDING_SAVE_KEY_FOR_TESTING, STORAGE_KEY_FOR_TESTING } from "../lib/storage";
+import { BACKUP_KEY_FOR_TESTING, PENDING_SAVE_KEY_FOR_TESTING, STORAGE_KEY_FOR_TESTING } from "../lib/storage";
 import { messages } from "../lib/i18n";
+import { LANGUAGE_STORAGE_KEY } from "../lib/uiPreferences";
 import type { Note } from "../types/note";
 
 const copy = messages.ja;
@@ -210,6 +211,61 @@ describe("描画例外後の未保存本文の救済（R33 / F04）", () => {
     expect(rescueText()).toContain("競合中にこの画面で書いた本文");
     act(() => vi.advanceTimersByTime(5_000));
     expect(JSON.parse(storage._store[STORAGE_KEY_FOR_TESTING]) as Note[]).toEqual(other);
+  });
+
+  it("別候補を表示している時も、同じIDを持つ保留中の編集をそれぞれ原文でコピーできる", async () => {
+    const screenDraft = "この画面だけの編集\n末尾";
+    const localDraft = "別候補に加えた編集\n末尾";
+    typeBody(container, screenDraft);
+    const stored = JSON.stringify(original);
+    const pending = JSON.stringify({
+      version: 1,
+      baseRaw: stored,
+      nextRaw: JSON.stringify([makeNote({ body: "復旧候補の原文" })]),
+    });
+    storage._store[PENDING_SAVE_KEY_FOR_TESTING] = pending;
+    act(() => window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY_FOR_TESTING })));
+    act(() => click(findButton(container, copy.dirtyRecoveryShowLocal)));
+    typeBody(container, localDraft);
+
+    explode();
+
+    expect(container.textContent).toContain(copy.renderFailureUnsaved);
+    expect(rescueText()).toContain(screenDraft);
+    expect(rescueText()).toContain(localDraft);
+    const copyButtons = Array.from(container.querySelectorAll("button")).filter(
+      (button) => button.textContent === copy.copyBody,
+    );
+    await act(async () => {
+      copyButtons.forEach(click);
+      await Promise.resolve();
+    });
+    expect(writeText.mock.calls.map(([value]) => value)).toEqual(expect.arrayContaining([screenDraft, localDraft]));
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(stored);
+    expect(storage._store[PENDING_SAVE_KEY_FOR_TESTING]).toBe(pending);
+  });
+
+  it.each(["ja", "en"] as const)("予備保存の候補しか確認できない時も原文に届く (%s)", (locale) => {
+    act(() => root?.unmount());
+    clearDraftRescueForTesting();
+    delete storage._store[STORAGE_KEY_FOR_TESTING];
+    const backup = JSON.stringify([makeNote({ body: "予備保存にある原文" })]);
+    storage._store[BACKUP_KEY_FOR_TESTING] = backup;
+    storage._store[LANGUAGE_STORAGE_KEY] = locale;
+    root = createRoot(container);
+    act(() => root?.render(
+      <AppErrorBoundary>
+        <App />
+        <Bomb />
+      </AppErrorBoundary>,
+    ));
+
+    explode();
+    expect(container.textContent).toContain(messages[locale].renderFailureUnknown);
+    expect(container.textContent).toContain(messages[locale].unconfirmedNoteLabel);
+    expect(rescueText()).toContain("予備保存にある原文");
+    expect(storage._store[BACKUP_KEY_FOR_TESTING]).toBe(backup);
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBeUndefined();
   });
 
   it("クリップボードが使えない時は成功を出さず、手動で選択できる原文を示す", async () => {

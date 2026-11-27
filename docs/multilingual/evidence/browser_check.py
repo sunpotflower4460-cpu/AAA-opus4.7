@@ -11,6 +11,7 @@ CASES = {case["id"]: case for case in FIXTURE["text_cases"]}
 PRIMARY = "zanshin.notes.v1"
 BACKUP = "zanshin.notes.backup.v1"
 PENDING = "zanshin.notes.pending.v1"
+PROTECTED = "zanshin.notes.recovery.conflict.backup.v1"
 PREF = "zanshin.prefs.ui-language.v1"
 MODE = "zanshin.prefs.reading-mode.v1"
 COPY = {
@@ -22,6 +23,8 @@ COPY = {
         "about": "このアプリについて", "language": "言語", "close": "閉じる",
         "delete": "このメモを削除", "confirm": "削除する", "undo": "元に戻す",
         "pin": "先頭に留める", "unpin": "先頭固定を解除",
+        "remove_version": "この候補を整理する", "cancel": "キャンセル",
+        "copied": "コピーしました",
         "view": "内容を確認する", "copy": "本文をコピー",
         "quota": "メモの保存領域が足りない", "empty": "この保存版にはメモがありません。",
     },
@@ -33,6 +36,8 @@ COPY = {
         "about": "About this app", "language": "Language", "close": "Close",
         "delete": "Delete this note", "confirm": "Delete note", "undo": "Undo",
         "pin": "Pin to top", "unpin": "Unpin",
+        "remove_version": "Remove this protected version", "cancel": "Cancel",
+        "copied": "Copied",
         "view": "View contents", "copy": "Copy text",
         "quota": "There isn’t enough space", "empty": "This version contains no notes.",
     },
@@ -50,6 +55,28 @@ def make_note(case_id, **overrides):
 
 def action(page, name, exact=True):
     return page.get_by_role("button", name=name, exact=exact)
+
+
+def clipboard_permissions(browser):
+    return ["clipboard-read", "clipboard-write"] if browser.browser_type.name == "chromium" else []
+
+
+def clipboard_text(page, browser):
+    if browser.browser_type.name == "chromium":
+        return page.evaluate("navigator.clipboard.readText()")
+    # WebKit allows a real paste in a focused control while restricting script reads.
+    page.evaluate("""() => {
+      const field = document.createElement("textarea");
+      field.id = "test-clipboard";
+      field.style.position = "fixed";
+      document.body.append(field);
+      field.focus({preventScroll: true});
+    }""")
+    field = page.locator("#test-clipboard")
+    page.keyboard.press("Control+v")
+    pasted = field.input_value()
+    field.evaluate("el => el.remove()")
+    return pasted
 
 
 def editor(page, copy, title, body):
@@ -97,7 +124,7 @@ def regular_flow(browser, origin, locale, viewport, output):
     context = browser.new_context(
         viewport=viewport, locale="en-GB" if locale == "en" else "ja-JP",
         timezone_id="Asia/Tokyo", reduced_motion="reduce",
-        permissions=["clipboard-read", "clipboard-write"],
+        permissions=clipboard_permissions(browser),
     )
     page = context.new_page()
     errors = []
@@ -164,6 +191,12 @@ def regular_flow(browser, origin, locale, viewport, output):
     action(page, copy["pin"]).click()
     expect(action(page, copy["unpin"])).to_have_attribute("aria-pressed", "true")
     action(page, copy["delete"]).click()
+    delete_dialog = page.get_by_role("dialog")
+    expect(action(delete_dialog, copy["cancel"])).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    expect(action(delete_dialog, copy["confirm"])).to_be_focused()
+    page.keyboard.press("Tab")
+    expect(action(delete_dialog, copy["cancel"])).to_be_focused()
     double_text(page)
     action(page, copy["confirm"]).click()
     action(page, copy["undo"]).click()
@@ -175,7 +208,7 @@ def regular_flow(browser, origin, locale, viewport, output):
 
 def long_reader(browser, origin, width):
     context = browser.new_context(viewport={"width": width, "height": 844}, locale="en",
-                                  permissions=["clipboard-read", "clipboard-write"])
+                                  permissions=clipboard_permissions(browser))
     page = context.new_page()
     body = "\n" + CASES["MLT06"]["body"] + "\n" + "月の帰り道".ljust(32, "あ") * 65 + "\n"
     body += ("blue moon waits by the window " * 334) + "\nhttps://example.com/" + ("a" * 215) + "\nLAST\n"
@@ -222,7 +255,7 @@ def long_reader(browser, origin, width):
         expect(latin).to_have_css("text-orientation", orientation)
         expect(original.locator(".read-upright-latin", has_text="https")).to_have_count(0)
     page.keyboard.press("Control+c")
-    clipboard = page.evaluate("navigator.clipboard.readText()")
+    clipboard = clipboard_text(page, browser)
     assert clipboard == body
     page.evaluate("getSelection().removeAllRanges()")
     action(page, COPY["en"]["edit"]).click()
@@ -235,7 +268,7 @@ def long_reader(browser, origin, width):
 def fault_flow(browser, origin, locale, output):
     copy = COPY[locale]
     context = browser.new_context(locale=locale, viewport={"width": 390, "height": 844},
-                                  reduced_motion="reduce", permissions=["clipboard-read", "clipboard-write"])
+                                  reduced_motion="reduce", permissions=clipboard_permissions(browser))
     page = context.new_page()
     note = make_note("MLT23", locale="ja", future={"mark": "\u200d"})
     old = json.dumps([note])
@@ -259,7 +292,8 @@ def fault_flow(browser, origin, locale, output):
     save_image(page, output, f"{locale}-save-failure")
     double_text(page)
     action(page, copy["copy"]).click()
-    assert page.evaluate("navigator.clipboard.readText()") == body
+    expect(page.get_by_text(copy["copied"], exact=True)).to_be_visible()
+    assert clipboard_text(page, browser) == body
     assert store(page) == old
     action(page, copy["back_read"]).click()
     action(page, copy["view"]).click()
@@ -376,6 +410,122 @@ def unavailable_segmenter(browser, origin):
     context.close()
 
 
+def reading_anchor(browser, origin):
+    context = browser.new_context(viewport={"width": 375, "height": 667}, locale="en-GB",
+                                  is_mobile=True, has_touch=True)
+    page = context.new_page()
+    draft = make_note("MLT02")
+    draft["body"] += "\n" + "\n".join(
+        f"Line {index:02d} marker in a quiet reading passage. 星空。" for index in range(1, 61)
+    )
+    page.add_init_script(f"""
+      localStorage.setItem({json.dumps(PRIMARY)}, {json.dumps(json.dumps([draft]))});
+      localStorage.setItem({json.dumps(MODE)}, 'horizontal');
+    """)
+    page.goto(origin)
+    page.locator("[data-note-id]").click()
+    page.evaluate("document.fonts.ready")
+    pane = page.locator(".read-mode-scroll")
+    marker = """({pane, offset}) => {
+      const text = pane.querySelector('pre');
+      const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
+      let remaining = offset;
+      let node;
+      while ((node = walker.nextNode()) && remaining >= node.length) remaining -= node.length;
+      const range = document.createRange();
+      range.setStart(node, remaining);
+      range.setEnd(node, remaining + 1);
+      const glyph = range.getBoundingClientRect(), viewport = pane.getBoundingClientRect();
+      return {
+        visible: glyph.right > viewport.left && glyph.left < viewport.right &&
+          glyph.bottom > viewport.top && glyph.top < viewport.bottom,
+        distance: glyph.top - viewport.top,
+      };
+    }"""
+    # This fixture has one surrogate-free ASCII marker on a later line.
+    offset = len(draft["body"].split("Line 20", 1)[0].encode("utf-16-le")) // 2
+    args = {"pane": pane.element_handle(), "offset": offset}
+    distance = page.evaluate(marker, args)["distance"]
+    pane.evaluate("(el, y) => el.scrollTop = y - 18", distance)
+    assert page.evaluate(marker, args)["visible"]
+    action(page, "Vertical").click()
+    assert page.evaluate(marker, args)["visible"], "The same line must remain visible in vertical reading"
+    action(page, "Horizontal").click()
+    assert page.evaluate(marker, args)["visible"], "The same line must remain visible after switching back"
+    assert json.loads(store(page))[0]["body"] == draft["body"]
+    context.close()
+
+
+def modal_keyboard(browser, origin, locale):
+    copy = COPY[locale]
+    context = browser.new_context(viewport={"width": 375, "height": 667}, locale=locale, reduced_motion="reduce")
+    page = context.new_page()
+    raw = json.dumps([make_note("MLT21")])
+    protected = json.dumps([make_note("MLT24")])
+    pending = json.dumps({"version": 1, "baseRaw": raw, "nextRaw": "[]"})
+    page.add_init_script(f"""
+      localStorage.setItem({json.dumps(PRIMARY)}, {json.dumps(raw)});
+      localStorage.setItem({json.dumps(PENDING)}, {json.dumps(pending)});
+      localStorage.setItem({json.dumps(PROTECTED)}, {json.dumps(protected)});
+    """)
+    page.goto(origin)
+    about = action(page, copy["about"], exact=False)
+    about.click()
+    dialog = page.get_by_role("dialog")
+    close = action(dialog, copy["close"])
+    expect(close).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    expect(dialog.get_by_role("link").last).to_be_focused()
+    page.keyboard.press("Tab")
+    expect(close).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(about).to_be_focused()
+
+    brush = action(page, copy["brush"], exact=False)
+    brush.click()
+    expect(close).to_be_focused()
+    page.keyboard.press("Tab")
+    styles = dialog.get_by_role("radio")
+    expect(styles).to_have_count(4)
+    expect(styles.first).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    expect(close).to_be_focused()
+    styles.last.focus()
+    page.keyboard.press("Space")
+    expect(styles.last).to_have_attribute("aria-checked", "true")
+    expect(page.locator("html")).to_have_attribute("data-brush", "tegaki")
+    page.keyboard.press("Escape")
+    expect(brush).to_be_focused()
+
+    trigger = action(page, copy["view"])
+    trigger.click()
+    expect(close).to_be_focused()
+    page.keyboard.press("Shift+Tab")
+    version = dialog.get_by_role("radio").last
+    expect(version).to_be_focused()
+    page.keyboard.press("Tab")
+    expect(close).to_be_focused()
+    version.click()
+    summary = dialog.locator("summary")
+    page.keyboard.press("Tab")
+    expect(summary).to_be_focused()
+    page.keyboard.press("Enter")
+    expect(summary.locator("..")).to_have_attribute("open", "")
+    page.keyboard.press("Tab")
+    expect(dialog.locator("textarea").first).to_be_focused()
+    action(dialog, copy["remove_version"]).click()
+    expect(action(dialog, copy["cancel"])).to_be_focused()
+    page.keyboard.press("Escape")
+    expect(version).to_be_focused()
+    expect(action(dialog, copy["remove_version"])).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(trigger).to_be_focused()
+    assert page.evaluate("key => localStorage.getItem(key)", PROTECTED) == protected
+    assert page.evaluate("key => localStorage.getItem(key)", PENDING) == pending
+    assert store(page) == raw
+    context.close()
+
+
 def pseudo_translation(browser, origin):
     context = browser.new_context(viewport={"width": 375, "height": 667}, locale="en")
     page = context.new_page()
@@ -418,14 +568,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("origin")
     parser.add_argument("--chromium", default="/usr/bin/chromium")
+    parser.add_argument("--webkit", nargs="?", const="", help="Use WebKit with an optional executable path")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--pseudo-origin", help="Vite dev server for the development-only dictionary check")
     options = parser.parse_args()
     if options.output:
         options.output.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(executable_path=options.chromium, args=["--no-sandbox"])
-        print(f"Chromium {browser.version}")
+        browser = (
+            playwright.chromium.launch(executable_path=options.chromium, args=["--no-sandbox"])
+            if options.webkit is None
+            else playwright.webkit.launch(executable_path=options.webkit or None)
+        )
+        print(f"{browser.browser_type.name} {browser.version}")
         for locale in ("ja", "en"):
             for width, height in [(375, 667), (390, 844), (430, 932)]:
                 regular_flow(browser, options.origin, locale, {"width": width, "height": height},
@@ -433,6 +588,8 @@ def main():
                 print(f"{locale} {width}×{height} create/edit/search/language/read/delete/undo and 200% checks")
             fault_flow(browser, options.origin, locale, options.output)
             print(f"{locale} quota / exact system clipboard / read-only review")
+            modal_keyboard(browser, options.origin, locale)
+            print(f"{locale} keyboard containment, nested confirmation cancellation and focus return")
         for width in (375, 390, 430):
             long_reader(browser, options.origin, width)
             print(f"{width}px vertical/horizontal long mixed text, visible end, selection, clipboard, edit return")
@@ -442,6 +599,8 @@ def main():
         print("Preference quota, active choice preserved, independent note save")
         unavailable_segmenter(browser, options.origin)
         print("Browser with Segmenter disabled, CSS clamp and full original")
+        reading_anchor(browser, options.origin)
+        print("Same line after switching horizontal to vertical and back")
         if options.pseudo_origin:
             pseudo_translation(browser, options.pseudo_origin)
             print("Development-only pseudo translation, narrow recovery screen")

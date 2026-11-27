@@ -167,7 +167,7 @@
     },
     {
       "id": "rescue",
-      "contract": "クリップボード成功とメモ保存を区別。失敗時は手動選択。例外は通常辞書や formatter なしで RAM 原文へ到達し、再起動後の未保存版は保証しない。",
+      "contract": "クリップボード成功とメモ保存を区別。失敗時は手動選択。表示例外では RAM に残る保留中の各候補への編集原文を提示し、本体の保存状況が不明な場合の原文も区別する。再起動後の未保存版は保証しない。",
       "messages": [
         "copying",
         "copied",
@@ -181,10 +181,11 @@
         "renderFailureNoUnsaved",
         "renderFailureUnknown",
         "renderFailureReload",
-        "unsavedNoteLabel"
+        "unsavedNoteLabel",
+        "unconfirmedNoteLabel"
       ],
       "review": "needs-review",
-      "fingerprint": "0c69142cd6d2c82ba9a0a22fa0889584e2a09dc619b39f3a91909cc011bbbe79",
+      "fingerprint": "a1938d803d9df8993194fe56da30528c007e7e883c41b028540a5d194d78de92",
       "evidence": null
     },
     {

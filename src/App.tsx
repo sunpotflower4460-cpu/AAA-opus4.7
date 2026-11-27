@@ -192,6 +192,7 @@ function NotesApp() {
   const nativeRecoveryAlternativeRef = useRef<Note[] | null>(null);
   const nativeOnlyCandidateRef = useRef<Note[] | null>(null);
   const recoveryCandidateSourceRef = useRef<RecoveryCandidateSource>("local");
+  const rescueEditsRef = useRef(new Map<RecoveryCandidateSource, Map<string, Note>>());
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -249,11 +250,18 @@ function NotesApp() {
     }
   }, [notes]);
 
-  // 描画例外で App が破棄されても、最後に受け取った内容へ届けるための控え（R33）。
-  // 保存層には一切書かない。取り出し専用で、保存先で確認できている版との差も一緒に持つ。
+  const recordCurrentDrafts = useCallback((snapshot: readonly Note[]) => {
+    // 比較に使う baseline は表示候補でも更新される。確定した本体と区別する。
+    const savedNotes = saveGuardRef.current || externalConflictRef.current || nativeRecoveryGateRef.current
+      ? null
+      : baselineNotesRef.current;
+    const edits = Array.from(rescueEditsRef.current.values()).flatMap((version) => [...version.values()]);
+    recordDraftRescue({ notes: snapshot, savedNotes, edits });
+  }, []);
+
   useLayoutEffect(() => {
-    recordDraftRescue(notes, baselineNotesRef.current);
-  }, [notes, lastSaveResult]);
+    recordCurrentDrafts(notes);
+  }, [notes, lastSaveResult, nativeRecoveryStatus, externalConflict, recordCurrentDrafts]);
 
   const clearPersistTimer = useCallback(() => {
     if (!persistTimerRef.current) return;
@@ -312,6 +320,7 @@ function NotesApp() {
   }, []);
 
   const clearRecoveryCandidateSources = useCallback(() => {
+    rescueEditsRef.current.clear();
     screenRecoveryCandidateRef.current = null;
     nativeOnlyCandidateRef.current = null;
     localRecoveryCandidateRef.current = null;
@@ -947,18 +956,30 @@ function NotesApp() {
 
   const updateNote = useCallback(
     (id: string, patch: Partial<Pick<Note, "title" | "body" | "isFavorite">>) => {
-      if (!markNotesDirty()) return;
+      const original = latestNotesRef.current.find((note) => note.id === id);
+      if (!original || !markNotesDirty()) return;
       // 何か一つでも変更が入った新規は、「未操作」ではなく入力履歴のあるメモ。
       setUntouchedDraftId((current) => (current === id ? null : current));
+      const accepted = { ...original, ...patch, updatedAt: nowIso() };
+      if (original.title !== accepted.title || original.body !== accepted.body) {
+        const active = recoveryCandidateSourceRef.current;
+        let source = active;
+        if (active === "local" && localRecoveryCandidateRef.current === null) {
+          source = nativeOnlyCandidateRef.current === null ? "screen" : "native";
+        }
+        const edits = rescueEditsRef.current.get(source) ?? new Map<string, Note>();
+        edits.set(id, accepted);
+        rescueEditsRef.current.set(source, edits);
+      }
       const snapshot = latestNotesRef.current.map((note) =>
-        note.id === id ? { ...note, ...patch, updatedAt: nowIso() } : note,
+        note.id === id ? accepted : note,
       );
       latestNotesRef.current = snapshot;
       // A formatter can fail while rendering this very edit, before the layout effect runs.
-      recordDraftRescue(snapshot, baselineNotesRef.current);
+      recordCurrentDrafts(snapshot);
       setNotes(snapshot);
     },
-    [markNotesDirty],
+    [markNotesDirty, recordCurrentDrafts],
   );
 
   const deleteNote = useCallback(

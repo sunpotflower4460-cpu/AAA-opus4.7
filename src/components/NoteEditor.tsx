@@ -11,6 +11,7 @@ import { CopyTextButton } from "./CopyTextButton";
 import { getCardDisplay } from "../lib/noteDisplay";
 import { ZanshinDateStamp } from "./ZanshinDateStamp";
 import { SaveAfterglow } from "./SaveAfterglow";
+import { handleModalKeyDown } from "./modalKeyboard";
 
 type Props = {
   note: Note;
@@ -458,8 +459,6 @@ function DeleteConfirm({
   onConfirm: () => void;
 }) {
   const { copy } = useI18n();
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -470,28 +469,6 @@ function DeleteConfirm({
     };
   }, []);
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onCancel();
-      return;
-    }
-
-    if (event.key !== "Tab") return;
-
-    const first = cancelRef.current;
-    const last = confirmRef.current;
-    if (!first || !last) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
   return (
     <div
       role="dialog"
@@ -500,7 +477,7 @@ function DeleteConfirm({
       aria-describedby="zanshin-delete-description"
       className="fixed inset-0 z-20 flex items-end justify-center bg-sumi/35 backdrop-blur-[2px] px-gr-4 pb-gr-5 sm:items-center animate-fadeIn"
       onClick={onCancel}
-      onKeyDown={handleKeyDown}
+      onKeyDown={(event) => handleModalKeyDown(event, onCancel)}
     >
       <div
         className="
@@ -525,7 +502,6 @@ function DeleteConfirm({
         </p>
         <div className="mt-gr-5 flex flex-wrap items-center justify-end gap-gr-3">
           <button
-            ref={cancelRef}
             autoFocus
             type="button"
             onClick={onCancel}
@@ -537,7 +513,6 @@ function DeleteConfirm({
             {copy.cancel}
           </button>
           <button
-            ref={confirmRef}
             type="button"
             onClick={onConfirm}
             className="

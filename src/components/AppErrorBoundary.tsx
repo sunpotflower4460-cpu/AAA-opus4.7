@@ -2,7 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { getLastUiLocale } from "../i18n/locales";
 import { rescueMessages } from "../i18n/rescueMessages";
 import { OriginalText } from "./OriginalText";
-import { getDraftRescue, getUnsavedNotes } from "../lib/draftRescue";
+import { getDraftRescue, getRescueNotes } from "../lib/draftRescue";
 import { CopyTextButton } from "./CopyTextButton";
 
 type Props = {
@@ -37,8 +37,8 @@ export class AppErrorBoundary extends Component<Props, State> {
     const locale = getLastUiLocale();
     const copy = rescueMessages[locale];
     const snapshot = getDraftRescue();
-    const unsavedNotes = getUnsavedNotes(snapshot);
-    const known = snapshot !== null;
+    const originals = getRescueNotes(snapshot);
+    const hasUnsavedEdits = originals.some(({ kind }) => kind === "edited");
 
     return (
       <div lang={locale} className="flex min-h-dvh items-start justify-center px-gr-4 py-gr-6 text-center sm:items-center">
@@ -52,27 +52,33 @@ export class AppErrorBoundary extends Component<Props, State> {
           </h1>
 
           <p className="mt-gr-3 text-[14px] leading-ample text-sumi jp-text-discipline">
-            {!known
-              ? copy.renderFailureUnknown
-              : unsavedNotes.length > 0
-                ? copy.renderFailureUnsaved
-                : copy.renderFailureNoUnsaved}
+            {hasUnsavedEdits
+              ? copy.renderFailureUnsaved
+              : snapshot?.savedNotes
+                ? copy.renderFailureNoUnsaved
+                : copy.renderFailureUnknown}
           </p>
 
-          {unsavedNotes.length > 0 && (
+          {originals.length > 0 && (
             <ul className="mt-gr-4 flex flex-col gap-gr-4 text-left">
-              {unsavedNotes.map((note) => (
+              {originals.map(({ note, kind }, index) => (
                 <li
-                  key={note.id}
+                  key={`${note.id}-${index}`}
                   className="flex flex-col gap-gr-2 border-t border-[color:var(--color-line)] pt-gr-3"
                 >
-                  <span className="text-[12px] text-ink-muted">{copy.unsavedNoteLabel}</span>
+                  <span className="text-[12px] text-ink-muted">
+                    {kind === "edited" ? copy.unsavedNoteLabel : copy.unconfirmedNoteLabel}
+                  </span>
                   {note.title !== "" && (
                     <OriginalText label={copy.originalTitle} text={note.title} rows={3} />
                   )}
-                  <OriginalText label={copy.originalText} text={note.body} rows={6} />
+                  {note.body !== "" && (
+                    <OriginalText label={copy.originalText} text={note.body} rows={6} />
+                  )}
                   <div className="flex flex-wrap gap-gr-3">
-                    <CopyTextButton label={copy.copyBody} text={note.body} feedback={copy} />
+                    {note.body !== "" && (
+                      <CopyTextButton label={copy.copyBody} text={note.body} feedback={copy} />
+                    )}
                     {note.title !== "" && (
                       <CopyTextButton label={copy.copyTitle} text={note.title} feedback={copy} />
                     )}

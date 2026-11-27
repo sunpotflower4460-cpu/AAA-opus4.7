@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { BRUSHES, setBrush, useBrush, useBrushWriteFailed } from "../lib/brushPreference";
 import { useI18n } from "../i18n/useI18n";
 import type { BrushId } from "../lib/brushPreference";
+import { handleModalKeyDown } from "./modalKeyboard";
 
 type Props = {
   /** ボタンの見た目。list は文字つき、icon は丸い単独ボタン。 */
@@ -28,19 +29,11 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
 
   function close() {
     setOpen(false);
-    triggerRef.current?.focus();
+    triggerRef.current?.focus({ preventScroll: true });
   }
 
   function choose(id: BrushId) {
     setBrush(id);
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      close();
-    }
   }
 
   return (
@@ -76,7 +69,7 @@ export function BrushPicker({ variant = "icon", className = "" }: Props) {
           aria-labelledby="zanshin-brush-title"
           className="fixed inset-0 z-30 flex items-end justify-center bg-sumi/35 px-gr-4 pb-gr-5 backdrop-blur-[2px] sm:items-center animate-fadeIn"
           onClick={close}
-          onKeyDown={handleKeyDown}
+          onKeyDown={(event) => handleModalKeyDown(event, close)}
         >
           <div
             className="zanshin-brush-sheet w-full max-w-[420px] rounded-[13px] border border-[color:var(--color-line)] bg-paper p-gr-5 shadow-paper-hover animate-softUp"
