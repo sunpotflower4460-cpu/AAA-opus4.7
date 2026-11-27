@@ -114,14 +114,14 @@ export async function confirmLibraryMirror(library: Library, epoch: string | nul
   });
 }
 
-export async function adoptLibraryCandidate(candidate: Library, expected: unknown, epoch: string | null, alternative?: Library) {
+export async function adoptLibraryCandidate(candidate: Library, expected: unknown, epoch: string | null, alternatives: readonly Library[] = []) {
   if (!validLibrary(candidate)) throw new LibraryError("invalidLibrary");
   return access("readwrite", (records, store) => {
     if (!dataWriteAllowed(epoch) || records.restore) throw new LibraryError("blocked");
     if (JSON.stringify(records.current) !== JSON.stringify(expected)) throw new LibraryError("conflict");
     // Keep displaced copies even after a later explicit recovery.
     const displaced = [...records.displaced ?? []];
-    for (const value of [records.current, alternative]) {
+    for (const value of [records.current, records.previous, ...alternatives]) {
       if (value !== undefined && JSON.stringify(value) !== JSON.stringify(candidate) && !displaced.some((item) => JSON.stringify(item) === JSON.stringify(value))) {
         displaced.push(value);
       }

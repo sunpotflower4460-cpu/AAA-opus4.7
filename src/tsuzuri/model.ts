@@ -161,8 +161,8 @@ export function blankDraft(direction: Appearance["direction"], note?: Note): Boo
   };
 }
 
-export function editionDraft(library: Library, book: Book): BookDraft {
-  const edition = library.editions.find((item) => item.id === book.editionId)!;
+export function editionDraft(library: Library, book: Book, editionId = book.editionId): BookDraft {
+  const edition = library.editions.find((item) => item.id === editionId && item.bookId === book.id)!;
   const snapshots = new Map(library.snapshots.map((item) => [item.id, item]));
   return {
     id: newId(), bookId: book.id, baseEditionId: edition.id,

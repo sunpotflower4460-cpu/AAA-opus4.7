@@ -84,6 +84,23 @@ describe("immutable editions", () => {
     expect(bookOriginalText(draft.cover, draft.passages)).toBe(expected);
     expect(bookOriginalText(edition.cover, editionText(library, edition))).toBe(expected);
   });
+
+  it("builds a draft from the selected historical edition", () => {
+    const firstDraft = blankDraft("vertical", note);
+    firstDraft.cover.title = "最初の表紙";
+    const first = bindDraft(emptyLibrary(), firstDraft);
+    const edited = editionDraft(first.library, first.book);
+    edited.cover.title = "New cover";
+    edited.appearance.direction = "horizontal";
+    edited.passages[0].body = "New body";
+    const latest = bindDraft(first.library, edited);
+
+    const selected = editionDraft(latest.library, latest.book, first.book.editionId);
+    expect(selected.cover).toEqual(firstDraft.cover);
+    expect(selected.appearance).toEqual(firstDraft.appearance);
+    expect(selected.passages[0].body).toBe(note.body);
+    expect(editionDraft(latest.library, latest.book).passages[0].body).toBe("New body");
+  });
 });
 
 describe("transactional library and restore", () => {

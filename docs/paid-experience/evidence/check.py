@@ -199,8 +199,13 @@ def run_order(browser, url):
     page.get_by_role("button", name="Bind a new edition", exact=True).click()
     expect(page.get_by_text(copy["saved"], exact=True)).to_be_visible()
     assert page.locator(".ts-paper pre").text_content() == "Second line."
+    page.get_by_text("Previous editions", exact=True).click()
+    page.locator("details").filter(has=page.get_by_text("Previous editions", exact=True)).get_by_role("button").click()
+    assert page.locator(".ts-paper pre").text_content() == "One line."
+    page.get_by_role("button", name="Duplicate as a new book", exact=True).click()
+    assert page.locator(".ts-paper pre").text_content() == "One line."
     page.close()
-    print("Reduced motion: untitled single line, add a second passage, move earlier, bind and read the new edition")
+    print("Reduced motion: add and reorder passages, then duplicate the displayed previous edition")
 
 
 def run_free_brush(browser, url):

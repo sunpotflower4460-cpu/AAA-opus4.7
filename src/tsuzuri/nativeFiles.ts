@@ -48,7 +48,7 @@ function decode(raw: string | null): Library | null {
   return saved;
 }
 
-export async function nativeLibraryCheck(current: Library, installed: boolean) {
+export async function nativeLibraryCheck(current?: Library) {
   if (!Capacitor.isNativePlatform()) return null;
   await pending;
   const actual = await read(CURRENT);
@@ -62,11 +62,11 @@ export async function nativeLibraryCheck(current: Library, installed: boolean) {
   }
   if (!prior) {
     const previous = decode(await read(PREVIOUS));
-    if (previous && (!installed || !sameLibrary(current, previous))) return previous;
-    if (installed && !await mirrorLibrary(current, undefined, true)) throw new Error("nativeBackupFailed");
+    if (previous && (!current || !sameLibrary(current, previous))) return previous;
+    if (current && !await mirrorLibrary(current, undefined, true)) throw new Error("nativeBackupFailed");
     return null;
   }
-  if (!installed) return prior;
+  if (!current) return prior;
   if (sameLibrary(current, prior)) return null;
   const { mirrored, previous } = await readLibraryRecords();
   const knownPrevious = mirrored === stamp(prior) || (previous && sameLibrary(previous, prior));

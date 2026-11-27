@@ -4,10 +4,10 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { applyRestoreNotes, makeArchive, planRestore } from "../backup";
 import { loadNotes } from "../../lib/storage";
 import { markDataErase } from "../../lib/dataEpoch";
-import { blankDraft, bindDraft, emptyLibrary } from "../model";
+import { blankDraft, bindDraft, editionDraft, emptyLibrary } from "../model";
 import { eraseAllData } from "../erase";
 import { offerFile } from "../exportFile";
-import { eraseLibrary, adoptLibraryCandidate, readLibraryRecords, writeLibrary } from "../repository";
+import { eraseLibrary, adoptLibraryCandidate, readLibrary, readLibraryRecords, writeLibrary } from "../repository";
 import { eraseNativeBooksAndExports, mirrorLibrary, nativeLibraryCheck } from "../nativeFiles";
 
 const { files, failedWrites, shareFile, beforeWrite } = vi.hoisted(() => ({
@@ -103,11 +103,40 @@ it("offers a valid previous copy after explicit corruption and keeps the displac
   const previous = emptyLibrary();
   files.set(PRIMARY, "damaged original");
   files.set(PREVIOUS, JSON.stringify(previous));
-  expect(await nativeLibraryCheck(local, true)).toEqual(previous);
-  const adopted = await adoptLibraryCandidate(previous, local, null, previous);
+  expect(await nativeLibraryCheck(local)).toEqual(previous);
+  const adopted = await adoptLibraryCandidate(previous, local, null, [previous]);
   expect(await mirrorLibrary(adopted, null)).toBe(true);
   expect(JSON.parse(files.get(DAMAGED)!)).toEqual(["damaged original"]);
   expect((await readLibraryRecords()).displaced).toEqual([local]);
+});
+
+it.each(["device", "previous"] as const)("recovers a damaged library while preserving the other copy when choosing %s", async (choice) => {
+  const initial = emptyLibrary();
+  const draft = blankDraft("vertical", { id: "n", title: "", body: "Earlier text", isFavorite: false, createdAt: date, updatedAt: date });
+  const previous = await writeLibrary(initial, bindDraft(initial, draft).library, null);
+  const edit = editionDraft(previous, previous.books[0]);
+  edit.passages[0].body = "Latest text on the device";
+  const damaged = { partial: "unreadable bytes" };
+  const put = IDBObjectStore.prototype.put;
+  const intercept = vi.spyOn(IDBObjectStore.prototype, "put").mockImplementationOnce(function (this: IDBObjectStore, value, key) {
+    return put.call(this, { ...value, current: damaged }, key);
+  });
+  const latest = await writeLibrary(previous, bindDraft(previous, edit).library, null);
+  intercept.mockRestore();
+  files.set(PRIMARY, JSON.stringify(latest));
+
+  const local = await readLibrary();
+  if (local.kind !== "damaged") throw new Error("Expected a damaged local library");
+  expect(local.previous).toEqual(previous);
+  expect(await nativeLibraryCheck()).toEqual(latest);
+  expect(files.get(PRIMARY)).toBe(JSON.stringify(latest));
+
+  const selected = choice === "device" ? latest : previous;
+  const remaining = choice === "device" ? previous : latest;
+  const adopted = await adoptLibraryCandidate(selected, local.raw, null, [latest]);
+  expect((await readLibraryRecords()).displaced).toEqual([damaged, remaining]);
+  expect(await mirrorLibrary(adopted, null)).toBe(true);
+  expect(JSON.parse(files.get(PRIMARY)!)).toEqual(selected);
 });
 
 it("retains the interrupted journal when the library recovery file cannot be written", async () => {

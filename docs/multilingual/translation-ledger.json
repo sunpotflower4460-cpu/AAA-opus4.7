@@ -264,11 +264,12 @@
         "tsuzuri.invalidLibrary",
         "tsuzuri.adoptHint",
         "tsuzuri.candidate",
+        "tsuzuri.previousEdition",
         "tsuzuri.nativeBackupFailed",
         "tsuzuri.keepLocalEdition"
       ],
       "review": "needs-review",
-      "fingerprint": "6a5962ff00ee95b9bbc392ea786548995cbb9a78083693ac18c5ebb9500edb21",
+      "fingerprint": "ede38cece6cf76946e025f366b632f46eb0301e3fa161624cb12d3e6d508ba26",
       "evidence": null
     },
     {

@@ -28,7 +28,8 @@ import { validLibrary } from "./validation";
 import { adoptLibraryCandidate, LibraryError, readLibrary, readLibraryRecords, sameLibrary, writeLibrary, type RestoreJournal } from "./repository";
 
 type View = "shelf" | "choose" | "draft" | "read" | "output" | "data" | "sample" | "everyday";
-type Recovery = { candidate?: Library; local: unknown };
+type RecoveryCopy = { kind: "device" | "previous"; library: Library };
+type Recovery = { copies: RecoveryCopy[]; local: unknown };
 type Props = {
   notes: Note[];
   notesReady: boolean;
@@ -50,6 +51,18 @@ function errorMessage(error: unknown, fallback: TsuzuriMessage): TsuzuriMessage 
     case "paidPreview": return "paidPreview";
     default: return fallback;
   }
+}
+
+function RecoveryPreview({ source, untitled }: { source: Library; untitled: string }) {
+  return source.books.map((book) => {
+    const edition = source.editions.find((item) => item.id === book.editionId)!;
+    const pieces = editionText(source, edition);
+    const title = edition.cover.title || pieces[0].title;
+    return <details key={book.id}>
+      <summary>{title ? <span dir="auto" lang="">{title}</span> : untitled}</summary>
+      <pre dir="auto" lang="">{bookOriginalText(edition.cover, pieces)}</pre>
+    </details>;
+  });
 }
 
 export default function BookStudio(props: Props) {
@@ -91,15 +104,27 @@ export default function BookStudio(props: Props) {
     try {
       const result = await readLibrary();
       if (result.kind === "damaged") {
-        setRecovery({ local: result.raw, candidate: result.previous });
-        setStatus("invalidLibrary");
+        const { previous } = result;
+        const copies: RecoveryCopy[] = [];
+        let backupUnreadable = false;
+        try {
+          const device = await nativeLibraryCheck();
+          if (device) copies.push({ kind: "device", library: device });
+        } catch {
+          backupUnreadable = true;
+        }
+        if (previous && !copies.some((copy) => sameLibrary(copy.library, previous))) {
+          copies.push({ kind: "previous", library: previous });
+        }
+        setRecovery({ local: result.raw, copies });
+        setStatus(backupUnreadable ? "nativeBackupFailed" : null);
         return;
       }
       try {
-        const candidate = await nativeLibraryCheck(result.library, result.stored !== undefined);
-        setRecovery(candidate ? { local: result.stored, candidate } : null);
+        const candidate = await nativeLibraryCheck(result.stored);
+        setRecovery(candidate ? { local: result.stored, copies: [{ kind: "device", library: candidate }] } : null);
       } catch {
-        setRecovery({ local: result.stored });
+        setRecovery({ local: result.stored, copies: [] });
         setStatus("nativeBackupFailed");
         return;
       }
@@ -107,7 +132,7 @@ export default function BookStudio(props: Props) {
       setStatus(null);
       applyLibrary(result.library);
     } catch {
-      setRecovery({ local: undefined });
+      setRecovery({ local: undefined, copies: [] });
       setStatus("invalidLibrary");
     }
   }, [applyLibrary]);
@@ -372,7 +397,7 @@ export default function BookStudio(props: Props) {
 
   async function chooseCandidate(candidate: Library, comparison: Recovery) {
     try {
-      const saved = await adoptLibraryCandidate(candidate, comparison.local, epoch, comparison.candidate);
+      const saved = await adoptLibraryCandidate(candidate, comparison.local, epoch, comparison.copies.map((copy) => copy.library));
       applyLibrary(saved);
       setRecovery(null);
       setStatus(null);
@@ -408,27 +433,19 @@ export default function BookStudio(props: Props) {
           <div className="ts-controls">
             <p>{c.invalidLibrary}</p>
             {recovery.local !== undefined && <button type="button" onClick={() => void download(JSON.stringify(recovery.local), "zanshin-local-books.json", "application/json")}>{c.localEdition}</button>}
-            {recovery.candidate && <>
-              <button type="button" onClick={() => void download(JSON.stringify(recovery.candidate), "zanshin-book-candidate.json", "application/json")}>{c.candidate}</button>
-              <details><summary>{c.useCandidate}</summary><p>{c.adoptHint}</p>
-                {recovery.candidate.books.map((item) => {
-                  const version = recovery.candidate!.editions.find((value) => value.id === item.editionId)!;
-                  return <details key={item.id}><summary>{version.cover.title || c.untitled}</summary>
-                    <pre dir="auto" lang="">{bookOriginalText(version.cover, editionText(recovery.candidate!, version))}</pre></details>;
-                })}
-                <button type="button" onClick={() => { if (recovery.candidate) void chooseCandidate(recovery.candidate, recovery); }}>{c.useCandidate}</button>
+            {recovery.copies.map(({ kind, library: candidate }) => (
+              <details key={kind}>
+                <summary>{kind === "device" ? c.candidate : c.previousEdition}</summary><p>{c.adoptHint}</p>
+                <RecoveryPreview source={candidate} untitled={c.untitled} />
+                <button type="button" onClick={() => void download(JSON.stringify(candidate), `zanshin-book-${kind}.json`, "application/json")}>{c.exportBookRecovery}</button>
+                <button type="button" onClick={() => void chooseCandidate(candidate, recovery)}>{c.useCandidate}</button>
               </details>
-              {validLibrary(recovery.local) && <details>
-                <summary>{c.localEdition}</summary><p>{c.adoptHint}</p>
-                {recovery.local.books.map((item) => {
-                  const local = recovery.local as Library;
-                  const version = local.editions.find((value) => value.id === item.editionId)!;
-                  return <details key={item.id}><summary>{version.cover.title || c.untitled}</summary>
-                    <pre lang="" dir="auto">{bookOriginalText(version.cover, editionText(local, version))}</pre></details>;
-                })}
-                <button type="button" onClick={() => { if (validLibrary(recovery.local)) void chooseCandidate(recovery.local, recovery); }}>{c.keepLocalEdition}</button>
-              </details>}
-            </>}
+            ))}
+            {recovery.copies.length > 0 && validLibrary(recovery.local) && <details>
+              <summary>{c.localEdition}</summary><p>{c.adoptHint}</p>
+              <RecoveryPreview source={recovery.local} untitled={c.untitled} />
+              <button type="button" onClick={() => { if (validLibrary(recovery.local)) void chooseCandidate(recovery.local, recovery); }}>{c.keepLocalEdition}</button>
+            </details>}
             <button type="button" onClick={() => void refresh()}>{c.retry}</button>
           </div>
         ) : !library ? (
@@ -499,7 +516,7 @@ export default function BookStudio(props: Props) {
             } : undefined}
             onDelete={edition.id === book.editionId ? () => { void commit((value) => removeBook(value, book.id)).then(() => setView("shelf")).catch((error) => setStatus(errorMessage(error, "saveFailed"))); } : undefined}
             onDuplicate={() => {
-              const value = editionDraft(library, book);
+              const value = editionDraft(library, book, edition.id);
               changeDraft({ ...value, id: newId(), bookId: null, baseEditionId: null });
               setView("draft");
             }}
