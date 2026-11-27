@@ -32,7 +32,7 @@ export function PurchasePanel({ c, onClose, onResult }: {
         {state.price && state.state !== "verified" && <button type="button" className="ts-primary"
           disabled={state.action !== "idle"} onClick={() => void run("purchasing")}>{c.purchase} · {state.price}</button>}
         <p>{c.restorePurchaseHint}</p>
-        <button type="button" disabled={state.action !== "idle"} onClick={() => void run("restoring")}>{c.restorePurchase}</button>
+        <button type="button" disabled={processing} onClick={() => void run("restoring")}>{c.restorePurchase}</button>
       </>}
       <button type="button" onClick={onClose}>{c.close}</button>
     </section>

@@ -1,8 +1,6 @@
 import { useMemo, useState } from "react";
 import { matchesNote, sortNotes } from "../lib/notesLogic";
-import { CopyTextButton } from "../components/CopyTextButton";
 import { OriginalText } from "../components/OriginalText";
-import { rescueMessages } from "../i18n/rescueMessages";
 import type { UiLocale } from "../i18n/locales";
 import type { Note } from "../types/note";
 import { BookPage } from "./BookPage";
@@ -90,7 +88,7 @@ export function DraftStudio({ draft, notes, locale, update, selectMore, onBind, 
         <summary>{c.options}</summary>
         <div className="ts-controls">
           {optional.map((key) => <label key={key}>{c[key]}
-            <textarea rows={1} dir="auto" value={draft.cover[key]} onChange={(event) => update({
+            <textarea rows={1} dir="auto" lang="" value={draft.cover[key]} onChange={(event) => update({
               ...draft, cover: { ...draft.cover, [key]: preserveUneditedText(draft.cover[key], event.target.value) },
             })} />
           </label>)}
@@ -172,19 +170,5 @@ function PieceEditor({ piece, source, c, update, confirmed }: {
         </details>
       )}
     </>
-  );
-}
-
-export function DraftRescue({ draft, locale }: { draft: BookDraft; locale: UiLocale }) {
-  const c = tsuzuriMessages[locale];
-  return (
-    <div className="ts-list">
-      {draft.passages.map((piece) => (
-        <div key={piece.id}>
-          <OriginalText label={c.currentPiece} text={pieceText(piece)} rows={4} />
-          <CopyTextButton label={c.copyOriginal} text={pieceText(piece)} feedback={rescueMessages[locale]} />
-        </div>
-      ))}
-    </div>
   );
 }

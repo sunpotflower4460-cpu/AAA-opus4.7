@@ -6,7 +6,7 @@ import { markDataErase } from "../../lib/dataEpoch";
 import { loadNotes, saveNotes } from "../../lib/storage";
 import { applyRestoreNotes, makeArchive, planRestore, readArchive, replanRestoreNotes } from "../backup";
 import {
-  adoptSource, bindDraft, blankDraft, editionDraft, emptyLibrary, editionText, removeBook, sourceChanged,
+  adoptSource, bindDraft, blankDraft, bookOriginalText, editionDraft, emptyLibrary, editionText, removeBook, sourceChanged,
 } from "../model";
 import { eraseLibrary, readLibrary, readLibraryRecords, writeLibrary } from "../repository";
 import { eraseAllData, resumeInterruptedErase } from "../erase";
@@ -70,6 +70,20 @@ describe("immutable editions", () => {
     expect(editionText(result.library, result.library.editions[0])[0]).toMatchObject({ title: "", body: note.body });
     expect(() => bindDraft(result.library, { ...draft, bookId: result.book.id, baseEditionId: "stale" })).toThrow("conflict");
   });
+
+  it("includes every authored cover field in the original text without trimming the text", () => {
+    const draft = blankDraft("vertical", note);
+    draft.cover = {
+      title: "  短い手紙  ", author: "A. Cafe\u0301", date: "十二月", detail: " 雪 ", address: "友へ",
+      front: "前書き\r\n の続き", closing: "👩🏽‍💻", after: "𠮷\u{E0100}\n",
+    };
+    const { library } = bindDraft(emptyLibrary(), draft);
+    const [edition] = library.editions;
+    const expected = ["  短い手紙  ", "A. Cafe\u0301", "十二月", " 雪 ", "友へ", "前書き\r\n の続き",
+      note.body, "👩🏽‍💻", "𠮷\u{E0100}\n"].join("\n\n");
+    expect(bookOriginalText(draft.cover, draft.passages)).toBe(expected);
+    expect(bookOriginalText(edition.cover, editionText(library, edition))).toBe(expected);
+  });
 });
 
 describe("transactional library and restore", () => {
@@ -112,12 +126,13 @@ describe("transactional library and restore", () => {
     localStorage.setItem("zanshin.notes.recovery.conflict.backup.v1", JSON.stringify([note]));
     localStorage.setItem("zanshin.notes.corrupt.backup", "private incomplete bytes");
     markDataErase("interrupted", true);
-    await resumeInterruptedErase();
+    expect(await resumeInterruptedErase()).toBe(true);
     expect((await readLibraryRecords()).current).toBeUndefined();
     expect([...Array(localStorage.length).keys()].map((key) => localStorage.key(key))).not.toContain("zanshin.notes.v1");
     expect(localStorage.getItem("zanshin.notes.corrupt.backup")).toBeNull();
     expect(localStorage.getItem("zanshin.notes.recovery.conflict.backup.v1")).toBeNull();
     expect(saveNotes([note], { dataEpoch: null }).ok).toBe(false);
+    expect(await resumeInterruptedErase()).toBe(false);
     await eraseAllData();
     expect(loadNotes().notes).toEqual([]);
   });

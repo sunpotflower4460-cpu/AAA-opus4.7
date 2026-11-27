@@ -147,15 +147,17 @@ public final class ZanshinTsuzuriPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         Task { @MainActor in
-            guard !busy, !awaitingApproval else {
-                call.resolve(["state": awaitingApproval ? "pending" : "failed"])
+            guard !busy else {
+                call.resolve(["state": "failed"])
                 return
             }
             busy = true
             defer { busy = false }
             do {
                 try await AppStore.sync()
-                call.resolve(["state": await verifiedState()])
+                let state = await verifiedState()
+                if state == "verified" || state == "revoked" { awaitingApproval = false }
+                call.resolve(["state": awaitingApproval && state == "unowned" ? "pending" : state])
             } catch {
                 call.resolve(["state": "failed"])
             }

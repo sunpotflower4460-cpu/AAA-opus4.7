@@ -5,17 +5,18 @@ import { rescueMessages } from "../i18n/rescueMessages";
 import type { UiLocale } from "../i18n/locales";
 import { BookPage } from "./BookPage";
 import { tsuzuriMessages } from "./messages";
-import { editionText, pieceText, type Book, type BookEdition, type Bookmark, type Library } from "./model";
+import { bookOriginalText, editionText, type Book, type BookEdition, type Bookmark, type Library } from "./model";
 
 export function BookReader({ library, book, edition, locale, visible, onBookmark, onOutput, onOriginal, onArrange, onDelete, onHistory, onDuplicate }: {
   library: Library; book: Book; edition: BookEdition; locale: UiLocale; visible: boolean;
   onBookmark: (bookmark: Bookmark) => void;
   onOutput: (kind: "basic" | "styled" | "image", passage: number, trigger: HTMLButtonElement) => void;
-  onOriginal: (pieces: ReturnType<typeof editionText>) => void;
+  onOriginal: (text: string) => void;
   onArrange?: () => void; onDelete?: () => void; onHistory?: (editionId: string) => void; onDuplicate?: () => void;
 }) {
   const c = tsuzuriMessages[locale];
   const pieces = editionText(library, edition);
+  const original = bookOriginalText(edition.cover, pieces);
   const [index, setIndex] = useState(() => Math.max(0, pieces.findIndex((item) => item.id === book.bookmark?.passageId)));
   const [overview, setOverview] = useState(false);
   const [dimTexture, setDimTexture] = useState(false);
@@ -123,12 +124,12 @@ export function BookReader({ library, book, edition, locale, visible, onBookmark
         <button type="button" onClick={(event) => openOutput("basic", event.currentTarget)}>{c.basicPdf}</button>
         <button type="button" onClick={(event) => openOutput("styled", event.currentTarget)}>{c.styledPdf}</button>
         {edition.appearance.format !== "BK03" && <button type="button" onClick={(event) => openOutput("image", event.currentTarget)}>{c.image}</button>}
-        <CopyTextButton label={c.copyOriginal} text={pieces.map(pieceText).join("\n\n")} feedback={rescueMessages[locale]} />
+        <CopyTextButton label={c.copyOriginal} text={original} feedback={rescueMessages[locale]} />
         <details><summary>{c.currentPiece}</summary>
           {piece.title && <CopyTextButton label={c.copyPieceTitle} text={piece.title} feedback={rescueMessages[locale]} />}
           <CopyTextButton label={c.copyPieceBody} text={piece.body} feedback={rescueMessages[locale]} />
         </details>
-        <button type="button" onClick={() => onOriginal(pieces)}>{c.originalFile}</button>
+        <button type="button" onClick={() => onOriginal(original)}>{c.originalFile}</button>
       </section>
       {onHistory && <details><summary>{c.history}</summary>{library.editions.filter((item) => item.bookId === book.id && item.id !== book.editionId).reverse().map((item) => (
         <button type="button" key={item.id} onClick={() => onHistory(item.id)}>

@@ -229,7 +229,8 @@
       "sources": [
         "src/tsuzuri/backup.ts",
         "src/tsuzuri/repository.ts",
-        "src/tsuzuri/BookStudio.tsx"
+        "src/tsuzuri/BookStudio.tsx",
+        "src/tsuzuri/DraftRescue.tsx"
       ],
       "messages": [
         "tsuzuri.draftRescue",
@@ -267,7 +268,7 @@
         "tsuzuri.keepLocalEdition"
       ],
       "review": "needs-review",
-      "fingerprint": "f9cca0053554c8cc517dd26bbf5145eafcdaad32f7847488a3c49f8df0c0ae2d",
+      "fingerprint": "6a5962ff00ee95b9bbc392ea786548995cbb9a78083693ac18c5ebb9500edb21",
       "evidence": null
     },
     {
@@ -299,7 +300,7 @@
         "tsuzuri.aboutTsuzuri"
       ],
       "review": "needs-review",
-      "fingerprint": "4f787ff105b7c8bc56274bf79e8a0aa8b6672ba8181e269bfa6abc9b5164e4fb",
+      "fingerprint": "083cfe39e9cee6f2204f29327e24af92b0aa97a7adb2ee9d1f8e0f0c6b100d6f",
       "evidence": null
     },
     {
@@ -487,7 +488,7 @@
         "tsuzuri.keepBooks"
       ],
       "review": "needs-review",
-      "fingerprint": "404183ef8034ba6f43e03b2abac5eeb49c06778f5404489b9c4e92ee715219e2",
+      "fingerprint": "b3b223ca735f99acfe0e91563d658f725a83946e7c4bf2c195ce072578086bd9",
       "evidence": null
     }
   ]

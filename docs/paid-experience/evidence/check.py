@@ -15,6 +15,9 @@ from urllib.parse import urljoin
 from playwright.sync_api import expect, sync_playwright
 
 BODY = "  In stillness, on paper.\n雨のあと「ひかり」。Cafe\u0301 👩🏽‍💻 𠮷\n\n"
+AUTHOR = "  A. Cafe\u0301  "
+FRONT = "窓の向こう。\nNext line."
+AFTER = "Afterword · あとがき  \n"
 PRIMARY = "zanshin.notes.v1"
 COPY = {
     "ja": {
@@ -27,6 +30,8 @@ COPY = {
         "everyday": "ふだんの紙と筆あと", "compare": "紙肌を同じ色で比較",
         "styles": "仕立て", "style": "詩の連なり", "basic": "日々の基本",
         "dark": "暗色で読む", "texture": "紙肌を弱める", "lettering": "筆あと",
+        "options": "紙・筆あと・表紙を整える", "author": "作者名", "front": "前書き", "after": "あとがき",
+        "txt": "原文をTXTで取り出す", "erase_done": "端末内の文章データを削除しました。",
     },
     "en": {
         "shelf": "Bound books", "new": "New note", "body": "Note text", "notes": "Back to notes",
@@ -38,6 +43,8 @@ COPY = {
         "everyday": "Everyday paper and lettering", "compare": "Compare texture in one color",
         "styles": "Style", "style": "A string of poems", "basic": "Everyday basics",
         "dark": "Read on a dark background", "texture": "Reduce paper texture", "lettering": "Lettering",
+        "options": "Adjust paper, lettering, and cover", "author": "Author", "front": "Preface", "after": "Afterword",
+        "txt": "Export original text as TXT", "erase_done": "Writing on this device was erased.",
     },
 }
 
@@ -76,8 +83,14 @@ def run_ui(browser, url, out, locale):
     assert page.locator(".ts-paper pre").first.text_content() == BODY
     page.screenshot(path=out / f"{locale}-personal-style.png")
     click(page, copy, "basic")
+    page.get_by_text(copy["options"], exact=True).click()
+    for key, value in (("author", AUTHOR), ("front", FRONT), ("after", AFTER)):
+        page.get_by_role("textbox", name=copy[key], exact=True).fill(value)
     click(page, copy, "bind")
     expect(page.get_by_text(copy["saved"], exact=True)).to_be_visible()
+    original = out / f"{locale}-original.txt"
+    save_file(page, copy, "txt", original)
+    assert original.read_bytes().decode("utf-8") == "\n\n".join((AUTHOR, FRONT, BODY, AFTER))
     click(page, copy, "free")
     page.locator(".ts-output-paper canvas").wait_for()
     pdf = out / f"{locale}-basic.pdf"
@@ -85,6 +98,7 @@ def run_ui(browser, url, out, locale):
     extracted = subprocess.check_output(["pdftotext", "-raw", pdf, "-"], text=True)
     assert extracted.index("In stillness, on paper.") < extracted.index("雨のあと「ひかり」。")
     assert "Cafe\u0301 👩🏽‍💻 𠮷" in extracted
+    assert extracted.index("窓の向こう。") < extracted.index("In stillness") < extracted.index("Afterword")
 
     click(page, copy, "back")
     click(page, copy, "back")
@@ -116,6 +130,7 @@ def run_ui(browser, url, out, locale):
     stored = json.loads(backup.read_text())
     assert stored["notes"][0]["body"] == BODY
     assert stored["library"]["snapshots"][0]["body"] == BODY
+    assert stored["library"]["editions"][0]["cover"]["after"] == AFTER
     assert page.evaluate("(key) => localStorage.getItem(key)", PRIMARY) == baseline
     assert not errors, errors
     context.close()
@@ -138,8 +153,17 @@ def run_ui(browser, url, out, locale):
       .filter(node => node.getBoundingClientRect().right > innerWidth + 2 && node.getBoundingClientRect().width > 0)
       .slice(0, 14).map(node => [node.tagName, node.className, node.getBoundingClientRect().right])]""")
     assert overflow[0] <= overflow[1] + 2, overflow
+    assert page.locator(".ts-book-aside").last.text_content() == AFTER
+    page.evaluate("""localStorage.setItem('zanshin.data-epoch.v1', JSON.stringify({id: 'interrupted', erasing: true}));
+      localStorage.setItem('zanshin.notes.corrupt.backup', 'Synthetic recovery copy');""")
+    page.reload()
+    expect(page.get_by_text(copy["erase_done"], exact=True)).to_be_visible()
+    assert page.evaluate("(key) => localStorage.getItem(key)", PRIMARY) is None
+    assert page.evaluate("localStorage.getItem('zanshin.notes.corrupt.backup')") is None
+    click(page, copy, "shelf")
+    expect(page.locator(".ts-shelf-card")).to_have_count(0)
     restored.close()
-    print(f"{locale}: original unchanged, basic PDF and JSON checked, restored and reopened, 375px with 200% text")
+    print(f"{locale}: original and front/back matter preserved in TXT, PDF and JSON; restored, zoomed to 200%, finished interrupted erase")
 
 
 def run_order(browser, url):

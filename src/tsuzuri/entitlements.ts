@@ -23,7 +23,7 @@ const initial = {
   priceState: "idle" as "idle" | "loading" | "ready" | "unavailable" | "failed",
 };
 let state = initial;
-let eventVersion = 0;
+let entitlementVersion = 0;
 const subscribers = new Set<() => void>();
 let listening: Promise<PluginListenerHandle> | null = null;
 let checking: Promise<void> | null = null;
@@ -40,9 +40,10 @@ function subscribe(listener: () => void) {
   return () => { subscribers.delete(listener); };
 }
 
-function verifiedState(value: Entitlement) {
+function updateEntitlement(value: Entitlement, explicitlySynced = false) {
   // A transient verification failure leaves the last StoreKit-verified result intact.
-  if ((value === "unknown" || value === "unowned") && (state.state === "verified" || state.state === "revoked")) return;
+  if (!explicitlySynced && (value === "unknown" || value === "unowned") &&
+    (state.state === "verified" || state.state === "revoked")) return;
   publish({
     state: value,
     ...(state.action === "pending" && (value === "verified" || value === "revoked") ? { action: "idle" } : {}),
@@ -54,14 +55,16 @@ export function refreshEntitlement() {
   if (checking) return checking;
   if (!listening) {
     listening = nativeStore.addListener("entitlementChanged", ({ state: value }) => {
-      eventVersion++;
-      verifiedState(value);
+      entitlementVersion++;
+      updateEntitlement(value);
     });
     void listening.catch(() => { listening = null; });
   }
-  const version = eventVersion;
+  const version = entitlementVersion;
   checking = nativeStore.entitlement().then(({ state: current }) => {
-    if (version === eventVersion) verifiedState(current);
+    if (version === entitlementVersion && state.action !== "purchasing" && state.action !== "restoring") {
+      updateEntitlement(current);
+    }
   }).catch(() => {}).finally(() => { checking = null; });
   return checking;
 }
@@ -97,15 +100,20 @@ export async function loadProduct() {
 }
 
 export async function transact(action: "purchasing" | "restoring"): Promise<TsuzuriMessage | null> {
-  if (!supported || state.action !== "idle") return null;
-  if (action === "purchasing" && (!state.price || state.state === "verified")) return null;
+  const previousAction = state.action;
+  if (!supported || previousAction === "purchasing" || previousAction === "restoring") return null;
+  if (action === "purchasing" && (previousAction === "pending" || !state.price || state.state === "verified")) return null;
+  const version = ++entitlementVersion;
+  let keepPending = previousAction === "pending";
   publish({ action });
-  const version = eventVersion;
   try {
     const { state: result } = await (action === "purchasing" ? nativeStore.purchase() : nativeStore.restore());
-    if (result === "unowned") return "purchaseNotFound";
-    if (result === "verified" || result === "revoked") {
-      if (version === eventVersion) verifiedState(result);
+    if (result === "verified" || result === "revoked" || (action === "restoring" && result === "unowned")) {
+      if (version === entitlementVersion) {
+        entitlementVersion++;
+        updateEntitlement(result, true);
+      }
+      keepPending = false;
       if (state.state === "verified") return "purchaseVerified";
       if (state.state === "revoked") return "purchaseRevoked";
       return "purchaseNotFound";
@@ -113,14 +121,16 @@ export async function transact(action: "purchasing" | "restoring"): Promise<Tsuz
     if (result === "cancelled") return "purchaseCancelled";
     if (result === "pending") {
       if (state.state === "verified") return "purchaseVerified";
-      publish({ action: "pending" });
+      if (version !== entitlementVersion && state.state === "revoked") return "purchaseRevoked";
+      keepPending = true;
       return "purchasePending";
     }
     return result === "unavailable" ? "purchaseUnavailable" : "purchaseFailed";
   } catch {
     return "purchaseFailed";
   } finally {
-    if (getSnapshot().action !== "pending") publish({ action: "idle" });
+    const resolved = version !== entitlementVersion && (state.state === "verified" || state.state === "revoked");
+    publish({ action: keepPending && !resolved ? "pending" : "idle" });
   }
 }
 

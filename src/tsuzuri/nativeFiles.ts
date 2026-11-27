@@ -124,9 +124,12 @@ export async function readEraseMarker(): Promise<string | null> {
   return Capacitor.isNativePlatform() ? read(ERASE) : null;
 }
 
-export async function eraseNativeBooksAndExports(id: string) {
+export async function markNativeErase(id: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) await write(ERASE, id);
+}
+
+export async function eraseNativeBooksAndExports() {
   if (!Capacitor.isNativePlatform()) return;
-  await write(ERASE, id);
   await pending;
   await remove(CURRENT);
   await remove(PREVIOUS);

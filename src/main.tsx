@@ -48,21 +48,20 @@ async function start(container: HTMLElement) {
   const root = ReactDOM.createRoot(container);
   async function open() {
     try {
-      await resumeInterruptedErase();
-      let erased = false;
+      let erased = await resumeInterruptedErase();
       try {
-        erased = sessionStorage.getItem("zanshin.erased") === "1";
+        erased = sessionStorage.getItem("zanshin.erased") === "1" || erased;
         sessionStorage.removeItem("zanshin.erased");
       } catch {
         // The data operation is complete even when session feedback is unavailable.
       }
       root.render(
-    <React.StrictMode>
-      <AppErrorBoundary>
-        {erased && <p role="status" className="ts-erase-complete">{tsuzuriMessages[preferences.getSnapshot().locale].eraseDone}</p>}
-        <App preferences={preferences} />
-      </AppErrorBoundary>
-    </React.StrictMode>,
+        <React.StrictMode>
+          <AppErrorBoundary>
+            {erased && <p role="status" className="ts-erase-complete">{tsuzuriMessages[preferences.getSnapshot().locale].eraseDone}</p>}
+            <App preferences={preferences} />
+          </AppErrorBoundary>
+        </React.StrictMode>,
       );
     } catch {
       const copy = tsuzuriMessages[preferences.getSnapshot().locale];

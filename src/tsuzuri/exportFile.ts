@@ -41,7 +41,9 @@ export async function offerFile(file: Blob, name: string, epoch: string | null) 
       const bytes = new Uint8Array(await file.arrayBuffer());
       let content = "";
       for (let i = 0; i < bytes.length; i += 8192) content += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      if (!dataWriteAllowed(epoch)) throw new Error("exportFailed");
       await Filesystem.writeFile({ path, data: btoa(content), directory: Directory.Cache, recursive: true });
+      if (!dataWriteAllowed(epoch)) throw new Error("exportFailed");
       const result = await bridge.shareFile({ path });
       return result.completed ? "shareFinished" as const : "shareClosed" as const;
     } finally {

@@ -254,3 +254,15 @@ function textFields(snapshot: TextSnapshot) {
 export function pieceText(piece: { title: string; body: string }) {
   return piece.title ? `${piece.title}\n${piece.body}` : piece.body;
 }
+
+const frontFields = ["title", "author", "date", "detail", "address", "front"] as const;
+const backFields = ["closing", "after"] as const;
+export const coverTextFields = [...frontFields, ...backFields] as const;
+
+export function bookOriginalText(cover: Cover, passages: readonly { title: string; body: string }[]) {
+  return [
+    ...frontFields.map((field) => cover[field]),
+    ...passages.map(pieceText),
+    ...backFields.map((field) => cover[field]),
+  ].filter((text) => text !== "").join("\n\n");
+}

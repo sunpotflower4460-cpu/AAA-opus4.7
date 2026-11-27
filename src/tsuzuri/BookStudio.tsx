@@ -8,11 +8,12 @@ import { rememberBookDraft } from "./bookRescue";
 import { BookPage } from "./BookPage";
 import { BookReader } from "./BookReader";
 import { SAMPLE_IDS } from "./catalog";
-import { ChoosePassages, DraftRescue, DraftStudio } from "./DraftStudio";
+import { ChoosePassages, DraftStudio } from "./DraftStudio";
+import { DraftRescue } from "./DraftRescue";
 import { eraseAllData } from "./erase";
 import { offerFile } from "./exportFile";
 import {
-  bindDraft, blankDraft, editionDraft, editionText, newId, pieceText, removeBook,
+  bindDraft, blankDraft, bookOriginalText, editionDraft, editionText, newId, removeBook,
   type BookDraft, type Library,
 } from "./model";
 import { tsuzuriMessages, type TsuzuriMessage } from "./messages";
@@ -45,6 +46,8 @@ function errorMessage(error: unknown, fallback: TsuzuriMessage): TsuzuriMessage 
     case "archiveVersion": return "archiveVersion";
     case "restoreIncomplete": return "restoreIncomplete";
     case "notesWait": return "notesWait";
+    case "freeLimit": return "freeLimit";
+    case "paidPreview": return "paidPreview";
     default: return fallback;
   }
 }
@@ -282,6 +285,11 @@ export default function BookStudio(props: Props) {
     if (restore || recovery || draftRef.current) { setStatus("recoveryUnavailable"); return; }
     const records = await readLibrary();
     if (records.kind !== "ready" || records.restore) { setStatus("recoveryUnavailable"); return; }
+    const confirmedNotes = onCheckNotes();
+    if (!confirmedNotes || JSON.stringify(confirmedNotes) !== JSON.stringify(currentNotes) || draftRef.current) {
+      setStatus("notesWait");
+      return;
+    }
     await download(JSON.stringify(makeArchive(currentNotes, records.library)), "zanshin-backup.json", "application/json;charset=utf-8");
   }
 
@@ -352,13 +360,14 @@ export default function BookStudio(props: Props) {
     setStatus("erasePending");
     try {
       await eraseAllData();
-      changeDraft(null);
-      sessionStorage.setItem("zanshin.erased", "1");
-      window.location.reload();
     } catch {
       setErasing(false);
       setStatus("erasePending");
+      return;
     }
+    changeDraft(null);
+    try { sessionStorage.setItem("zanshin.erased", "1"); } catch { /* Confirmation is optional. */ }
+    window.location.reload();
   }
 
   async function chooseCandidate(candidate: Library, comparison: Recovery) {
@@ -393,7 +402,7 @@ export default function BookStudio(props: Props) {
           if (library) void mirrorLibrary(library, epoch).then((ok) => setNativeWarning(!ok));
         }}>{c.retry}</button></div>}
         {failure && draft && <details open><summary>{c.copyOriginal}</summary><DraftRescue draft={draft} locale={locale} />
-          <button type="button" onClick={() => void download(draft.passages.map(pieceText).join("\n\n"), "zanshin-draft.txt", "text/plain;charset=utf-8")}>{c.originalFile}</button>
+          <button type="button" onClick={() => void download(bookOriginalText(draft.cover, draft.passages), "zanshin-draft.txt", "text/plain;charset=utf-8")}>{c.originalFile}</button>
           <button type="button" onClick={() => void refresh()}>{c.retry}</button></details>}
         {recovery ? (
           <div className="ts-controls">
@@ -405,7 +414,7 @@ export default function BookStudio(props: Props) {
                 {recovery.candidate.books.map((item) => {
                   const version = recovery.candidate!.editions.find((value) => value.id === item.editionId)!;
                   return <details key={item.id}><summary>{version.cover.title || c.untitled}</summary>
-                    <pre dir="auto" lang="">{editionText(recovery.candidate!, version).map(pieceText).join("\n\n")}</pre></details>;
+                    <pre dir="auto" lang="">{bookOriginalText(version.cover, editionText(recovery.candidate!, version))}</pre></details>;
                 })}
                 <button type="button" onClick={() => { if (recovery.candidate) void chooseCandidate(recovery.candidate, recovery); }}>{c.useCandidate}</button>
               </details>
@@ -415,7 +424,7 @@ export default function BookStudio(props: Props) {
                   const local = recovery.local as Library;
                   const version = local.editions.find((value) => value.id === item.editionId)!;
                   return <details key={item.id}><summary>{version.cover.title || c.untitled}</summary>
-                    <pre lang="" dir="auto">{editionText(local, version).map(pieceText).join("\n\n")}</pre></details>;
+                    <pre lang="" dir="auto">{bookOriginalText(version.cover, editionText(local, version))}</pre></details>;
                 })}
                 <button type="button" onClick={() => { if (validLibrary(recovery.local)) void chooseCandidate(recovery.local, recovery); }}>{c.keepLocalEdition}</button>
               </details>}
@@ -432,9 +441,10 @@ export default function BookStudio(props: Props) {
               {library.books.map((item) => {
                 const version = library.editions.find((value) => value.id === item.editionId)!;
                 const passage = editionText(library, version)[0];
+                const title = version.cover.title || passage.title;
                 return <div key={item.id} className="ts-shelf-card">
                   <BookPage text={passage} appearance={{ ...version.appearance, direction: "horizontal" }} cover={version.cover} />
-                  <button type="button" onClick={() => openBook(item.id)}>{c.reading} · <span dir="auto" lang={version.cover.title ? "" : locale}>{version.cover.title || passage.title || c.untitled}</span></button>
+                  <button type="button" onClick={() => openBook(item.id)}>{c.reading} · <span dir="auto" lang={title ? "" : locale}>{title || c.untitled}</span></button>
                 </div>;
               })}
             </div>
@@ -496,7 +506,7 @@ export default function BookStudio(props: Props) {
             onHistory={(id) => openBook(book.id, id)}
             onBookmark={(bookmark) => void commit((current) => ({ ...current, books: current.books.map((item) =>
               item.id === book.id ? { ...item, bookmark } : item) })).then(() => setStatus("bookmarked")).catch((error) => setStatus(errorMessage(error, "saveFailed")))}
-            onOutput={openOutput} onOriginal={(pieces) => void download(pieces.map(pieceText).join("\n\n"), "zanshin-book.txt", "text/plain;charset=utf-8")} /></div>}
+            onOutput={openOutput} onOriginal={(text) => void download(text, "zanshin-book.txt", "text/plain;charset=utf-8")} /></div>}
           {view === "output" && request && <OutputStudio request={request} locale={locale} epoch={epoch} owned={owned} onPurchase={openPurchase} onBusy={setBusy} />}
           {view === "data" && <>
             <div className="ts-intro"><h1>{c.backup}</h1><p>{c.backupNotice}</p></div>

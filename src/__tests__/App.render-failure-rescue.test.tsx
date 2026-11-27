@@ -13,6 +13,9 @@ import { clearDraftRescueForTesting } from "../lib/draftRescue";
 import { BACKUP_KEY_FOR_TESTING, PENDING_SAVE_KEY_FOR_TESTING, STORAGE_KEY_FOR_TESTING } from "../lib/storage";
 import { messages } from "../lib/i18n";
 import { LANGUAGE_STORAGE_KEY } from "../lib/uiPreferences";
+import { rememberBookDraft } from "../tsuzuri/bookRescue";
+import { tsuzuriMessages } from "../tsuzuri/messages";
+import { blankDraft } from "../tsuzuri/model";
 import type { Note } from "../types/note";
 
 const copy = messages.ja;
@@ -139,6 +142,7 @@ describe("描画例外後の未保存本文の救済（R33 / F04）", () => {
 
   afterEach(() => {
     if (root) act(() => root?.unmount());
+    rememberBookDraft(null);
     container.remove();
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -280,6 +284,26 @@ describe("描画例外後の未保存本文の救済（R33 / F04）", () => {
     expect(container.textContent).not.toContain(copy.copied);
     expect(container.textContent).toContain(copy.copyFailed);
     expect(rescueText()).toContain("手動で選ぶ本文");
+  });
+
+  it.each(["ja", "en"] as const)("描画例外から冊子下書きの前書きと本文、あとがきを原文で救出する (%s)", async (locale) => {
+    act(() => root?.unmount());
+    storage._store[LANGUAGE_STORAGE_KEY] = locale;
+    const draft = blankDraft("vertical", makeNote({ title: "", body: "  Cafe\u0301 👩🏽‍💻  " }));
+    draft.cover.front = "前書き\r\n 続き";
+    draft.cover.after = "Afterword\n";
+    rememberBookDraft(draft);
+    root = createRoot(container);
+    act(() => root?.render(<AppErrorBoundary><App /><Bomb /></AppErrorBoundary>));
+
+    explode();
+
+    expect(container.textContent).toContain(tsuzuriMessages[locale].draftRescue);
+    expect(rescueText()).toContain("前書き\n 続き");
+    expect(rescueText()).toContain("Afterword\n");
+    await act(async () => click(findButton(container, tsuzuriMessages[locale].copyOriginal)));
+    expect(writeText).toHaveBeenCalledWith("前書き\r\n 続き\n\n  Cafe\u0301 👩🏽‍💻  \n\nAfterword\n");
+    expect(storage._store[STORAGE_KEY_FOR_TESTING]).toBe(JSON.stringify(original));
   });
 
   it("保存済みで未保存の変更がない時は、確認できた範囲だけを伝え、全データの保証をしない", () => {
