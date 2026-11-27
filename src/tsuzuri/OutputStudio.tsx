@@ -84,15 +84,15 @@ export function OutputStudio({ request, locale, epoch, owned, onPurchase, onBusy
         {edition.appearance.format === "BK02" && kind === "styled" && <p>{c.orderedPdf}</p>}</div>
       {kind !== "basic" && !owned && <p>{c.paidPreview}</p>}
       <fieldset className="ts-controls" disabled={busy}>
-        <label>{c.direction}<select value={direction} onChange={(event) => setDirection(event.target.value as typeof direction)}>
+        <label>{c.direction}<select aria-label={c.direction} value={direction} onChange={(event) => setDirection(event.target.value as typeof direction)}>
           <option value="horizontal">{c.horizontal}</option><option value="vertical">{c.vertical}</option>
         </select></label>
-        <label>{c.paperSize}<select value={size} onChange={(event) => setSize(event.target.value as PageSize)}>
+        <label>{c.paperSize}<select aria-label={c.paperSize} value={size} onChange={(event) => setSize(event.target.value as PageSize)}>
           {kind === "image" && <><option value="square">{c.sizeSquare}</option><option value="portrait">{c.sizePortrait}</option></>}
           <option value="A5">A5{kind === "image" ? ` · ${c.sizePaper}` : ""}</option>
           {kind !== "image" && <option value="A6">A6</option>}
         </select></label>
-        {kind !== "basic" && <label>{c.surface}<select value={surface} onChange={(event) => setSurface(event.target.value as Surface)}>
+        {kind !== "basic" && <label>{c.surface}<select aria-label={c.surface} value={surface} onChange={(event) => setSurface(event.target.value as Surface)}>
           <option value="paper">{c.paperSurface}</option><option value="light">{c.lightSurface}</option>
           <option value="white">{c.whiteSurface}</option>
         </select></label>}

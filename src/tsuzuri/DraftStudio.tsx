@@ -95,13 +95,13 @@ export function DraftStudio({ draft, notes, locale, update, selectMore, onBind, 
             })} />
           </label>)}
           <MaterialFields value={a} c={c} update={(appearance) => update({ ...draft, appearance })} />
-          <label>{c.direction}<select value={a.direction} onChange={(event) => {
+          <label>{c.direction}<select aria-label={c.direction} value={a.direction} onChange={(event) => {
             const direction = event.target.value as typeof a.direction;
             update({ ...draft, appearance: { ...a, direction } });
           }}>
             <option value="horizontal">{c.horizontal}</option><option value="vertical">{c.vertical}</option>
           </select></label>
-          <label>{c.binding}<select value={a.binding} onChange={(event) => update({ ...draft, appearance: { ...a, binding: event.target.value as typeof a.binding } })}>
+          <label>{c.binding}<select aria-label={c.binding} value={a.binding} onChange={(event) => update({ ...draft, appearance: { ...a, binding: event.target.value as typeof a.binding } })}>
             <option value="left">{c.left}</option><option value="right">{c.right}</option>
           </select></label>
         </div>

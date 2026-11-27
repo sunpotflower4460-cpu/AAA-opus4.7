@@ -14,7 +14,7 @@ export function Choice({ label, value, items, names, c, onChange }: {
   label: string; value: string; items: readonly string[]; names: readonly TsuzuriMessage[];
   c: TsuzuriCopy; onChange: (value: string) => void;
 }) {
-  return <label>{label}<select value={value} onChange={(event) => onChange(event.target.value)}>
+  return <label>{label}<select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)}>
     {!items.includes(value) && <option value={value}>{value}</option>}
     {items.map((item, index) => <option key={item} value={item}>{c[names[index]]}</option>)}
   </select></label>;

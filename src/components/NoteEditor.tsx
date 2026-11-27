@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import type { Note } from "../types/note";
 import { isRetryableSaveFailure, type SaveResult } from "../lib/storage";
 import { useI18n } from "../i18n/useI18n";
+import { readLibrary } from "../tsuzuri/repository";
 import { tsuzuriMessages } from "../tsuzuri/messages";
 import { useEverydaySurface } from "../tsuzuri/everyday";
 import { countGraphemes } from "../lib/graphemes";
@@ -468,7 +469,7 @@ function DeleteConfirm({
   const [bookCount, setBookCount] = useState<number | null>(null);
   useEffect(() => {
     let live = true;
-    if (typeof indexedDB !== "undefined") void import("../tsuzuri/repository").then(({ readLibrary }) => readLibrary()).then((value) => {
+    if (typeof indexedDB !== "undefined") void readLibrary().then((value) => {
       if (live && value.kind === "ready") {
         const current = new Set(value.library.books.map((book) => book.editionId));
         setBookCount(value.library.editions.filter((edition) => current.has(edition.id) &&
